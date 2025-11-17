@@ -1,0 +1,277 @@
+// Tests/SpotifyWebAPITests/Support/TestSupport.swift
+
+import Foundation
+import Testing
+
+@testable import SpotifyWebAPI
+
+// MARK: - Token store test double
+
+/// In-memory token store for tests.
+actor InMemoryTokenStore: TokenStore {
+    private var storedTokens: SpotifyTokens?
+
+    init(tokens: SpotifyTokens? = nil) {
+        self.storedTokens = tokens
+    }
+
+    func load() async throws -> SpotifyTokens? {
+        storedTokens
+    }
+
+    func save(_ tokens: SpotifyTokens) async throws {
+        storedTokens = tokens
+    }
+
+    func clear() async throws {
+        storedTokens = nil
+    }
+}
+
+// MARK: - Simple HTTP clients
+
+/// Simple one-shot HTTP client that always returns the same HTTPURLResponse.
+final class SimpleMockHTTPClient: HTTPClient, @unchecked Sendable {
+    enum Response {
+        case success(data: Data, statusCode: Int)
+        case failure(statusCode: Int, body: String)
+    }
+
+    private let response: Response
+    private(set) var recordedRequests: [URLRequest] = []
+
+    init(response: Response) {
+        self.response = response
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        recordedRequests.append(request)
+
+        let url = request.url ?? URL(string: "https://accounts.spotify.com")!
+
+        switch response {
+        case .success(let data, let statusCode):
+            let http = HTTPURLResponse(
+                url: url,
+                statusCode: statusCode,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (data, http)
+
+        case .failure(let statusCode, let body):
+            let http = HTTPURLResponse(
+                url: url,
+                statusCode: statusCode,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (Data(body.utf8), http)
+        }
+    }
+}
+
+/// HTTP client that returns a non-HTTPURLResponse, to hit the `unexpectedResponse` branch.
+final class NonHTTPResponseMockHTTPClient: HTTPClient, @unchecked Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let url = request.url ?? URL(string: "https://accounts.spotify.com")!
+        let response = URLResponse(
+            url: url,
+            mimeType: nil,
+            expectedContentLength: 0,
+            textEncodingName: nil
+        )
+        return (Data(), response)
+    }
+}
+
+/// HTTP client that returns an HTTPURLResponse with a UTF-8 body.
+final class StatusMockHTTPClient: HTTPClient, @unchecked Sendable {
+    let statusCode: Int
+    let body: String
+
+    init(statusCode: Int, body: String) {
+        self.statusCode = statusCode
+        self.body = body
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let url = request.url ?? URL(string: "https://accounts.spotify.com")!
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(body.utf8), response)
+    }
+}
+
+/// HTTP client that returns an HTTPURLResponse with arbitrary binary data.
+final class BinaryBodyMockHTTPClient: HTTPClient, @unchecked Sendable {
+    let statusCode: Int
+    let data: Data
+
+    init(statusCode: Int, data: Data) {
+        self.statusCode = statusCode
+        self.data = data
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let url = request.url ?? URL(string: "https://accounts.spotify.com")!
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (data, response)
+    }
+}
+
+// MARK: - Sequenced HTTP client (for paging tests)
+
+/// HTTP client that returns a pre-defined sequence of responses, in order.
+final class SequencedMockHTTPClient: HTTPClient, @unchecked Sendable {
+    struct StubResponse {
+        let data: Data
+        let statusCode: Int
+    }
+
+    private var responses: [StubResponse]
+    private(set) var requests: [URLRequest] = []
+
+    init(responses: [StubResponse]) {
+        self.responses = responses
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        requests.append(request)
+
+        guard !responses.isEmpty else {
+            throw SpotifyClientError.unexpectedResponse
+        }
+
+        let stub = responses.removeFirst()
+        let url = request.url ?? URL(string: "https://api.spotify.com")!
+        let http = HTTPURLResponse(
+            url: url,
+            statusCode: stub.statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+
+        return (stub.data, http)
+    }
+}
+
+// MARK: - PKCE helpers
+
+struct FixedPKCEProvider: PKCEProvider {
+    let pair: PKCEPair
+    func generatePKCE() throws -> PKCEPair { pair }
+}
+
+private struct DummyPKCEProvider: PKCEProvider {
+    let pair: PKCEPair
+    func generatePKCE() throws -> PKCEPair { pair }
+}
+
+extension DummyPKCEProvider {
+    static func forTests() -> (expected: PKCEPair, provider: PKCEProvider) {
+        let expected = PKCEPair(
+            verifier: "v",
+            challenge: "c",
+            state: "s"
+        )
+        let provider: PKCEProvider = DummyPKCEProvider(pair: expected)
+        return (expected, provider)
+    }
+}
+
+// MARK: - JSON builders
+
+func makeTokenJSON(
+    accessToken: String,
+    refreshToken: String? = nil,
+    expiresIn: Int = 3600,
+    scope: String = "user-read-email playlist-read-private",
+    tokenType: String = "Bearer"
+) -> Data {
+    var dict: [String: Any] = [
+        "access_token": accessToken,
+        "token_type": tokenType,
+        "expires_in": expiresIn,
+        "scope": scope,
+    ]
+    if let refreshToken {
+        dict["refresh_token"] = refreshToken
+    }
+    return try! JSONSerialization.data(withJSONObject: dict, options: [])
+}
+
+/// Builds a fake playlists page JSON payload similar to /v1/me/playlists.
+func makePlaylistsPageJSON(
+    offset: Int,
+    limit: Int,
+    total: Int,
+    hasNext: Bool,
+    names: [String],
+    userID: String = "user123"
+) -> Data {
+    let itemsJSON: [[String: Any]] = names.enumerated().map { index, name in
+        [
+            "collaborative": false,
+            "description": "Test playlist \(index + offset)",
+            "external_urls": [
+                "spotify":
+                    "https://open.spotify.com/playlist/\(UUID().uuidString)"
+            ],
+            "href":
+                "https://api.spotify.com/v1/playlists/playlist\(index + offset)",
+            "id": "playlist\(index + offset)",
+            "images": [],
+            "name": name,
+            "owner": [
+                "id": userID,
+                "display_name": "Test User",
+                "href": "https://api.spotify.com/v1/users/\(userID)",
+                "external_urls": [
+                    "spotify": "https://open.spotify.com/user/\(userID)"
+                ],
+            ],
+            "public": true,
+            "snapshot_id": "snapshot",
+            "tracks": [
+                "href":
+                    "https://api.spotify.com/v1/playlists/playlist\(index + offset)/tracks",
+                "total": 10,
+            ],
+            "type": "playlist",
+            "uri": "spotify:playlist:playlist\(index + offset)",
+        ]
+    }
+
+    let nextURL: String? =
+        hasNext
+        ? "https://api.spotify.com/v1/me/playlists?offset=\(offset + limit)&limit=\(limit)"
+        : nil
+
+    let previousURL: Any =
+        offset == 0
+        ? NSNull()
+        : "https://api.spotify.com/v1/me/playlists?offset=\(max(offset - limit, 0))&limit=\(limit)"
+
+    let root: [String: Any] = [
+        "href":
+            "https://api.spotify.com/v1/me/playlists?offset=\(offset)&limit=\(limit)",
+        "items": itemsJSON,
+        "limit": limit,
+        "next": nextURL as Any,
+        "offset": offset,
+        "previous": previousURL,
+        "total": total,
+    ]
+
+    return try! JSONSerialization.data(withJSONObject: root, options: [])
+}
