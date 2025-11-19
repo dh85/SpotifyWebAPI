@@ -322,8 +322,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - percent: The volume to set (integer 0...100).
     ///   - deviceID: Optional. The ID of the device to target.
-    public func setVolume(_ percent: Int, deviceID: String? = nil) async throws
-    {
+    public func setVolume(_ percent: Int, deviceID: String? = nil) async throws {
         var query: [URLQueryItem] = [
             .init(
                 name: "volume_percent",
@@ -348,8 +347,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - state: `true` to turn shuffle on, `false` to turn it off.
     ///   - deviceID: Optional. The ID of the device to target.
-    public func setShuffle(_ state: Bool, deviceID: String? = nil) async throws
-    {
+    public func setShuffle(_ state: Bool, deviceID: String? = nil) async throws {
         var query: [URLQueryItem] = [.init(name: "state", value: String(state))]
         if let deviceID {
             query.append(.init(name: "device_id", value: deviceID))

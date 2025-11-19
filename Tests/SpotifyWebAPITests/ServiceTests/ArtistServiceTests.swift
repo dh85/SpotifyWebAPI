@@ -103,7 +103,7 @@ struct ArtistServiceTests {
 
         _ = try await client.artists.albums(
             for: "artist123",
-            includeGroups: [], // explicit empty set
+            includeGroups: [],  // explicit empty set
             market: "US"
         )
 

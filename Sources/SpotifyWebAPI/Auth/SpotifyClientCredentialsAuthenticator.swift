@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 public actor SpotifyClientCredentialsAuthenticator {
     private let config: SpotifyAuthConfig
     private let httpClient: HTTPClient
@@ -40,8 +44,8 @@ public actor SpotifyClientCredentialsAuthenticator {
 
         // 2. Return from store if valid and not being invalidated
         if let tokenStore,
-           let stored = try await tokenStore.load(),
-           !stored.isExpired, !invalidatingPrevious
+            let stored = try await tokenStore.load(),
+            !stored.isExpired, !invalidatingPrevious
         {
             cachedTokens = stored
             return stored
@@ -101,8 +105,8 @@ public actor SpotifyClientCredentialsAuthenticator {
     }
 
     #if DEBUG
-    nonisolated func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
-        SpotifyAuthHTTP.formURLEncodedBody(from: items)
-    }
+        nonisolated func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
+            SpotifyAuthHTTP.formURLEncodedBody(from: items)
+        }
     #endif
 }

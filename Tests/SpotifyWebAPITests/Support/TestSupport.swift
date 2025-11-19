@@ -5,6 +5,10 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 // MARK: - Token store test double
 
 /// In-memory token store for tests.

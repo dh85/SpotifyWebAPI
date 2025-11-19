@@ -236,8 +236,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
     // MARK: - formURLEncodedBody via debug helper
 
     @Test
-    func formURLEncodedBody_nilPercentEncodedQueryWhenItemsEmpty() async throws
-    {
+    func formURLEncodedBody_nilPercentEncodedQueryWhenItemsEmpty() async throws {
         let auth = SpotifyAuthorizationCodeAuthenticator(
             config: makeConfig(),
             httpClient: SimpleMockHTTPClient(

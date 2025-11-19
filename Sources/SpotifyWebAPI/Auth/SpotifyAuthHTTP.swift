@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 enum SpotifyAuthHTTP {
     /// Build `application/x-www-form-urlencoded` bodies from query items.
     static func formURLEncodedBody(from items: [URLQueryItem]) -> Data {

@@ -113,8 +113,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
     }
 
     @Test
-    func appAccessToken_refreshesWhenStoreTokenExpiredAndPersists() async throws
-    {
+    func appAccessToken_refreshesWhenStoreTokenExpiredAndPersists() async throws {
         let expired = SpotifyTokens(
             accessToken: "OLD",
             refreshToken: nil,

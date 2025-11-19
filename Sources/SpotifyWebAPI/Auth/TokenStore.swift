@@ -24,12 +24,16 @@ public actor FileTokenStore: TokenStore {
         if let directory {
             self.fileURL = directory.appendingPathComponent(filename)
         } else {
-            let base =
-                FileManager.default.urls(
-                    for: .documentDirectory,
-                    in: .userDomainMask
-                ).first
-                ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            let base: URL
+            if let documentsURL = FileManager.default.urls(
+                for: .documentDirectory,
+                in: .userDomainMask
+            ).first,
+               FileManager.default.fileExists(atPath: documentsURL.path) {
+                base = documentsURL
+            } else {
+                base = URL(fileURLWithPath: NSTemporaryDirectory())
+            }
             self.fileURL = base.appendingPathComponent(filename)
         }
     }

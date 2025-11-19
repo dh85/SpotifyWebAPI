@@ -14,9 +14,18 @@ let package = Package(
             targets: ["SpotifyWebAPI"]
         )
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/apple/swift-crypto.git",
+            from: "3.0.0"
+        )
+    ],
     targets: [
         .target(
-            name: "SpotifyWebAPI"
+            name: "SpotifyWebAPI",
+            dependencies: [
+                .product(name: "Crypto", package: "swift-crypto")
+            ]
         ),
         .testTarget(
             name: "SpotifyWebAPITests",

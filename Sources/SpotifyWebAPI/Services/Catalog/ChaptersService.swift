@@ -20,8 +20,7 @@ extension ChaptersService where Capability: PublicSpotifyCapability {
     ///   - id: The Spotify ID for the chapter.
     ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
     /// - Returns: A full ``Chapter`` object.
-    public func get(_ id: String, market: String? = nil) async throws -> Chapter
-    {
+    public func get(_ id: String, market: String? = nil) async throws -> Chapter {
         let query: [URLQueryItem] =
             market.map { [.init(name: "market", value: $0)] } ?? []
         let request = SpotifyRequest<Chapter>.get(

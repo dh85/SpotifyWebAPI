@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 /// Transport-level abstraction so you can stub or swap the HTTP layer.
 ///
 /// The default implementation uses URLSession.
