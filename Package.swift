@@ -20,7 +20,8 @@ let package = Package(
         ),
         .testTarget(
             name: "SpotifyWebAPITests",
-            dependencies: ["SpotifyWebAPI"]
+            dependencies: ["SpotifyWebAPI"],
+            resources: [.process("Mocks")]
         ),
     ]
 )

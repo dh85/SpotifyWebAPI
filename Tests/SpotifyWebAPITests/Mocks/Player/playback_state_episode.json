@@ -1,0 +1,51 @@
+{
+    "device": {
+        "id": "device_computer_1",
+        "is_active": true,
+        "is_private_session": false,
+        "is_restricted": false,
+        "name": "Test MacBook",
+        "type": "computer",
+        "volume_percent": 50,
+        "supports_volume": true
+    },
+    "repeat_state": "off",
+    "shuffle_state": false,
+    "context": null,
+    "timestamp": 1700000000000,
+    "progress_ms": 120000,
+    "is_playing": true,
+    "currently_playing_type": "episode",
+    "actions": { "disallows": {} },
+    "item": {
+        "id": "episode_1",
+        "name": "Test Episode",
+        "description": "Description",
+        "html_description": "Description",
+        "duration_ms": 3600000,
+        "explicit": true,
+        "uri": "spotify:episode:episode_1",
+        "href": "https://api.spotify.com/v1/episodes/episode_1",
+        "external_urls": { "spotify": "https://open.spotify.com/episode/episode_1" },
+        "images": [],
+        "release_date": "2024-01-01",
+        "release_date_precision": "day",
+        "languages": ["en"],
+        "show": {
+             "id": "show_1",
+             "name": "Test Show",
+             "publisher": "Test Publisher",
+             "media_type": "audio",
+             "total_episodes": 100,
+             "explicit": false,
+             "description": "Show Desc",
+             "html_description": "Show Desc",
+             "images": [],
+             "uri": "spotify:show:show_1",
+             "href": "https://api.spotify.com/v1/shows/show_1",
+             "external_urls": { "spotify": "https://open.spotify.com/show/show_1" },
+             "copyrights": [],
+             "available_markets": ["US"]
+        }
+    }
+}

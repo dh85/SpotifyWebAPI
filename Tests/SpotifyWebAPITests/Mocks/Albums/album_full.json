@@ -1,0 +1,39 @@
+{
+    "id": "fullalbum_id",
+    "name": "The Deluxe Test Album",
+    "available_markets": ["AT", "BE", "BG", "CY", "CZ", "DE", "EE", "FI", "FR", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "MX", "NL", "NO", "PL", "PT", "SK", "ES", "SE", "CH", "TR", "GB", "AD", "LI", "MC", "RO", "IL", "ZA", "SA", "AE", "BH", "QA", "OM", "KW", "EG", "MA", "DZ", "TN", "LB", "JO", "PS", "BY", "KZ", "MD", "UA", "AL", "BA", "HR", "ME", "MK", "RS", "SI", "GH", "KE", "NG", "TZ", "UG", "AM", "BW", "BF", "CV", "CW", "GM", "GE", "GW", "LS", "LR", "MW", "ML", "NA", "NE", "SM", "ST", "SN", "SC", "SL", "AZ", "BI", "CM", "TD", "KM", "GQ", "SZ", "GA", "GN", "KG", "MR", "MN", "RW", "TG", "UZ", "ZW", "BJ", "MG", "MU", "MZ", "AO", "CI", "DJ", "ZM", "CD", "CG", "IQ", "LY", "TJ", "ET", "XK"],
+    "album_type": "album",
+    "artists": [ { "id": "artist_a", "name": "Main Artist" } ],
+    "images": [
+        { "url": "https://img.spotify.com/1", "height": 640, "width": 640 }
+    ],
+    "release_date": "2025-05-15",
+    "release_date_precision": "day",
+    "total_tracks": 15,
+    "href": "https://api.spotify.com/v1/albums/fullalbum_id",
+    "uri": "spotify:album:fullalbum_id",
+    "external_urls": { "spotify": "https://open.spotify.com/album/fullalbum_id" },
+
+    "copyrights": [
+        { "text": "© 2025 Record Label, Inc.", "type": "C" },
+        { "text": "℗ 2025 Record Label, Inc.", "type": "P" }
+    ],
+    "external_ids": {
+        "isrc": "US-S1Z-12-00001",
+        "upc": "123456789012"
+    },
+    "genres": [],
+    "label": "MegaCorp Records",
+    "popularity": 85,
+    "type": "album",
+    "tracks": {
+        "items": [],
+        "total": 15,
+        "limit": 50,
+        "offset": 0,
+        "href": "https://api.spotify.com/v1/albums/fullalbum_id/tracks"
+    },
+    "restrictions": {
+        "reason": "explicit"
+    }
+}

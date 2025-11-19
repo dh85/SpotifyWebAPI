@@ -15,13 +15,9 @@ public struct CurrentlyPlayingContext: Decodable, Sendable, Equatable {
     public let currentlyPlayingType: String
     public let actions: Actions
 
-    // Define coding keys to match the snake_case JSON
     enum CodingKeys: String, CodingKey {
-        case context, actions, item
-        case timestamp
-        case progressMs = "progress_ms"
-        case isPlaying = "is_playing"
-        case currentlyPlayingType = "currently_playing_type"
+        case context, actions, item, progressMs, timestamp, isPlaying,
+            currentlyPlayingType
     }
 
     // Custom decoder (copied from PlaybackState, 'device' removed)

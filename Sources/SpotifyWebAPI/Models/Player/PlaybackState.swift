@@ -4,26 +4,26 @@ import Foundation
 ///
 /// Source: `GET /v1/me/player`
 public struct PlaybackState: Decodable, Sendable, Equatable {
-    public let device: Device
-    public let repeatState: String
+    public let device: SpotifyDevice
+    public let repeatState: RepeatState
     public let shuffleState: Bool
     public let context: PlaybackContext?
     public let timestamp: Date
     public let progressMs: Int?
     public let isPlaying: Bool
     public let item: PlayableItem?
-    public let currentlyPlayingType: String
+    public let currentlyPlayingType: CurrentlyPlayingType
     public let actions: Actions
 
     // Define coding keys to match the snake_case JSON
     enum CodingKeys: String, CodingKey {
         case device, context, actions, item
-        case repeatState = "repeat_state"
-        case shuffleState = "shuffle_state"
+        case repeatState
+        case shuffleState
         case timestamp
-        case progressMs = "progress_ms"
-        case isPlaying = "is_playing"
-        case currentlyPlayingType = "currently_playing_type"
+        case progressMs
+        case isPlaying
+        case currentlyPlayingType
     }
 
     // Custom decoder
@@ -31,9 +31,9 @@ public struct PlaybackState: Decodable, Sendable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         // Decode standard properties
-        self.device = try container.decode(Device.self, forKey: .device)
+        self.device = try container.decode(SpotifyDevice.self, forKey: .device)
         self.repeatState = try container.decode(
-            String.self,
+            RepeatState.self,
             forKey: .repeatState
         )
         self.shuffleState = try container.decode(
@@ -51,7 +51,7 @@ public struct PlaybackState: Decodable, Sendable, Equatable {
         self.isPlaying = try container.decode(Bool.self, forKey: .isPlaying)
         self.actions = try container.decode(Actions.self, forKey: .actions)
         self.currentlyPlayingType = try container.decode(
-            String.self,
+            CurrentlyPlayingType.self,
             forKey: .currentlyPlayingType
         )
 
@@ -63,14 +63,29 @@ public struct PlaybackState: Decodable, Sendable, Equatable {
 
         // Handle the polymorphic 'item' based on 'currentlyPlayingType'
         switch self.currentlyPlayingType {
-        case "track":
+        case .track:
             self.item = .track(try container.decode(Track.self, forKey: .item))
-        case "episode":
+        case .episode:
             self.item = .episode(
                 try container.decode(Episode.self, forKey: .item)
             )
         default:
             self.item = nil
         }
+    }
+}
+
+extension PlaybackState {
+    public enum RepeatState: String, Codable, Sendable {
+        case off = "off"
+        case track = "track"
+        case context = "context"
+    }
+
+    public enum CurrentlyPlayingType: String, Codable, Sendable {
+        case track = "track"
+        case episode = "episode"
+        case ad = "ad"
+        case unknown = "unknown"
     }
 }

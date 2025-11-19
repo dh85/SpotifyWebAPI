@@ -7,98 +7,115 @@ import Testing
 struct GetPlaylistTests {
 
     private func makePlaylistJSON() -> Data {
-        let json: [String: Any] = [
-            "collaborative": false,
-            "description": "Chill vibes",
-            "external_urls": [
-                "spotify": "https://open.spotify.com/playlist/abc"
-            ],
-            "href": "https://api.spotify.com/v1/playlists/abc",
-            "id": "abc",
-            "images": [],
-            "name": "My Playlist",
-            "owner": [
-                "id": "owner123",
-                "display_name": "Owner User",
-                "href": "https://api.spotify.com/v1/users/owner123",
+            let json: [String: Any] = [
+                "collaborative": false,
+                "description": "Chill vibes",
                 "external_urls": [
-                    "spotify": "https://open.spotify.com/user/owner123"
+                    "spotify": "https://open.spotify.com/playlist/abc"
                 ],
-            ],
-            "public": true,
-            "snapshot_id": "snapshot123",
-            "followers": [
-                "href": NSNull(),
-                "total": 42,
-            ],
-            "tracks": [
-                "href": "https://api.spotify.com/v1/playlists/abc/tracks",
-                "items": [
-                    [
-                        "added_at": "2019-08-24T14:15:22Z",
-                        "added_by": [
-                            "id": "adder123",
-                            "display_name": "Adder User",
-                            "href": "https://api.spotify.com/v1/users/adder123",
-                            "external_urls": [
-                                "spotify":
-                                    "https://open.spotify.com/user/adder123"
-                            ],
-                        ],
-                        "is_local": false,
-                        "track": [
-                            "album": [
-                                "id": "album1",
-                                "name": "Album One",
-                                "href":
-                                    "https://api.spotify.com/v1/albums/album1",
-                                "uri": "spotify:album:album1",
-                                "album_type": "album",
-                                "total_tracks": 10,
-                                "images": [],
+                "href": "https://api.spotify.com/v1/playlists/abc",
+                "id": "abc",
+                "images": [],
+                "name": "My Playlist",
+                "owner": [
+                    "id": "owner123",
+                    "display_name": "Owner User",
+                    "href": "https://api.spotify.com/v1/users/owner123",
+                    "external_urls": [
+                        "spotify": "https://open.spotify.com/user/owner123"
+                    ],
+                ],
+                "public": true,
+                "snapshot_id": "snapshot123",
+                "followers": [
+                    "href": NSNull(),
+                    "total": 42,
+                ],
+                "tracks": [
+                    "href": "https://api.spotify.com/v1/playlists/abc/tracks",
+                    "items": [
+                        [
+                            "added_at": "2019-08-24T14:15:22Z",
+                            "added_by": [
+                                "id": "adder123",
+                                "display_name": "Adder User",
+                                "href": "https://api.spotify.com/v1/users/adder123",
                                 "external_urls": [
                                     "spotify":
-                                        "https://open.spotify.com/album/album1"
+                                        "https://open.spotify.com/user/adder123"
                                 ],
                             ],
-                            "artists": [
-                                [
-                                    "id": "artist1",
-                                    "name": "Artist One",
-                                    "href":
-                                        "https://api.spotify.com/v1/artists/artist1",
+                            "is_local": false,
+                            "track": [
+                                "id": "track1",
+                                "name": "Track One",
+                                "duration_ms": 123000,
+                                "explicit": false,
+                                "href": "https://api.spotify.com/v1/tracks/track1",
+                                "uri": "spotify:track:track1",
+                                "external_urls": [
+                                    "spotify":
+                                        "https://open.spotify.com/track/track1"
+                                ],
+                                // --- FIXED ALBUM OBJECT ---
+                                "album": [
+                                    "id": "album1",
+                                    "name": "Album One",
+                                    "href": "https://api.spotify.com/v1/albums/album1",
+                                    "uri": "spotify:album:album1",
+                                    "album_type": "album",
+                                    "total_tracks": 10,
+                                    "images": [],
                                     "external_urls": [
                                         "spotify":
-                                            "https://open.spotify.com/artist/artist1"
+                                            "https://open.spotify.com/album/album1"
                                     ],
-                                ]
+                                    // Added missing fields required by SimplifiedAlbum:
+                                    "available_markets": ["GB", "US"],
+                                    "release_date": "2024-01-01",
+                                    "release_date_precision": "day",
+                                    "type": "album",
+                                    "album_group": "album",
+                                    "artists": [
+                                        [
+                                            "id": "artist1",
+                                            "name": "Artist One",
+                                            "href": "https://api.spotify.com/v1/artists/artist1",
+                                            "uri": "spotify:artist:artist1",
+                                            "type": "artist",
+                                            "external_urls": [
+                                                "spotify": "https://open.spotify.com/artist/artist1"
+                                            ]
+                                        ]
+                                    ]
+                                ],
+                                "artists": [
+                                    [
+                                        "id": "artist1",
+                                        "name": "Artist One",
+                                        "href":
+                                            "https://api.spotify.com/v1/artists/artist1",
+                                        "external_urls": [
+                                            "spotify":
+                                                "https://open.spotify.com/artist/artist1"
+                                        ],
+                                    ]
+                                ],
                             ],
-                            "id": "track1",
-                            "name": "Track One",
-                            "duration_ms": 123000,
-                            "explicit": false,
-                            "href": "https://api.spotify.com/v1/tracks/track1",
-                            "uri": "spotify:track:track1",
-                            "external_urls": [
-                                "spotify":
-                                    "https://open.spotify.com/track/track1"
-                            ],
-                            "type": "track",
-                        ],
-                    ]
+                        ]
+                    ],
+                    "limit": 100,
+                    "next": NSNull(),
+                    "offset": 0,
+                    "previous": NSNull(),
+                    "total": 1,
                 ],
-                "limit": 100,
-                "next": NSNull(),
-                "offset": 0,
-                "previous": NSNull(),
-                "total": 1,
-            ],
-            "type": "playlist",
-            "uri": "spotify:playlist:abc",
-        ]
+                "type": "playlist",
+                "uri": "spotify:playlist:abc",
+            ]
 
-        return try! JSONSerialization.data(withJSONObject: json, options: [])
-    }
+            return try! JSONSerialization.data(withJSONObject: json, options: [])
+        }
 
     private func makeClient() -> (UserSpotifyClient, SequencedMockHTTPClient) {
         let data = makePlaylistJSON()
@@ -133,8 +150,8 @@ struct GetPlaylistTests {
     @Test
     func playlistDecodesAndBuildsCorrectURL() async throws {
         let (client, http) = makeClient()
-        let playlist = try await client.playlist(
-            id: "abc",
+        let playlist = try await client.playlists.get(
+            "abc",
             market: "GB",
             fields: "id,name",
             additionalTypes: ["track", "episode"]
