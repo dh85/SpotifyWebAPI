@@ -1,0 +1,68 @@
+{
+    "device": {
+        "id": "device_mobile_1",
+        "is_active": true,
+        "is_private_session": false,
+        "is_restricted": false,
+        "name": "Test iPhone",
+        "type": "smartphone",
+        "volume_percent": 100,
+        "supports_volume": true
+    },
+    "repeat_state": "context",
+    "shuffle_state": true,
+    "context": {
+        "type": "playlist",
+        "href": "https://api.spotify.com/v1/playlists/playlist_id",
+        "external_urls": { "spotify": "https://open.spotify.com/playlist/playlist_id" },
+        "uri": "spotify:playlist:playlist_id"
+    },
+    "timestamp": 1700000000000,
+    "progress_ms": 45000,
+    "is_playing": true,
+    "currently_playing_type": "track",
+    "actions": { "disallows": { "skipping_prev": true } },
+    "item": {
+        "id": "track_1",
+        "name": "Test Track",
+        "duration_ms": 180000,
+        "explicit": false,
+        "uri": "spotify:track:track_1",
+        "href": "https://api.spotify.com/v1/tracks/track_1",
+        "external_urls": { "spotify": "https://open.spotify.com/track/track_1" },
+        "artists": [
+            {
+                "id": "artist_1",
+                "name": "Test Artist",
+                "href": "https://api.spotify.com/v1/artists/artist_1",
+                "uri": "spotify:artist:artist_1",
+                "external_urls": { "spotify": "https://open.spotify.com/artist/artist_1" }
+            }
+        ],
+        "album": {
+            "id": "album_1",
+            "name": "Test Album",
+            "href": "https://api.spotify.com/v1/albums/album_1",
+            "uri": "spotify:album:album_1",
+            "images": [],
+            "external_urls": { "spotify": "https://open.spotify.com/album/album_1" },
+            "album_type": "album",
+            "total_tracks": 10,
+            "available_markets": ["US", "GB"],
+            "release_date": "2024-01-01",
+            "release_date_precision": "day",
+            "type": "album",
+            "album_group": "album",
+            "artists": [
+                {
+                    "id": "artist_1",
+                    "name": "Test Artist",
+                    "href": "https://api.spotify.com/v1/artists/artist_1",
+                    "uri": "spotify:artist:artist_1",
+                    "type": "artist",
+                    "external_urls": { "spotify": "https://open.spotify.com/artist/artist_1" }
+                }
+            ]
+        }
+    }
+}

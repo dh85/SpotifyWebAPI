@@ -1,0 +1,16 @@
+{
+    "items": [
+        {
+            "artists": [{ "id": "artist123", "name": "Artist 1" }],
+            "disc_number": 1,
+            "duration_ms": 200000,
+            "explicit": false,
+            "name": "Track 1",
+            "track_number": 1
+        }
+    ],
+    "limit": 20,
+    "offset": 0,
+    "total": 1,
+    "href": "https://api.spotify.com/v1/albums/album123/tracks"
+}

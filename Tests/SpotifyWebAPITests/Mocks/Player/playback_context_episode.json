@@ -1,0 +1,45 @@
+{
+    "context": {
+        "type": "show",
+        "href": "https://api.spotify.com/v1/shows/...",
+        "external_urls": {
+            "spotify": "https://open.spotify.com/show/..."
+        },
+        "uri": "spotify:show:..."
+    },
+    "timestamp": 1620000000000,
+    "progress_ms": 654321,
+    "is_playing": true,
+    "currently_playing_type": "episode",
+    "actions": {
+        "disallows": {}
+    },
+    "item": {
+        "id": "episode123",
+        "name": "Mock Episode Title",
+        "description": "An episode about testing.",
+        "html_description": "<p>An episode about testing.</p>",
+        "duration_ms": 1800000,
+        "explicit": true,
+        "href": "...",
+        "uri": "...",
+        "images": [],
+        "release_date": "2024-01-01",
+        "release_date_precision": "day",
+        "languages": ["en"],
+        "show": {
+            "id": "show123",
+            "name": "Mock Show",
+            "description": "A show about mocks.",
+            "html_description": "<p>A show about mocks.</p>",
+            "publisher": "Mock Media",
+            "media_type": "audio",
+            "explicit": true,
+            "total_episodes": 10,
+            "href": "...",
+            "uri": "...",
+            "images": [],
+            "copyrights": []
+        }
+    }
+}

@@ -1,0 +1,60 @@
+{
+    "context": {
+        "type": "playlist",
+        "href": "https://api.spotify.com/v1/playlists/playlist_id",
+        "external_urls": {
+            "spotify": "https://open.spotify.com/playlist/playlist_id"
+        },
+        "uri": "spotify:playlist:playlist_id"
+    },
+    "timestamp": 1610000000000,
+    "progress_ms": 123456,
+    "is_playing": true,
+    "currently_playing_type": "track",
+    "actions": {
+        "disallows": { "resuming": true }
+    },
+    "item": {
+        "id": "track123",
+        "name": "Mock Track Title",
+        "duration_ms": 240000,
+        "explicit": false,
+        "href": "https://api.spotify.com/v1/tracks/track123",
+        "uri": "spotify:track:track123",
+        "external_urls": { "spotify": "https://open.spotify.com/track/track123" },
+        "artists": [
+            {
+                "id": "artist123",
+                "name": "Mock Artist",
+                "href": "https://api.spotify.com/v1/artists/artist123",
+                "uri": "spotify:artist:artist123",
+                "external_urls": { "spotify": "https://open.spotify.com/artist/artist123" }
+            }
+        ],
+        "album": {
+            "id": "album123",
+            "name": "Mock Album",
+            "href": "https://api.spotify.com/v1/albums/album123",
+            "uri": "spotify:album:album123",
+            "images": [],
+            "external_urls": { "spotify": "https://open.spotify.com/album/album123" },
+            "album_type": "album",
+            "total_tracks": 10,
+            "available_markets": ["US", "GB"],
+            "release_date": "2024-01-01",
+            "release_date_precision": "day",
+            "type": "album",
+            "album_group": "album",
+            "artists": [
+                {
+                    "id": "artist123",
+                    "name": "Mock Artist",
+                    "href": "https://api.spotify.com/v1/artists/artist123",
+                    "uri": "spotify:artist:artist123",
+                    "type": "artist",
+                    "external_urls": { "spotify": "https://open.spotify.com/artist/artist123" }
+                }
+            ]
+        }
+    }
+}

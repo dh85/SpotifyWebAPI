@@ -1,0 +1,20 @@
+{
+  "categories": {
+    "href": "https://api.spotify.com/v1/browse/categories?offset=0&limit=20",
+    "items": [
+      {
+        "href": "https://api.spotify.com/v1/browse/categories/toplists",
+        "icons": [
+          { "height": 274, "url": "https://t.scdn.co/media/derived/toplists_11160599e63c4140d994565a8fa31b3d_0_0_275_275.jpg", "width": 274 }
+        ],
+        "id": "toplists",
+        "name": "Top Lists"
+      }
+    ],
+    "limit": 20,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 1
+  }
+}

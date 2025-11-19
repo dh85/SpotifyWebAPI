@@ -41,7 +41,7 @@ extension SpotifyClient {
     }
 
     // MARK: - Low-level authorized request
-    
+
     func authorizedRequest(
         url: URL,
         method: String = "GET",
@@ -97,19 +97,38 @@ extension SpotifyClient {
         return try decoder.decode(T.self, from: data)
     }
 
-    func requestJSON<T: Decodable>(
-        _ type: T.Type,
-        url: URL,
-        method: String = "GET",
-        body: Data? = nil
-    ) async throws -> T {
-        let (data, response) = try await authorizedRequest(
+    /// Executes a request and decodes the response into the specified type.
+    /// This method replaces requestJSON, requestVoid, and requestOptionalJSON.
+    @discardableResult
+    func perform<T: Decodable>(_ request: SpotifyRequest<T>) async throws -> T {
+
+        let httpBody: Data?
+        if let body = request.body {
+            httpBody = try JSONEncoder().encode(body)
+        } else {
+            httpBody = nil
+        }
+
+        let url = self.apiURL(path: request.path, queryItems: request.query)
+
+        let (data, response) = try await self.authorizedRequest(
             url: url,
-            method: method,
-            body: body,
-            contentType: body != nil ? "application/json" : nil
+            method: request.method,
+            body: httpBody,
+            contentType: httpBody != nil ? "application/json" : nil
         )
 
+        // Handle 204 No Content
+        if response.statusCode == 204 {
+            if T.self == EmptyResponse.self {
+                return EmptyResponse() as! T  // Success for Void (EmptyResponse)
+            }
+            // If T is optional (e.g., PlaybackState?), requestOptionalJSON should be used.
+            // If T is non-optional, we must throw, as 204 is unexpected.
+            throw SpotifyAuthError.unexpectedResponse
+        }
+
+        // Check for general 2xx success status
         guard (200..<300).contains(response.statusCode) else {
             let bodyString =
                 String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
@@ -119,6 +138,63 @@ extension SpotifyClient {
             )
         }
 
-        return try decodeJSON(T.self, from: data)
+        // --- THIS IS THE FIX ---
+        // If we expect an EmptyResponse and data is empty (e.g., 200 OK w/ no body),
+        // return a new instance immediately without decoding.
+        if T.self == EmptyResponse.self && data.isEmpty {
+            return EmptyResponse() as! T
+        }
+        // --- END FIX ---
+
+        // Decode the data into the expected type T
+        return try self.decodeJSON(T.self, from: data)
+    }
+
+    /// Helper for requests that might return 204 No Content (returning nil)
+    /// or a JSON object (returning T).
+    func requestOptionalJSON<T: Decodable>(
+        _ type: T.Type,
+        request: SpotifyRequest<T>
+    ) async throws -> T? {
+
+        let httpBody: Data?
+        if let body = request.body {
+            httpBody = try JSONEncoder().encode(body)
+        } else {
+            httpBody = nil
+        }
+
+        let url = self.apiURL(path: request.path, queryItems: request.query)
+
+        let (data, response) = try await self.authorizedRequest(
+            url: url,
+            method: request.method,
+            body: httpBody,
+            contentType: httpBody != nil ? "application/json" : nil
+        )
+
+        // 1. Handle "No Content" explicitly (returns nil)
+        if response.statusCode == 204 {
+            return nil
+        }
+
+        // 2. Handle Errors
+        guard (200..<300).contains(response.statusCode) else {
+            let bodyString =
+                String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw SpotifyAuthError.httpError(
+                statusCode: response.statusCode,
+                body: bodyString
+            )
+        }
+
+        // 3. Handle Empty Data (e.g. 200 OK w/ no body)
+        // If we get empty data but expected an optional type, return nil.
+        if data.isEmpty {
+            return nil
+        }
+
+        // 4. Decode
+        return try self.decodeJSON(T.self, from: data)
     }
 }

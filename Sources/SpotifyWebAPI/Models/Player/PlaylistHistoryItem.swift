@@ -13,9 +13,4 @@ public struct PlayHistoryItem: Codable, Sendable, Equatable {
     /// The context the track was played from.
     public let context: PlaybackContext?
 
-    enum CodingKeys: String, CodingKey {
-        case track
-        case playedAt = "played_at"
-        case context
-    }
 }

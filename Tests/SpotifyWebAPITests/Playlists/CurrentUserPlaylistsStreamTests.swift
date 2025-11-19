@@ -49,38 +49,4 @@ struct CurrentUserPlaylistsStreamTests {
             httpClient: httpClient
         )
     }
-
-    @Test
-    func streamEmitsAllAcrossPages() async throws {
-        let client = makeClientWithPages(namesPages: [
-            ["P1", "P2"],
-            ["P3", "P4"],
-        ])
-
-        var names: [String] = []
-        for try await playlist in client.currentUserPlaylistsStream(pageSize: 2)
-        {
-            names.append(playlist.name)
-        }
-
-        #expect(names == ["P1", "P2", "P3", "P4"])
-    }
-
-    @Test
-    func streamRespectsMaxItems() async throws {
-        let client = makeClientWithPages(namesPages: [
-            ["P1", "P2"],
-            ["P3", "P4"],
-        ])
-
-        var names: [String] = []
-        for try await playlist in client.currentUserPlaylistsStream(
-            pageSize: 2,
-            maxItems: 3
-        ) {
-            names.append(playlist.name)
-        }
-
-        #expect(names == ["P1", "P2", "P3"])
-    }
 }

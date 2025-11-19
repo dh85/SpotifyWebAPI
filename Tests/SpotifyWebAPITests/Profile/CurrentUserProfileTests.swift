@@ -70,7 +70,7 @@ struct CurrentUserProfileTests {
     func currentUserProfile_decodesAndHitsCorrectURL() async throws {
         let (client, http) = makeClient()
 
-        let profile = try await client.currentUserProfile()
+        let profile = try await client.users.me()
 
         #expect(profile.id == "user123")
         #expect(profile.displayName == "Test User")
