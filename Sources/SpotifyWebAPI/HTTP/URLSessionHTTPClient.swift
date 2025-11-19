@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 /// Default HTTP client backed by URLSession.
 public struct URLSessionHTTPClient: HTTPClient {
     private let session: URLSession

@@ -1,7 +1,11 @@
 import Foundation
-import Testing  // Import Swift Testing
+import Testing
 
 @testable import SpotifyWebAPI
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 actor MockHTTPClient: HTTPClient {
 

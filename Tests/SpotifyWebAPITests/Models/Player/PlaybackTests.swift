@@ -7,15 +7,10 @@ import Testing
 
     @Test
     func decodes_currentlyPlaying_Track() async throws {
-        // Arrange
         let testData = try TestDataLoader.load("playback_context_track.json")
 
-        print(String(data: testData, encoding: .utf8)!)
-
-        // Act
         let context: CurrentlyPlayingContext = try decodeModel(from: testData)
 
-        // Assert
         #expect(context.isPlaying == true)
         #expect(context.progressMs == 123456)
         #expect(context.currentlyPlayingType == "track")

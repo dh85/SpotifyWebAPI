@@ -1,6 +1,5 @@
-import CryptoKit
+import Crypto
 import Foundation
-import Security
 
 /// A PKCE verifier/challenge + CSRF state value.
 public struct PKCEPair: Sendable, Equatable {
@@ -36,14 +35,13 @@ public struct DefaultPKCEProvider: PKCEProvider {
         let allowed = Array(
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"
         )
-        var bytes = [UInt8](repeating: 0, count: length)
 
-        let status = SecRandomCopyBytes(kSecRandomDefault, length, &bytes)
-        guard status == errSecSuccess else {
-            throw PKCEError.randomFailure
+        var rng = SystemRandomNumberGenerator()
+
+        let chars = (0..<length).map { _ in
+            allowed.randomElement(using: &rng)!
         }
 
-        let chars = bytes.map { allowed[Int($0) % allowed.count] }
         return String(chars)
     }
 

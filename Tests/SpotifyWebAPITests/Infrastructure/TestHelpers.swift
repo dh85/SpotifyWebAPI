@@ -75,6 +75,19 @@ func encodeModel<T: Encodable>(_ model: T) throws -> Data {
 
 // MARK: - Client helpers
 
+func extractIDs(from url: URL?) -> Set<String> {
+    guard
+        let query = url?.query,
+        let idsPart =
+            query
+            .split(separator: "&")
+            .first(where: { $0.hasPrefix("ids=") })
+    else { return [] }
+
+    let raw = idsPart.dropFirst("ids=".count)
+    return Set(raw.split(separator: ",").map(String.init))
+}
+
 /// Helper to create a user-auth client with mocks.
 @MainActor
 func makeUserAuthClient() -> (

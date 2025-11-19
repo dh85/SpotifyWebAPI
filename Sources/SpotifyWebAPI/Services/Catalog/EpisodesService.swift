@@ -20,8 +20,7 @@ extension EpisodesService where Capability: PublicSpotifyCapability {
     ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
     /// - Returns: A full ``Episode`` object.
     /// - Throws: ``SpotifyAuthError/httpError(statusCode:body:)`` if the API returns an error.
-    public func get(_ id: String, market: String? = nil) async throws -> Episode
-    {
+    public func get(_ id: String, market: String? = nil) async throws -> Episode {
         let query: [URLQueryItem] =
             market.map { [.init(name: "market", value: $0)] } ?? []
         let request = SpotifyRequest<Episode>.get(

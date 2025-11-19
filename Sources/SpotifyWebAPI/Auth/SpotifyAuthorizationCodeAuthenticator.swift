@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
     private let config: SpotifyAuthConfig
     private let httpClient: HTTPClient

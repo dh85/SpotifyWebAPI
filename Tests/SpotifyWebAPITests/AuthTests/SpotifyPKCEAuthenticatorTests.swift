@@ -262,8 +262,7 @@ struct SpotifyPKCEAuthenticatorTests {
     // MARK: - formURLEncodedBody via debug helper
 
     @Test
-    func formURLEncodedBody_nilPercentEncodedQueryWhenItemsEmpty() async throws
-    {
+    func formURLEncodedBody_nilPercentEncodedQueryWhenItemsEmpty() async throws {
         let auth = SpotifyPKCEAuthenticator(
             config: makeConfig(),
             tokenStore: InMemoryTokenStore()

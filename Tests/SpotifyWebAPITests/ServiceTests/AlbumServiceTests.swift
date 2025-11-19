@@ -221,7 +221,7 @@ struct AlbumServiceTests {
     func saveAlbums_buildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
-        let albumIDs = makeIDs(count: 20) // Max is 20, test upper bound
+        let albumIDs = makeIDs(count: 20)  // Max is 20, test upper bound
 
         try await client.albums.save(albumIDs)
 
@@ -289,16 +289,17 @@ struct AlbumServiceTests {
 
         let results = try await client.albums.checkSaved(albumIDs)
 
-        #expect(results == [false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true])
+        #expect(
+            results == [
+                false, false, false, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true,
+            ])
 
         let request = await http.firstRequest
-        print(request)
         #expect(request?.url?.path() == "/v1/me/albums/contains")
-        #expect(
-            request?.url?.query()?.contains(
-                "ids=id_1,id_2"
-            ) == true
-        )
+
+        let actualIDs = extractIDs(from: request?.url)
+        #expect(actualIDs == albumIDs)
         #expect(request?.httpMethod == "GET")
     }
 

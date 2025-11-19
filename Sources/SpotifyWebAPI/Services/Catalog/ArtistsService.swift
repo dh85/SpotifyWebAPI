@@ -64,7 +64,7 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
         offset: Int = 0
     ) async throws -> Page<SimplifiedAlbum> {
         try validateLimit(limit)
-        
+
         var query: [URLQueryItem] = [
             .init(name: "limit", value: String(limit)),
             .init(name: "offset", value: String(offset)),
