@@ -9,26 +9,22 @@ import Testing
     func decodesFromJSON() throws {
         let json = """
             {
-                "disallows": {
-                    "resuming": true,
-                    "skipping_prev": true
-                }
+                "resuming": true,
+                "skipping_prev": true
             }
             """
         let data = json.data(using: .utf8)!
         let actions: Actions = try decodeModel(from: data)
 
-        #expect(actions.disallows.resuming == true)
-        #expect(actions.disallows.skippingPrev == true)
+        #expect(actions.resuming == true)
+        #expect(actions.skippingPrev == true)
     }
 
     @Test
     func equatableWorksCorrectly() throws {
         let json = """
             {
-                "disallows": {
-                    "pausing": true
-                }
+                "pausing": true
             }
             """
         let data = json.data(using: .utf8)!

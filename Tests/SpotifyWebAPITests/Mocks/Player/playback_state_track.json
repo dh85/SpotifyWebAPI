@@ -24,9 +24,7 @@
     "is_playing": true,
     "currently_playing_type": "track",
     "actions": {
-        "disallows": {
-            "skipping_prev": true
-        }
+        "skipping_prev": true
     },
     "item": {
         "id": "track_1",

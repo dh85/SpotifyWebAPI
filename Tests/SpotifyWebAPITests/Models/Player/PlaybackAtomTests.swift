@@ -15,14 +15,14 @@ import Testing
 
         // Assert
         // Check standard keys
-        #expect(actions.disallows.resuming == true)
-        #expect(actions.disallows.pausing == false)
+        #expect(actions.resuming == true)
+        #expect(actions.pausing == false)
 
         // Check snake_case conversion
-        #expect(actions.disallows.interruptingPlayback == true)
-        #expect(actions.disallows.skippingNext == true)
-        #expect(actions.disallows.togglingRepeatContext == true)
-        #expect(actions.disallows.togglingShuffle == false)
+        #expect(actions.interruptingPlayback == true)
+        #expect(actions.skippingNext == true)
+        #expect(actions.togglingRepeatContext == true)
+        #expect(actions.togglingShuffle == false)
     }
 
     @Test
@@ -35,13 +35,13 @@ import Testing
 
         // Assert
         // Check present keys
-        #expect(actions.disallows.resuming == true)
-        #expect(actions.disallows.skippingNext == false)
+        #expect(actions.resuming == true)
+        #expect(actions.skippingNext == false)
 
         // Check that missing keys are correctly decoded as nil
-        #expect(actions.disallows.pausing == nil)
-        #expect(actions.disallows.seeking == nil)
-        #expect(actions.disallows.togglingShuffle == nil)
+        #expect(actions.pausing == nil)
+        #expect(actions.seeking == nil)
+        #expect(actions.togglingShuffle == nil)
     }
 
     @Test
@@ -54,10 +54,10 @@ import Testing
 
         // Assert
         // Check that all optional properties are nil
-        #expect(actions.disallows.resuming == nil)
-        #expect(actions.disallows.pausing == nil)
-        #expect(actions.disallows.seeking == nil)
-        #expect(actions.disallows.togglingRepeatContext == nil)
+        #expect(actions.resuming == nil)
+        #expect(actions.pausing == nil)
+        #expect(actions.seeking == nil)
+        #expect(actions.togglingRepeatContext == nil)
     }
 
     // MARK: - PlaybackContext Tests
@@ -74,7 +74,7 @@ import Testing
         let context: PlaybackContext = try decodeModel(from: testData)
 
         // Assert
-        #expect(context.type == .playlist)
+        #expect(context.type == "playlist")
         #expect(context.uri == "spotify:playlist:37i9dQZEVXbMDoHDwVN2tF")
         #expect(
             context.href.absoluteString.contains(

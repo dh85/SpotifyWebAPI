@@ -20,7 +20,7 @@ import Testing
         #expect(item.track.artists.first?.name == "History Artist")
 
         // Assert - Context
-        #expect(item.context?.type == .playlist)
+        #expect(item.context?.type == "playlist")
         #expect(item.context?.uri == "spotify:playlist:playlist_history")
 
         // Assert - Played At
