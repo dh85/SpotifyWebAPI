@@ -2,10 +2,19 @@ import Foundation
 
 private struct SeveralEpisodesWrapper: Decodable { let episodes: [Episode] }
 
+private let MAXIMUM_EPISODE_ID_BATCH_SIZE = 50
+
 /// A service for fetching and managing Spotify Episode (Podcast Episode) resources.
 public struct EpisodesService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
     init(client: SpotifyClient<Capability>) { self.client = client }
+}
+
+// MARK: - Helpers
+extension EpisodesService {
+    private func validateEpisodeIDs(_ ids: Set<String>) throws {
+        try validateMaxIdCount(MAXIMUM_EPISODE_ID_BATCH_SIZE, for: ids)
+    }
 }
 
 // MARK: - Public Access
@@ -13,45 +22,34 @@ extension EpisodesService where Capability: PublicSpotifyCapability {
 
     /// Get Spotify catalog information for a single episode.
     ///
-    /// Corresponds to: `GET /v1/episodes/{id}`.
-    ///
     /// - Parameters:
     ///   - id: The Spotify ID for the episode.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    /// - Returns: A full ``Episode`` object.
-    /// - Throws: ``SpotifyAuthError/httpError(statusCode:body:)`` if the API returns an error.
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    /// - Returns: A full `Episode` object.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-episode)
     public func get(_ id: String, market: String? = nil) async throws -> Episode {
-        let query: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
-        let request = SpotifyRequest<Episode>.get(
-            "/episodes/\(id)",
-            query: query
-        )
+        let query = makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<Episode>.get("/episodes/\(id)", query: query)
         return try await client.perform(request)
     }
 
-    /// Get Spotify catalog information for several episodes.
-    ///
-    /// Corresponds to: `GET /v1/episodes`.
+    /// Get Spotify catalog information for several episodes identified by their Spotify IDs.
     ///
     /// - Parameters:
-    ///   - ids: A list of the Spotify IDs for the episodes (max 50).
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    /// - Returns: A list of full ``Episode`` objects.
-    public func several(ids: Set<String>, market: String? = nil) async throws
-        -> [Episode]
-    {
-        let sortedIDs = ids.sorted()
-        let marketQuery: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
-        let query: [URLQueryItem] =
-            [.init(name: "ids", value: sortedIDs.joined(separator: ","))]
-            + marketQuery
-
-        let request = SpotifyRequest<SeveralEpisodesWrapper>.get(
-            "/episodes",
-            query: query
-        )
+    ///   - ids: A list of Spotify IDs (max 50).
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    /// - Returns: A list of `Episode` objects.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-episodes)
+    public func several(ids: Set<String>, market: String? = nil) async throws -> [Episode] {
+        try validateEpisodeIDs(ids)
+        let query =
+            [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
+            + makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<SeveralEpisodesWrapper>.get("/episodes", query: query)
         return try await client.perform(request).episodes
     }
 }
@@ -59,79 +57,59 @@ extension EpisodesService where Capability: PublicSpotifyCapability {
 // MARK: - User Access
 extension EpisodesService where Capability == UserAuthCapability {
 
-    /// Get a list of the episodes saved in the current user's library.
-    ///
-    /// Corresponds to: `GET /v1/me/episodes`.
-    /// Requires the `user-library-read` scope.
+    /// Get a list of the episodes saved in the current Spotify user's library.
     ///
     /// - Parameters:
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    /// - Returns: A paginated list of ``SavedEpisode`` items.
-    public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil)
-        async throws -> Page<SavedEpisode>
-    {
-        let marketQuery: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
-        let query: [URLQueryItem] =
-            [
-                .init(name: "limit", value: String(limit)),
-                .init(name: "offset", value: String(offset)),
-            ] + marketQuery
-
-        let request = SpotifyRequest<Page<SavedEpisode>>.get(
-            "/me/episodes",
-            query: query
-        )
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    /// - Returns: A paginated list of `SavedEpisode` items.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-episodes)
+    public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil) async throws -> Page<
+        SavedEpisode
+    > {
+        try validateLimit(limit)
+        let query =
+            makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<Page<SavedEpisode>>.get("/me/episodes", query: query)
         return try await client.perform(request)
     }
 
-    /// Save one or more episodes to the current user's library.
+    /// Save one or more episodes to the current Spotify user's library.
     ///
-    /// Corresponds to: `PUT /v1/me/episodes`.
-    /// Requires the `user-library-modify` scope.
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
     ///
-    /// - Parameter ids: A list of the Spotify IDs for the episodes (max 50).
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/save-episodes-user)
     public func save(_ ids: Set<String>) async throws {
-        let request = SpotifyRequest<EmptyResponse>.put(
-            "/me/episodes",
-            body: IDsBody(ids: ids)
-        )
-        try await client.perform(request)
+        try validateEpisodeIDs(ids)
+        try await performLibraryOperation(.put, endpoint: "/me/episodes", ids: ids, client: client)
     }
 
-    /// Remove saved episodes for the current user.
+    /// Remove one or more episodes from the current Spotify user's library.
     ///
-    /// Corresponds to: `DELETE /v1/me/episodes`.
-    /// Requires the `user-library-modify` scope.
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
     ///
-    /// - Parameter ids: A list of the Spotify IDs for the episodes (max 50).
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-episodes-user)
     public func remove(_ ids: Set<String>) async throws {
-        let request = SpotifyRequest<EmptyResponse>.delete(
-            "/me/episodes",
-            body: IDsBody(ids: ids)
-        )
-        try await client.perform(request)
+        try validateEpisodeIDs(ids)
+        try await performLibraryOperation(.delete, endpoint: "/me/episodes", ids: ids, client: client)
     }
 
-    /// Check if episodes are saved by the current user.
+    /// Check if one or more episodes are already saved in the current Spotify user's library.
     ///
-    /// Corresponds to: `GET /v1/me/episodes/contains`.
-    /// Requires the `user-library-read` scope.
-    ///
-    /// - Parameter ids: A list of the Spotify IDs for the episodes (max 50).
+    /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-episodes)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {
-        let sortedIDs = ids.sorted()
-
-        let query = [
-            URLQueryItem(name: "ids", value: sortedIDs.joined(separator: ","))
-        ]
-        let request = SpotifyRequest<[Bool]>.get(
-            "/me/episodes/contains",
-            query: query
-        )
+        try validateEpisodeIDs(ids)
+        let query = [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
+        let request = SpotifyRequest<[Bool]>.get("/me/episodes/contains", query: query)
         return try await client.perform(request)
     }
 }

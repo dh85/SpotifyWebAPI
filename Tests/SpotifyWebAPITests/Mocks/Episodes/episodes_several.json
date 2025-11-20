@@ -1,0 +1,125 @@
+{
+  "episodes": [
+    {
+      "description": "Episode description",
+      "html_description": "<p>Episode description</p>",
+      "duration_ms": 1800000,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/episodeid"
+      },
+      "href": "https://api.spotify.com/v1/episodes/episodeid",
+      "id": "episodeid",
+      "images": [],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "languages": ["en"],
+      "name": "Episode 1",
+      "release_date": "2023-01-01",
+      "release_date_precision": "day",
+      "type": "episode",
+      "uri": "spotify:episode:episodeid",
+      "show": {
+        "available_markets": ["US"],
+        "copyrights": [],
+        "description": "Show description",
+        "html_description": "Show description",
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/show/showid"
+        },
+        "href": "https://api.spotify.com/v1/shows/showid",
+        "id": "showid",
+        "images": [],
+        "is_externally_hosted": false,
+        "languages": ["en"],
+        "media_type": "audio",
+        "name": "Show Name",
+        "publisher": "Publisher",
+        "type": "show",
+        "uri": "spotify:show:showid",
+        "total_episodes": 10
+      }
+    },
+    {
+      "description": "Episode 2 description",
+      "html_description": "<p>Episode 2 description</p>",
+      "duration_ms": 1500000,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/episodeid2"
+      },
+      "href": "https://api.spotify.com/v1/episodes/episodeid2",
+      "id": "episodeid2",
+      "images": [],
+      "is_externally_hosted": false,
+      "languages": ["en"],
+      "name": "Episode 2",
+      "release_date": "2023-01-02",
+      "release_date_precision": "day",
+      "type": "episode",
+      "uri": "spotify:episode:episodeid2",
+      "show": {
+        "available_markets": [],
+        "copyrights": [],
+        "description": "Show description",
+        "html_description": "Show description",
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/show/showid"
+        },
+        "href": "https://api.spotify.com/v1/shows/showid",
+        "id": "showid",
+        "images": [],
+        "is_externally_hosted": false,
+        "languages": [],
+        "media_type": "audio",
+        "name": "Show Name",
+        "publisher": "Publisher",
+        "type": "show",
+        "uri": "spotify:show:showid",
+        "total_episodes": 10
+      }
+    },
+    {
+      "description": "Episode 3 description",
+      "html_description": "<p>Episode 3 description</p>",
+      "duration_ms": 2000000,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/episodeid3"
+      },
+      "href": "https://api.spotify.com/v1/episodes/episodeid3",
+      "id": "episodeid3",
+      "images": [],
+      "is_externally_hosted": false,
+      "languages": ["en"],
+      "name": "Episode 3",
+      "release_date": "2023-01-03",
+      "release_date_precision": "day",
+      "type": "episode",
+      "uri": "spotify:episode:episodeid3",
+      "show": {
+        "available_markets": [],
+        "copyrights": [],
+        "description": "Show description",
+        "html_description": "Show description",
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com/show/showid"
+        },
+        "href": "https://api.spotify.com/v1/shows/showid",
+        "id": "showid",
+        "images": [],
+        "is_externally_hosted": false,
+        "languages": [],
+        "media_type": "audio",
+        "name": "Show Name",
+        "publisher": "Publisher",
+        "type": "show",
+        "uri": "spotify:show:showid",
+        "total_episodes": 10
+      }
+    }
+  ]
+}

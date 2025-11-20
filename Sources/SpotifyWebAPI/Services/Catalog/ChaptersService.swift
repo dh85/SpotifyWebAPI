@@ -2,6 +2,8 @@ import Foundation
 
 private struct SeveralChaptersWrapper: Decodable { let chapters: [Chapter] }
 
+private let MAXIMUM_CHAPTER_ID_BATCH_SIZE = 50
+
 /// A service for fetching Spotify Chapter resources.
 ///
 /// Chapters are individual components of an audiobook.
@@ -10,47 +12,46 @@ public struct ChaptersService<Capability: Sendable>: Sendable {
     init(client: SpotifyClient<Capability>) { self.client = client }
 }
 
+// MARK: - Helpers
+extension ChaptersService {
+    private func validateChapterIDs(_ ids: [String]) throws {
+        try validateMaxIdCount(MAXIMUM_CHAPTER_ID_BATCH_SIZE, for: Set(ids))
+    }
+}
+
+// MARK: - Public Access
 extension ChaptersService where Capability: PublicSpotifyCapability {
 
     /// Get Spotify catalog information for a single chapter.
     ///
-    /// Corresponds to: `GET /v1/chapters/{id}`.
-    ///
     /// - Parameters:
     ///   - id: The Spotify ID for the chapter.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    /// - Returns: A full ``Chapter`` object.
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    /// - Returns: A full `Chapter` object.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-chapter)
     public func get(_ id: String, market: String? = nil) async throws -> Chapter {
-        let query: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
-        let request = SpotifyRequest<Chapter>.get(
-            "/chapters/\(id)",
-            query: query
-        )
+        let query = makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<Chapter>.get("/chapters/\(id)", query: query)
         return try await client.perform(request)
     }
 
-    /// Get Spotify catalog information for several chapters.
-    ///
-    /// Corresponds to: `GET /v1/chapters`.
+    /// Get Spotify catalog information for several chapters identified by their Spotify IDs.
     ///
     /// - Parameters:
-    ///   - ids: A list of the Spotify IDs for the chapters (max 50).
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    /// - Returns: A list of full ``Chapter`` objects.
-    public func several(ids: [String], market: String? = nil) async throws
-        -> [Chapter]
-    {
-        let marketQuery: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
-        let query: [URLQueryItem] =
-            [.init(name: "ids", value: ids.joined(separator: ","))]
-            + marketQuery
-
-        let request = SpotifyRequest<SeveralChaptersWrapper>.get(
-            "/chapters",
-            query: query
-        )
+    ///   - ids: A list of Spotify IDs (max 50).
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    /// - Returns: A list of `Chapter` objects.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-chapters)
+    public func several(ids: [String], market: String? = nil) async throws -> [Chapter] {
+        try validateChapterIDs(ids)
+        let query =
+            [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
+            + makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<SeveralChaptersWrapper>.get("/chapters", query: query)
         return try await client.perform(request).chapters
     }
 }

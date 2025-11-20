@@ -3,160 +3,135 @@ import Testing
 
 @testable import SpotifyWebAPI
 
-@Suite struct AudiobookServiceTests {
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
-    /// Helper to create a user-auth client with mocks
-    @MainActor
-    private func makeClient() -> (
-        client: SpotifyClient<UserAuthCapability>, http: MockHTTPClient
-    ) {
-        let http = MockHTTPClient()
-        let auth = MockTokenAuthenticator(token: .mockValid)
-        let client = SpotifyClient<UserAuthCapability>(
-            backend: auth,
-            httpClient: http
-        )
-        return (client, http)
-    }
+@Suite
+@MainActor
+struct AudiobookServiceTests {
 
     // MARK: - Public Access Tests
 
     @Test
-    @MainActor
-    func getAudiobook_buildsCorrectRequest_withMarket() async throws {
-        let (client, http) = makeClient()
+    func getAudiobook_buildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
-        let audiobookId = "7iHfbu1YPACw6oZPAFJtqe"
+        let id = "7iHfbu1YPACw6oZPAFJtqe"
+        let audiobook = try await client.audiobooks.get(id, market: "US")
 
-        let audiobook = try await client.audiobooks.get(
-            audiobookId,
-            market: "US"
-        )
-
-        #expect(audiobook.id == audiobookId)
+        #expect(audiobook.id == id)
         #expect(audiobook.name == "Dune: Book One in the Dune Chronicles")
-
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/audiobooks/\(audiobookId)")
-        #expect(request?.httpMethod == "GET")
-        #expect(request?.url?.query()?.contains("market=US") == true)
+        expectRequest(
+            await http.firstRequest, path: "/v1/audiobooks/\(id)", method: "GET",
+            queryContains: "market=US")
     }
 
-    @Test
-    @MainActor
-    func getAudiobook_nilMarket_omitsQueryParameter() async throws {
-        let (client, http) = makeClient()
+    @Test(arguments: [nil, "US"])
+    func getAudiobook_marketParameter(market: String?) async throws {
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
-        let audiobookId = "7iHfbu1YPACw6oZPAFJtqe"
+        _ = try await client.audiobooks.get("id", market: market)
 
-        _ = try await client.audiobooks.get(audiobookId, market: nil)
-
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/audiobooks/\(audiobookId)")
-        #expect(request?.url?.query()?.contains("market=") == false)
-        #expect(request?.httpMethod == "GET")
+        expectMarketParameter(await http.firstRequest, market: market)
     }
 
     @Test
-    @MainActor
-    func severalAudiobooks_buildsCorrectRequest_andUnwrapsDTO() async throws {
-        let (client, http) = makeClient()
+    func severalAudiobooks_buildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
-        let audiobooks = try await client.audiobooks.several(
-            ids: [
-                "18yVqkdbdRvS24c0Ilj2ci",
-                "1HGw3J3NxZO1TP1BTtVhpZ",
-                "7iHfbu1YPACw6oZPAFJtqe",
-            ],
-            market: "ES"
-        )
+        let ids: Set<String> = [
+            "18yVqkdbdRvS24c0Ilj2ci", "1HGw3J3NxZO1TP1BTtVhpZ", "7iHfbu1YPACw6oZPAFJtqe",
+        ]
+        let audiobooks = try await client.audiobooks.several(ids: ids, market: "ES")
 
         #expect(audiobooks.count == 3)
         #expect(audiobooks[2]?.name == "Dune: Book One in the Dune Chronicles")
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/audiobooks")
-        #expect(request?.httpMethod == "GET")
-        #expect(
-            request?.url?.query()?.contains(
-                "ids=18yVqkdbdRvS24c0Ilj2ci,1HGw3J3NxZO1TP1BTtVhpZ"
-            ) == true
-        )
-        #expect(request?.url?.query()?.contains("market=ES") == true)
+        expectRequest(request, path: "/v1/audiobooks", method: "GET", queryContains: "market=ES")
+        #expect(extractIDs(from: request?.url) == ids)
     }
 
-    @Test
-    @MainActor
-    func severalAudiobooks_nilMarket_omitsQueryParameter() async throws {
-        let (client, http) = makeClient()
+    @Test(arguments: [nil, "US"])
+    func severalAudiobooks_marketParameter(market: String?) async throws {
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
-        _ = try await client.audiobooks.several(
-            ids: [
-                "18yVqkdbdRvS24c0Ilj2ci",
-                "1HGw3J3NxZO1TP1BTtVhpZ",
-                "7iHfbu1YPACw6oZPAFJtqe",
-            ],
-            market: nil
-        )
+        _ = try await client.audiobooks.several(ids: ["id"], market: market)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/audiobooks")
-        #expect(
-            request?.url?.query()?.contains(
-                "ids=18yVqkdbdRvS24c0Ilj2ci,1HGw3J3NxZO1TP1BTtVhpZ"
-            ) == true
-        )
-        // Verify market parameter is completely absent
-        #expect(request?.url?.query()?.contains("market=") == false)
+        expectMarketParameter(await http.firstRequest, market: market)
+    }
+
+    @Test
+    func severalAudiobooks_allowsMaximumIDBatchSize() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("audiobooks_several.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        _ = try await client.audiobooks.several(ids: makeIDs(count: 50))
+
+        #expect(await http.firstRequest?.url?.query()?.contains("ids=") == true)
+    }
+
+    @Test
+    func severalAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectIDLimitError {
+            _ = try await client.audiobooks.several(ids: makeIDs(count: 51))
+        }
     }
 
     @Test(arguments: [nil, "ES"])
-    @MainActor
     func audiobookChapters_buildsCorrectRequest(market: String?) async throws {
-        let (client, http) = makeClient()
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_chapters.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
         let page = try await client.audiobooks.chapters(
-            for: "7iHfbu1YPACw6oZPAFJtqe",
-            limit: 10,
-            offset: 5,
-            market: market
-        )
+            for: "7iHfbu1YPACw6oZPAFJtqe", limit: 10, offset: 5, market: market)
 
         #expect(page.items.count == 20)
         #expect(page.items.first?.name == "Opening Credits")
 
         let request = await http.firstRequest
-        #expect(
-            request?.url?.path()
-                == "/v1/audiobooks/7iHfbu1YPACw6oZPAFJtqe/chapters"
-        )
-        #expect(request?.httpMethod == "GET")
-        #expect(request?.url?.query()?.contains("limit=10") == true)
-        #expect(request?.url?.query()?.contains("offset=5") == true)
+        expectRequest(
+            request, path: "/v1/audiobooks/7iHfbu1YPACw6oZPAFJtqe/chapters", method: "GET",
+            queryContains: "limit=10", "offset=5")
+        expectMarketParameter(request, market: market)
+    }
 
-        if let market {
-            #expect(request?.url?.query()?.contains("market=\(market)") == true)
-        } else {
-            #expect(request?.url?.query()?.contains("market=") == false)
+    @Test
+    func audiobookChapters_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("audiobook_chapters.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        _ = try await client.audiobooks.chapters(for: "id")
+
+        expectPaginationDefaults(await http.firstRequest)
+    }
+
+    @Test
+    func audiobookChapters_throwError_whenLimitIsOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.audiobooks.chapters(for: "id", limit: limit)
         }
     }
 
     // MARK: - User Access Tests
 
     @Test
-    @MainActor
     func savedAudiobooks_buildsCorrectRequest() async throws {
-        let (client, http) = makeClient()
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_saved.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
@@ -165,88 +140,144 @@ import Testing
         #expect(page.items.first?.audiobook.name == "Saved Audiobook Title")
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/audiobooks")
-        #expect(request?.httpMethod == "GET")
-        #expect(request?.url?.query()?.contains("limit=5") == true)
-        // Ensure market is NOT present (not supported by this endpoint)
+        expectRequest(request, path: "/v1/me/audiobooks", method: "GET", queryContains: "limit=5")
         #expect(request?.url?.query()?.contains("market=") == false)
     }
 
     @Test
-    @MainActor
+    func savedAudiobooks_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("audiobooks_saved.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        _ = try await client.audiobooks.saved()
+
+        expectPaginationDefaults(await http.firstRequest)
+    }
+
+    @Test
+    func savedAudiobooks_throwError_whenLimitIsOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.audiobooks.saved(limit: limit)
+        }
+    }
+
+    @Test
     func saveAudiobooks_buildsCorrectRequest() async throws {
-        let (client, http) = makeClient()
-        await http.addMockResponse(statusCode: 200)  // PUT 200 OK
-        let ids = Set([
-            "18yVqkdbdRvS24c0Ilj2ci",
-            "1HGw3J3NxZO1TP1BTtVhpZ",
-            "7iHfbu1YPACw6oZPAFJtqe",
-        ])
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 200)
+        let ids = makeIDs(count: 50)
 
         try await client.audiobooks.save(ids)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/audiobooks")
-        #expect(request?.httpMethod == "PUT")
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/audiobooks", method: "PUT", expectedIDs: ids)
+    }
 
-        if let bodyData = request?.httpBody,
-            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
-        {
-            #expect(body.ids == ids)
-        } else {
-            Issue.record("Failed to decode HTTP body")
+    @Test
+    func saveAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectIDLimitError {
+            _ = try await client.audiobooks.save(makeIDs(count: 51))
         }
     }
 
     @Test
-    @MainActor
     func removeAudiobooks_buildsCorrectRequest() async throws {
-        let (client, http) = makeClient()
-        await http.addMockResponse(statusCode: 200)  // DELETE 200 OK
-        let ids = Set([
-            "18yVqkdbdRvS24c0Ilj2ci",
-            "1HGw3J3NxZO1TP1BTtVhpZ",
-            "7iHfbu1YPACw6oZPAFJtqe",
-        ])
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 200)
+        let ids = makeIDs(count: 50)
 
         try await client.audiobooks.remove(ids)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/audiobooks")
-        #expect(request?.httpMethod == "DELETE")
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/audiobooks", method: "DELETE", expectedIDs: ids)
+    }
 
-        if let bodyData = request?.httpBody,
-            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
-        {
-            #expect(body.ids == ids)
-        } else {
-            Issue.record("Failed to decode HTTP body")
+    @Test
+    func removeAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectIDLimitError {
+            _ = try await client.audiobooks.remove(makeIDs(count: 51))
         }
     }
 
     @Test
-    @MainActor
     func checkSavedAudiobooks_buildsCorrectRequest() async throws {
-        let (client, http) = makeClient()
+        let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("check_saved_audiobooks.json")
         await http.addMockResponse(data: data, statusCode: 200)
-        let ids = Set([
-            "18yVqkdbdRvS24c0Ilj2ci",
-            "1HGw3J3NxZO1TP1BTtVhpZ",
-            "7iHfbu1YPACw6oZPAFJtqe",
-        ])
+        let ids = makeIDs(count: 50)
 
         let results = try await client.audiobooks.checkSaved(ids)
 
         #expect(results == [false, false, true])
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/audiobooks/contains")
-        #expect(request?.httpMethod == "GET")
-        #expect(
-            request?.url?.query()?.contains(
-                "ids=18yVqkdbdRvS24c0Ilj2ci,1HGw3J3NxZO1TP1BTtVhpZ"
-            ) == true
-        )
+        expectRequest(request, path: "/v1/me/audiobooks/contains", method: "GET")
+        #expect(extractIDs(from: request?.url) == ids)
+    }
+
+    @Test
+    func checkSavedAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectIDLimitError {
+            _ = try await client.audiobooks.checkSaved(makeIDs(count: 51))
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func expectRequest(
+        _ request: URLRequest?, path: String, method: String, queryContains: String...
+    ) {
+        #expect(request?.url?.path() == path)
+        #expect(request?.httpMethod == method)
+        for query in queryContains {
+            #expect(request?.url?.query()?.contains(query) == true)
+        }
+    }
+
+    private func expectMarketParameter(_ request: URLRequest?, market: String?) {
+        if let market {
+            #expect(request?.url?.query()?.contains("market=\(market)") == true)
+        } else {
+            #expect(request?.url?.query()?.contains("market=") == false)
+        }
+    }
+
+    private func expectPaginationDefaults(_ request: URLRequest?) {
+        #expect(request?.url?.query()?.contains("limit=20") == true)
+        #expect(request?.url?.query()?.contains("offset=0") == true)
+    }
+
+    private func expectIDsInBody(
+        _ request: URLRequest?, path: String, method: String, expectedIDs: Set<String>
+    ) {
+        expectRequest(request, path: path, method: method)
+
+        guard let bodyData = request?.httpBody,
+            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
+        else {
+            Issue.record("Failed to decode HTTP body or body was nil")
+            return
+        }
+        #expect(body.ids == expectedIDs)
+    }
+
+    private func expectIDLimitError(operation: @escaping () async throws -> Void) async {
+        await expectInvalidRequest(reasonContains: "Maximum of 50", operation: operation)
+    }
+
+    private func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
+        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 51.")
+        {
+            try await operation(51)
+        }
+        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 0.")
+        {
+            try await operation(0)
+        }
     }
 }

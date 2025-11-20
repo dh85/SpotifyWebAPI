@@ -21,12 +21,15 @@
         "html_description": "<p>An episode about testing.</p>",
         "duration_ms": 1800000,
         "explicit": true,
+        "external_urls": { "spotify": "https://open.spotify.com/episode/episode123" },
         "href": "...",
         "uri": "...",
         "images": [],
+        "is_externally_hosted": false,
         "release_date": "2024-01-01",
         "release_date_precision": "day",
         "languages": ["en"],
+        "type": "episode",
         "show": {
             "id": "show123",
             "name": "Mock Show",
@@ -38,8 +41,13 @@
             "total_episodes": 10,
             "href": "...",
             "uri": "...",
+            "external_urls": { "spotify": "https://open.spotify.com/show/show123" },
             "images": [],
-            "copyrights": []
+            "is_externally_hosted": false,
+            "languages": ["en"],
+            "available_markets": [],
+            "copyrights": [],
+            "type": "show"
         }
     }
 }

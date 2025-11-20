@@ -35,22 +35,22 @@ struct ArtistServiceTests {
         let artistsData = try TestDataLoader.load("artists_several.json")
         await http.addMockResponse(data: artistsData, statusCode: 200)
 
-        let artists = try await client.artists.several(ids: [
+        let ids: Set<String> = [
             "2CIMQHirSU0MQqyYHq0eOx",
             "57dN52uHvrHOxijzpIgu3E",
             "1vCWHaC5f2uS3yhpwWbIA6",
-        ])
+        ]
+
+        let artists = try await client.artists.several(ids: ids)
 
         #expect(artists.count == 3)
         #expect(artists.first?.name == "deadmau5")
 
         let request = await http.firstRequest
         #expect(request?.url?.path() == "/v1/artists")
-        #expect(
-            request?.url?.query()?.contains(
-                "ids=1vCWHaC5f2uS3yhpwWbIA6,2CIMQHirSU0MQqyYHq0eOx,57dN52uHvrHOxijzpIgu3E"
-            ) == true
-        )
+
+        let actualIDs = extractIDs(from: request?.url)
+        #expect(actualIDs == ids)
         #expect(request?.httpMethod == "GET")
     }
 

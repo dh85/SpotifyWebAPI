@@ -3,11 +3,15 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 @Suite
 @MainActor
 struct AlbumServiceTests {
 
-    // MARK: - Public Access Tests (GET /v1/albums)
+    // MARK: - Public Access Tests
 
     @Test
     func getAlbum_buildsCorrectRequest_andDecodes() async throws {
@@ -15,15 +19,14 @@ struct AlbumServiceTests {
         let albumData = try TestDataLoader.load("album_full.json")
         await http.addMockResponse(data: albumData, statusCode: 200)
 
-        let album = try await client.albums.get("fullalbum_id", market: "US")
+        let id = "4aawyAB9vmqN3uQ7FjRGTy"
+        let album = try await client.albums.get(id, market: "US")
 
-        #expect(album.id == "fullalbum_id")
-        #expect(album.name == "The Deluxe Test Album")
-
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/albums/fullalbum_id")
-        #expect(request?.url?.query()?.contains("market=US") == true)
-        #expect(request?.httpMethod == "GET")
+        #expect(album.id == id)
+        #expect(album.name == "Global Warming")
+        expectRequest(
+            await http.firstRequest, path: "/v1/albums/\(id)", method: "GET",
+            queryContains: "market=US")
     }
 
     @Test
@@ -32,70 +35,61 @@ struct AlbumServiceTests {
         let albumsData = try TestDataLoader.load("albums_several.json")
         await http.addMockResponse(data: albumsData, statusCode: 200)
 
-        let albums = try await client.albums.several(
-            ids: ["album456", "album123"],
-            market: "US"
-        )
+        let ids: Set<String> = ["album456", "album123"]
+        let albums = try await client.albums.several(ids: ids, market: "US")
 
-        #expect(albums.count == 2)
-        #expect(albums.first?.name == "Test Album 1")
+        #expect(albums.count == 3)
+        #expect(albums.first?.name == "TRON: Legacy Reconfigured")
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/albums")
-        #expect(
-            request?.url?.query()?.contains("ids=album123,album456") == true
-        )
-        #expect(request?.url?.query()?.contains("market=US") == true)
-        #expect(request?.httpMethod == "GET")
+        expectRequest(request, path: "/v1/albums", method: "GET", queryContains: "market=US")
+        #expect(extractIDs(from: request?.url) == ids)
     }
 
-    @Test
-    func severalAlbums_throwsError_whenIDLimitExceeded() async throws {
-        let (client, _) = makeUserAuthClient()
-        let tooManyIDs = makeIDs(count: 21)  // max is 20
-
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.several(ids: tooManyIDs)
-        }
-    }
-
-    @Test
-    func getAlbum_nilMarket_omitsQueryParameter() async throws {
+    @Test(arguments: [nil, "US"])
+    func getAlbum_marketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let albumData = try TestDataLoader.load("album_full.json")
         await http.addMockResponse(data: albumData, statusCode: 200)
 
-        _ = try await client.albums.get("album123", market: nil)
+        _ = try await client.albums.get("album123", market: market)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.query()?.contains("market=") == false)
+        expectMarketParameter(await http.firstRequest, market: market)
     }
 
-    @Test
-    func severalAlbums_nilMarket_omitsQueryParameter() async throws {
+    @Test(arguments: [nil, "US"])
+    func severalAlbums_marketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let albumsData = try TestDataLoader.load("albums_several.json")
         await http.addMockResponse(data: albumsData, statusCode: 200)
 
-        _ = try await client.albums.several(ids: ["album123"], market: nil)
+        _ = try await client.albums.several(ids: ["album123"], market: market)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.query()?.contains("market=") == false)
+        expectMarketParameter(await http.firstRequest, market: market)
     }
 
     @Test
     func severalAlbums_allowsMaximumIDBatchSize() async throws {
         let (client, http) = makeUserAuthClient()
-        let ids = makeIDs(count: 20)  // max is 20
+        let ids = makeIDs(count: 20)
         let albumsData = try TestDataLoader.load("albums_several_20.json")
         await http.addMockResponse(data: albumsData, statusCode: 200)
 
         let albums = try await client.albums.several(ids: ids)
 
         #expect(albums.count == 20)
-        let query = await http.firstRequest?.url?.query()
-        #expect(query?.contains("ids=") == true)
+        #expect(await http.firstRequest?.url?.query()?.contains("ids=") == true)
     }
+
+    @Test
+    func severalAlbums_throwsError_whenIDLimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectIDLimitError(count: 21) {
+            _ = try await client.albums.several(ids: makeIDs(count: 21))
+        }
+    }
+
+    // MARK: - Album Tracks Tests
 
     @Test(arguments: [nil, "US"])
     func albumTracks_buildsCorrectRequest(market: String?) async throws {
@@ -103,49 +97,15 @@ struct AlbumServiceTests {
         let tracksData = try TestDataLoader.load("album_tracks.json")
         await http.addMockResponse(data: tracksData, statusCode: 200)
 
-        let page = try await client.albums.tracks(
-            "album123",
-            market: market,
-            limit: 10,
-            offset: 5
-        )
+        let page = try await client.albums.tracks("album123", market: market, limit: 10, offset: 5)
 
-        #expect(page.items.first?.name == "Track 1")
+        #expect(page.items.first?.name == "Global Warming (feat. Sensato)")
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/albums/album123/tracks")
-        #expect(request?.httpMethod == "GET")
-        #expect(request?.url?.query()?.contains("limit=10") == true)
-        #expect(request?.url?.query()?.contains("offset=5") == true)
-
-        if let market {
-            #expect(
-                request?.url?.query()?.contains("market=\(market)") == true,
-                "Query should contain market"
-            )
-        } else {
-            #expect(
-                request?.url?.query()?.contains("market=") == false,
-                "Query should not contain market"
-            )
-        }
-    }
-
-    @Test
-    func albumTracks_throwError_whenLimitIsOutOfBounds() async throws {
-        let (client, _) = makeUserAuthClient()
-
-        await expectInvalidRequest(
-            reasonEquals: "Limit must be between 1 and 50. You provided 51."
-        ) {
-            _ = try await client.albums.tracks("id", limit: 51)
-        }
-
-        await expectInvalidRequest(
-            reasonEquals: "Limit must be between 1 and 50. You provided 0."
-        ) {
-            _ = try await client.albums.tracks("id", limit: 0)
-        }
+        expectRequest(
+            request, path: "/v1/albums/album123/tracks", method: "GET", queryContains: "limit=10",
+            "offset=5")
+        expectMarketParameter(request, market: market)
     }
 
     @Test
@@ -154,14 +114,20 @@ struct AlbumServiceTests {
         let tracksData = try TestDataLoader.load("album_tracks.json")
         await http.addMockResponse(data: tracksData, statusCode: 200)
 
-        _ = try await client.albums.tracks("album123")  // default args
+        _ = try await client.albums.tracks("album123")
 
-        let query = await http.firstRequest?.url?.query()
-        #expect(query?.contains("limit=20") == true)
-        #expect(query?.contains("offset=0") == true)
+        expectPaginationDefaults(await http.firstRequest)
     }
 
-    // MARK: - User Access Tests
+    @Test
+    func albumTracks_throwError_whenLimitIsOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.albums.tracks("id", limit: limit)
+        }
+    }
+
+    // MARK: - User Library Tests
 
     @Test
     func savedAlbums_buildsCorrectRequest() async throws {
@@ -172,36 +138,12 @@ struct AlbumServiceTests {
         let page = try await client.albums.saved(limit: 10, offset: 5)
 
         #expect(page.items.first?.album.name == "Test Album")
-        #expect(
-            page.items.first?.addedAt.description.contains("2024-01-01") == true
-        )
+        #expect(page.items.first?.addedAt.description.contains("2024-01-01") == true)
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/albums")
-        #expect(request?.httpMethod == "GET")
-        #expect(request?.url?.query()?.contains("limit=10") == true)
-        #expect(request?.url?.query()?.contains("offset=5") == true)
-        #expect(
-            request?.url?.query()?.contains("market=") == false,
-            "Query should never contain market (API constraint)"
-        )
-    }
-
-    @Test
-    func savedAlbums_throwError_whenLimitIsOutOfBounds() async throws {
-        let (client, _) = makeUserAuthClient()
-
-        await expectInvalidRequest(
-            reasonEquals: "Limit must be between 1 and 50. You provided 51."
-        ) {
-            _ = try await client.albums.saved(limit: 51)
-        }
-
-        await expectInvalidRequest(
-            reasonEquals: "Limit must be between 1 and 50. You provided 0."
-        ) {
-            _ = try await client.albums.saved(limit: 0)
-        }
+        expectRequest(
+            request, path: "/v1/me/albums", method: "GET", queryContains: "limit=10", "offset=5")
+        #expect(request?.url?.query()?.contains("market=") == false)
     }
 
     @Test
@@ -210,41 +152,36 @@ struct AlbumServiceTests {
         let savedData = try TestDataLoader.load("albums_saved.json")
         await http.addMockResponse(data: savedData, statusCode: 200)
 
-        _ = try await client.albums.saved()  // defaults
+        _ = try await client.albums.saved()
 
-        let query = await http.firstRequest?.url?.query()
-        #expect(query?.contains("limit=20") == true)
-        #expect(query?.contains("offset=0") == true)
+        expectPaginationDefaults(await http.firstRequest)
+    }
+
+    @Test
+    func savedAlbums_throwError_whenLimitIsOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.albums.saved(limit: limit)
+        }
     }
 
     @Test
     func saveAlbums_buildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
-        let albumIDs = makeIDs(count: 20)  // Max is 20, test upper bound
+        let albumIDs = makeIDs(count: 20)
 
         try await client.albums.save(albumIDs)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/albums")
-        #expect(request?.httpMethod == "PUT")
-
-        if let bodyData = request?.httpBody,
-            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
-        {
-            #expect(body.ids == albumIDs)
-        } else {
-            Issue.record("Failed to decode HTTP body or body was nil")
-        }
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/albums", method: "PUT", expectedIDs: albumIDs)
     }
 
     @Test
     func saveAlbums_throwsError_whenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        let tooManyIDs = makeIDs(count: 21)  // max is 20
-
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.save(tooManyIDs)
+        await expectIDLimitError(count: 21) {
+            _ = try await client.albums.save(makeIDs(count: 21))
         }
     }
 
@@ -256,26 +193,15 @@ struct AlbumServiceTests {
 
         try await client.albums.remove(albumIDs)
 
-        let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/albums")
-        #expect(request?.httpMethod == "DELETE")
-
-        if let bodyData = request?.httpBody,
-            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
-        {
-            #expect(body.ids == albumIDs)
-        } else {
-            Issue.record("Failed to decode HTTP body or body was nil")
-        }
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/albums", method: "DELETE", expectedIDs: albumIDs)
     }
 
     @Test
     func removeAlbums_throwsError_whenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        let tooManyIDs = makeIDs(count: 21)  // max is 50
-
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.remove(tooManyIDs)
+        await expectIDLimitError(count: 21) {
+            _ = try await client.albums.remove(makeIDs(count: 21))
         }
     }
 
@@ -286,7 +212,6 @@ struct AlbumServiceTests {
         await http.addMockResponse(data: checkData, statusCode: 200)
 
         let albumIDs = makeIDs(count: 20)
-
         let results = try await client.albums.checkSaved(albumIDs)
 
         #expect(
@@ -296,20 +221,70 @@ struct AlbumServiceTests {
             ])
 
         let request = await http.firstRequest
-        #expect(request?.url?.path() == "/v1/me/albums/contains")
-
-        let actualIDs = extractIDs(from: request?.url)
-        #expect(actualIDs == albumIDs)
-        #expect(request?.httpMethod == "GET")
+        expectRequest(request, path: "/v1/me/albums/contains", method: "GET")
+        #expect(extractIDs(from: request?.url) == albumIDs)
     }
 
     @Test
     func checkSavedAlbums_throwsError_whenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        let tooManyIDs = makeIDs(count: 21)  // max is 20
+        await expectIDLimitError(count: 21) {
+            _ = try await client.albums.checkSaved(makeIDs(count: 21))
+        }
+    }
 
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.checkSaved(tooManyIDs)
+    // MARK: - Helper Methods
+
+    private func expectRequest(
+        _ request: URLRequest?, path: String, method: String, queryContains: String...
+    ) {
+        #expect(request?.url?.path() == path)
+        #expect(request?.httpMethod == method)
+        for query in queryContains {
+            #expect(request?.url?.query()?.contains(query) == true)
+        }
+    }
+
+    private func expectMarketParameter(_ request: URLRequest?, market: String?) {
+        if let market {
+            #expect(request?.url?.query()?.contains("market=\(market)") == true)
+        } else {
+            #expect(request?.url?.query()?.contains("market=") == false)
+        }
+    }
+
+    private func expectPaginationDefaults(_ request: URLRequest?) {
+        #expect(request?.url?.query()?.contains("limit=20") == true)
+        #expect(request?.url?.query()?.contains("offset=0") == true)
+    }
+
+    private func expectIDsInBody(
+        _ request: URLRequest?, path: String, method: String, expectedIDs: Set<String>
+    ) {
+        expectRequest(request, path: path, method: method)
+
+        guard let bodyData = request?.httpBody,
+            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
+        else {
+            Issue.record("Failed to decode HTTP body or body was nil")
+            return
+        }
+        #expect(body.ids == expectedIDs)
+    }
+
+    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async
+    {
+        await expectInvalidRequest(reasonContains: "Maximum of 20", operation: operation)
+    }
+
+    private func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
+        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 51.")
+        {
+            try await operation(51)
+        }
+        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 0.")
+        {
+            try await operation(0)
         }
     }
 }

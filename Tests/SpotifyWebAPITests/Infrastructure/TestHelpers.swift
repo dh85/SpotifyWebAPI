@@ -158,7 +158,7 @@ func expectInvalidRequest(
     filePath: StaticString = #filePath,
     line: UInt = #line,
     column: UInt = #column,
-    _ operation: @escaping () async throws -> Void
+    operation: @escaping () async throws -> Void
 ) async {
     await expectInvalidRequest(
         sourceLocation: makeSourceLocation(
