@@ -17,7 +17,7 @@ public struct SimplifiedShow: Codable, Sendable, Equatable {
     public let mediaType: String
     public let name: String
     public let publisher: String
-    public let type: MediaType
+    public let type: SpotifyObjectType
     public let uri: String
     public let totalEpisodes: Int
 

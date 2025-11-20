@@ -19,7 +19,7 @@ public struct SimplifiedAudiobook: Codable, Sendable, Equatable {
     public let name: String
     public let narrators: [Narrator]
     public let publisher: String
-    public let type: MediaType
+    public let type: SpotifyObjectType
     public let uri: String
     public let totalChapters: Int
 }

@@ -27,7 +27,7 @@ public struct Album: Codable, Sendable, Equatable {
     /// Content restriction information.
     public let restrictions: Restriction?
     /// Object type (always "album").
-    public let type: MediaType
+    public let type: SpotifyObjectType
     /// The Spotify URI.
     public let uri: String
     /// Artists who performed the album.

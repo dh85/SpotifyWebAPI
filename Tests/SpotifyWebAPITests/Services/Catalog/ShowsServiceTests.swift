@@ -9,10 +9,10 @@ import Testing
 
 @Suite
 @MainActor
-struct ShowServiceTests {
+struct ShowsServiceTests {
 
     @Test
-    func getShow_buildsCorrectRequest() async throws {
+    func getBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("show_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -22,11 +22,13 @@ struct ShowServiceTests {
 
         #expect(show.id == id)
         #expect(show.name == "Show Name")
-        expectRequest(await http.firstRequest, path: "/v1/shows/\(id)", method: "GET", queryContains: "market=US")
+        expectRequest(
+            await http.firstRequest, path: "/v1/shows/\(id)", method: "GET",
+            queryContains: "market=US")
     }
 
     @Test(arguments: [nil, "US"])
-    func getShow_marketParameter(market: String?) async throws {
+    func getIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("show_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -37,7 +39,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func severalShows_buildsCorrectRequest() async throws {
+    func severalBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("shows_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -54,7 +56,7 @@ struct ShowServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func severalShows_marketParameter(market: String?) async throws {
+    func severalIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("shows_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -65,7 +67,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func severalShows_allowsMaximumIDBatchSize() async throws {
+    func severalAllowsMaximumIDBatchSize() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("shows_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -76,7 +78,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func severalShows_throwsError_whenIDLimitExceeded() async throws {
+    func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.shows.several(ids: makeIDs(count: 51))
@@ -84,22 +86,25 @@ struct ShowServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func episodes_buildsCorrectRequest(market: String?) async throws {
+    func episodesBuildsCorrectRequest(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("show_episodes.json")
         await http.addMockResponse(data: data, statusCode: 200)
 
-        let page = try await client.shows.episodes(for: "showid", limit: 10, offset: 5, market: market)
+        let page = try await client.shows.episodes(
+            for: "showid", limit: 10, offset: 5, market: market)
 
         #expect(page.items.first?.name == "Episode 1")
 
         let request = await http.firstRequest
-        expectRequest(request, path: "/v1/shows/showid/episodes", method: "GET", queryContains: "limit=10", "offset=5")
+        expectRequest(
+            request, path: "/v1/shows/showid/episodes", method: "GET", queryContains: "limit=10",
+            "offset=5")
         expectMarketParameter(request, market: market)
     }
 
     @Test
-    func episodes_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func episodesUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("show_episodes.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -110,7 +115,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func episodes_throwError_whenLimitIsOutOfBounds() async throws {
+    func episodesThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.shows.episodes(for: "showid", limit: limit)
@@ -118,7 +123,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func savedShows_buildsCorrectRequest() async throws {
+    func savedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("shows_saved.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -127,11 +132,13 @@ struct ShowServiceTests {
 
         #expect(page.items.first?.show.name == "Saved Show")
 
-        expectRequest(await http.firstRequest, path: "/v1/me/shows", method: "GET", queryContains: "limit=10", "offset=5")
+        expectRequest(
+            await http.firstRequest, path: "/v1/me/shows", method: "GET", queryContains: "limit=10",
+            "offset=5")
     }
 
     @Test
-    func savedShows_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func savedUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("shows_saved.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -142,7 +149,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func savedShows_throwError_whenLimitIsOutOfBounds() async throws {
+    func savedThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.shows.saved(limit: limit)
@@ -150,18 +157,19 @@ struct ShowServiceTests {
     }
 
     @Test
-    func saveShows_buildsCorrectRequest() async throws {
+    func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let ids = makeIDs(count: 50)
 
         try await client.shows.save(ids)
 
-        expectIDsInBody(await http.firstRequest, path: "/v1/me/shows", method: "PUT", expectedIDs: ids)
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/shows", method: "PUT", expectedIDs: ids)
     }
 
     @Test
-    func saveShows_throwsError_whenIDLimitExceeded() async throws {
+    func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.shows.save(makeIDs(count: 51))
@@ -169,18 +177,19 @@ struct ShowServiceTests {
     }
 
     @Test
-    func removeShows_buildsCorrectRequest() async throws {
+    func removeBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let ids = makeIDs(count: 50)
 
         try await client.shows.remove(ids)
 
-        expectIDsInBody(await http.firstRequest, path: "/v1/me/shows", method: "DELETE", expectedIDs: ids)
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/shows", method: "DELETE", expectedIDs: ids)
     }
 
     @Test
-    func removeShows_throwsError_whenIDLimitExceeded() async throws {
+    func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.shows.remove(makeIDs(count: 51))
@@ -188,7 +197,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func checkSavedShows_buildsCorrectRequest() async throws {
+    func checkSavedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("check_saved_shows.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -204,7 +213,7 @@ struct ShowServiceTests {
     }
 
     @Test
-    func checkSavedShows_throwsError_whenIDLimitExceeded() async throws {
+    func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.shows.checkSaved(makeIDs(count: 51))

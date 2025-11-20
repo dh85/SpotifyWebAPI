@@ -1,5 +1,8 @@
 {
-  "available_markets": ["US", "CA"],
+  "available_markets": [
+    "US",
+    "CA"
+  ],
   "copyrights": [
     {
       "text": "© 2023 Publisher",
@@ -22,7 +25,9 @@
     }
   ],
   "is_externally_hosted": false,
-  "languages": ["en"],
+  "languages": [
+    "en"
+  ],
   "media_type": "audio",
   "name": "Show Name",
   "publisher": "Publisher Name",
@@ -47,7 +52,9 @@
         "images": [],
         "release_date": "2023-01-01",
         "release_date_precision": "day",
-        "languages": ["en"]
+        "languages": [
+          "en"
+        ]
       }
     ],
     "limit": 20,

@@ -37,7 +37,7 @@ public struct Track: Codable, Sendable, Equatable {
     /// Track number on the disc.
     public let trackNumber: Int?
     /// Object type (always "track").
-    public let type: MediaType?
+    public let type: SpotifyObjectType?
     /// The Spotify URI.
     public let uri: String?
     /// Whether the track is from a local file.

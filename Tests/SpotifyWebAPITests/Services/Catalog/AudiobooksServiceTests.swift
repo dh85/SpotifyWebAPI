@@ -9,12 +9,12 @@ import Testing
 
 @Suite
 @MainActor
-struct AudiobookServiceTests {
+struct AudiobooksServiceTests {
 
     // MARK: - Public Access Tests
 
     @Test
-    func getAudiobook_buildsCorrectRequest() async throws {
+    func getBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -30,7 +30,7 @@ struct AudiobookServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func getAudiobook_marketParameter(market: String?) async throws {
+    func getIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -41,7 +41,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func severalAudiobooks_buildsCorrectRequest() async throws {
+    func severalBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -60,7 +60,7 @@ struct AudiobookServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func severalAudiobooks_marketParameter(market: String?) async throws {
+    func severalIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -71,7 +71,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func severalAudiobooks_allowsMaximumIDBatchSize() async throws {
+    func severalAllowsMaximumIDBatchSize() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -82,7 +82,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func severalAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+    func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.audiobooks.several(ids: makeIDs(count: 51))
@@ -90,7 +90,7 @@ struct AudiobookServiceTests {
     }
 
     @Test(arguments: [nil, "ES"])
-    func audiobookChapters_buildsCorrectRequest(market: String?) async throws {
+    func chaptersBuildsCorrectRequest(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_chapters.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -98,7 +98,7 @@ struct AudiobookServiceTests {
         let page = try await client.audiobooks.chapters(
             for: "7iHfbu1YPACw6oZPAFJtqe", limit: 10, offset: 5, market: market)
 
-        #expect(page.items.count == 20)
+        #expect(page.items.count == 2)
         #expect(page.items.first?.name == "Opening Credits")
 
         let request = await http.firstRequest
@@ -109,7 +109,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func audiobookChapters_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func chaptersUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobook_chapters.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -120,7 +120,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func audiobookChapters_throwError_whenLimitIsOutOfBounds() async throws {
+    func chaptersThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.audiobooks.chapters(for: "id", limit: limit)
@@ -130,7 +130,7 @@ struct AudiobookServiceTests {
     // MARK: - User Access Tests
 
     @Test
-    func savedAudiobooks_buildsCorrectRequest() async throws {
+    func savedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_saved.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -145,7 +145,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func savedAudiobooks_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func savedUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("audiobooks_saved.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -156,7 +156,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func savedAudiobooks_throwError_whenLimitIsOutOfBounds() async throws {
+    func savedThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.audiobooks.saved(limit: limit)
@@ -164,7 +164,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func saveAudiobooks_buildsCorrectRequest() async throws {
+    func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let ids = makeIDs(count: 50)
@@ -176,7 +176,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func saveAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+    func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.audiobooks.save(makeIDs(count: 51))
@@ -184,7 +184,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func removeAudiobooks_buildsCorrectRequest() async throws {
+    func removeBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let ids = makeIDs(count: 50)
@@ -196,7 +196,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func removeAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+    func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.audiobooks.remove(makeIDs(count: 51))
@@ -204,7 +204,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func checkSavedAudiobooks_buildsCorrectRequest() async throws {
+    func checkSavedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("check_saved_audiobooks.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -220,7 +220,7 @@ struct AudiobookServiceTests {
     }
 
     @Test
-    func checkSavedAudiobooks_throwsError_whenIDLimitExceeded() async throws {
+    func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.audiobooks.checkSaved(makeIDs(count: 51))

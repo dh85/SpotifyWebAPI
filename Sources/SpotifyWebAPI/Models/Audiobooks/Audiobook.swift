@@ -37,7 +37,7 @@ public struct Audiobook: Codable, Sendable, Equatable {
     /// Publisher name.
     public let publisher: String
     /// Object type (always "audiobook").
-    public let type: MediaType
+    public let type: SpotifyObjectType
     /// The Spotify URI.
     public let uri: String
     /// Total number of chapters.

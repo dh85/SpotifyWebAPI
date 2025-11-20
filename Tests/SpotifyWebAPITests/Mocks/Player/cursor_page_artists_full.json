@@ -8,7 +8,11 @@
             "uri": "spotify:artist:artist1",
             "type": "artist",
             "popularity": 80,
-            "followers": { "href": null, "total": 1000 },
+            "genres": [],
+            "followers": {
+                "href": null,
+                "total": 1000
+            },
             "images": []
         }
     ],

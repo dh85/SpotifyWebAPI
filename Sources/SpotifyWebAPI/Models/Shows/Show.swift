@@ -33,7 +33,7 @@ public struct Show: Codable, Sendable, Equatable {
     /// Publisher name.
     public let publisher: String
     /// The object type.
-    public let type: MediaType
+    public let type: SpotifyObjectType
     /// The Spotify URI.
     public let uri: String
     /// Total number of episodes.

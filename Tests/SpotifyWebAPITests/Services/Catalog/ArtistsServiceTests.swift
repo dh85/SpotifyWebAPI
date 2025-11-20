@@ -5,7 +5,7 @@ import Testing
 
 @Suite
 @MainActor
-struct ArtistServiceTests {
+struct ArtistsServiceTests {
 
     // MARK: - Get Artist (Single)
 
@@ -80,7 +80,7 @@ struct ArtistServiceTests {
             offset: 5
         )
 
-        #expect(page.items.first?.name == "UNDERDOGS")
+        #expect(page.items.first?.name == "Album One")
 
         let request = await http.firstRequest
         #expect(

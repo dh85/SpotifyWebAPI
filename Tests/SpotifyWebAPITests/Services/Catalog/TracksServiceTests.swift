@@ -9,12 +9,12 @@ import Testing
 
 @Suite
 @MainActor
-struct TrackServiceTests {
+struct TracksServiceTests {
 
     // MARK: - Public Access Tests
 
     @Test
-    func getTrack_buildsCorrectRequest() async throws {
+    func getBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let trackData = try TestDataLoader.load("track_full.json")
         await http.addMockResponse(data: trackData, statusCode: 200)
@@ -27,7 +27,7 @@ struct TrackServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func getTrack_marketParameter(market: String?) async throws {
+    func getIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let trackData = try TestDataLoader.load("track_full.json")
         await http.addMockResponse(data: trackData, statusCode: 200)
@@ -38,7 +38,7 @@ struct TrackServiceTests {
     }
 
     @Test
-    func severalTracks_buildsCorrectRequest() async throws {
+    func severalBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let tracksData = try TestDataLoader.load("tracks_several.json")
         await http.addMockResponse(data: tracksData, statusCode: 200)
@@ -53,7 +53,7 @@ struct TrackServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func severalTracks_marketParameter(market: String?) async throws {
+    func severalIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let tracksData = try TestDataLoader.load("tracks_several.json")
         await http.addMockResponse(data: tracksData, statusCode: 200)
@@ -64,7 +64,7 @@ struct TrackServiceTests {
     }
 
     @Test
-    func severalTracks_allowsMaximumIDBatchSize() async throws {
+    func severalAllowsMaximumIDBatchSize() async throws {
         let (client, http) = makeUserAuthClient()
         let ids = makeIDs(count: 50)
         let tracksData = try TestDataLoader.load("tracks_several_50.json")
@@ -76,7 +76,7 @@ struct TrackServiceTests {
     }
 
     @Test
-    func severalTracks_throwsError_whenIDLimitExceeded() async throws {
+    func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 51) {
             _ = try await client.tracks.several(ids: makeIDs(count: 51))
@@ -86,7 +86,7 @@ struct TrackServiceTests {
     // MARK: - User Library Tests
 
     @Test(arguments: [nil, "US"])
-    func savedTracks_buildsCorrectRequest(market: String?) async throws {
+    func savedBuildsCorrectRequest(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let savedData = try TestDataLoader.load("tracks_saved.json")
         await http.addMockResponse(data: savedData, statusCode: 200)
@@ -95,12 +95,13 @@ struct TrackServiceTests {
 
         #expect(page.items.first?.track.name == "Test Track")
         let request = await http.firstRequest
-        expectRequest(request, path: "/v1/me/tracks", method: "GET", queryContains: "limit=10", "offset=5")
+        expectRequest(
+            request, path: "/v1/me/tracks", method: "GET", queryContains: "limit=10", "offset=5")
         expectMarketParameter(request, market: market)
     }
 
     @Test
-    func savedTracks_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func savedUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let savedData = try TestDataLoader.load("tracks_saved.json")
         await http.addMockResponse(data: savedData, statusCode: 200)
@@ -111,7 +112,7 @@ struct TrackServiceTests {
     }
 
     @Test
-    func savedTracks_throwError_whenLimitIsOutOfBounds() async throws {
+    func savedThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.tracks.saved(limit: limit)
@@ -119,18 +120,19 @@ struct TrackServiceTests {
     }
 
     @Test
-    func saveTracks_buildsCorrectRequest() async throws {
+    func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let trackIDs = makeIDs(count: 50)
 
         try await client.tracks.save(trackIDs)
 
-        expectIDsInBody(await http.firstRequest, path: "/v1/me/tracks", method: "PUT", expectedIDs: trackIDs)
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/tracks", method: "PUT", expectedIDs: trackIDs)
     }
 
     @Test
-    func saveTracks_throwsError_whenIDLimitExceeded() async throws {
+    func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 51) {
             _ = try await client.tracks.save(makeIDs(count: 51))
@@ -138,18 +140,19 @@ struct TrackServiceTests {
     }
 
     @Test
-    func removeTracks_buildsCorrectRequest() async throws {
+    func removeBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let trackIDs = makeIDs(count: 50)
 
         try await client.tracks.remove(trackIDs)
 
-        expectIDsInBody(await http.firstRequest, path: "/v1/me/tracks", method: "DELETE", expectedIDs: trackIDs)
+        expectIDsInBody(
+            await http.firstRequest, path: "/v1/me/tracks", method: "DELETE", expectedIDs: trackIDs)
     }
 
     @Test
-    func removeTracks_throwsError_whenIDLimitExceeded() async throws {
+    func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 51) {
             _ = try await client.tracks.remove(makeIDs(count: 51))
@@ -157,7 +160,7 @@ struct TrackServiceTests {
     }
 
     @Test
-    func checkSavedTracks_buildsCorrectRequest() async throws {
+    func checkSavedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let checkData = try TestDataLoader.load("check_saved_tracks.json")
         await http.addMockResponse(data: checkData, statusCode: 200)
@@ -172,7 +175,7 @@ struct TrackServiceTests {
     }
 
     @Test
-    func checkSavedTracks_throwsError_whenIDLimitExceeded() async throws {
+    func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 51) {
             _ = try await client.tracks.checkSaved(makeIDs(count: 51))
@@ -181,7 +184,8 @@ struct TrackServiceTests {
 
     // MARK: - Helper Methods
 
-    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async {
+    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async
+    {
         await expectInvalidRequest(reasonContains: "Maximum of 50", operation: operation)
     }
 

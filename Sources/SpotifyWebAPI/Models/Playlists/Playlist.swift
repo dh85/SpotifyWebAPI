@@ -4,37 +4,36 @@ import Foundation
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist)
 public struct Playlist: Codable, Sendable, Equatable {
-    /// The Spotify ID.
-    public let id: String
-    /// Playlist name.
-    public let name: String
-    /// API endpoint URL for full playlist details.
-    public let href: URL
-    /// The Spotify URI.
-    public let uri: String
     /// Whether the playlist is collaborative.
     public let collaborative: Bool
-    /// Playlist description.
+    /// Playlist description. Can be null.
     public let description: String?
-    /// External URLs for this playlist.
+    /// Known external URLs for this playlist.
     public let externalUrls: SpotifyExternalUrls?
-    /// Playlist cover images.
+    /// A link to the Web API endpoint providing full details of the playlist.
+    public let href: URL
+    /// The Spotify ID for the playlist.
+    public let id: String
+    /// Images for the playlist. The array may be empty or contain up to three images.
     public let images: [SpotifyImage]
-    /// Playlist owner.
+    /// The name of the playlist.
+    public let name: String
+    /// The user who owns the playlist.
     public let owner: SpotifyPublicUser
-    /// Whether the playlist is public.
+    /// The playlist's public/private status. Can be null.
     public let isPublic: Bool?
-    /// Snapshot ID for playlist versioning.
+    /// The version identifier for the current playlist.
     public let snapshotId: String?
-    /// Follower information.
-    public let followers: SpotifyFollowers?
-    /// Tracks in the playlist.
+    /// The tracks of the playlist.
     public let tracks: Page<PlaylistTrackItem>
+    /// The object type ("playlist").
+    public let type: SpotifyObjectType
+    /// The Spotify URI for the playlist.
+    public let uri: String
 
     enum CodingKeys: String, CodingKey {
-        case id, name, href, uri, collaborative, description, externalUrls,
-            images, owner
+        case collaborative, description, externalUrls, href, id, images, name,
+            owner, snapshotId, tracks, type, uri
         case isPublic = "public"
-        case snapshotId, followers, tracks
     }
 }

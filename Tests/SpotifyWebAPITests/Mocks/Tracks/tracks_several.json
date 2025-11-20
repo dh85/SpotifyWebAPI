@@ -6,8 +6,12 @@
       "album": {
         "album_type": "album",
         "total_tracks": 10,
-        "available_markets": ["US"],
-        "external_urls": { "spotify": "https://open.spotify.com/album/album1" },
+        "available_markets": [
+          "US"
+        ],
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/album1"
+        },
         "href": "https://api.spotify.com/v1/albums/album1",
         "id": "album1",
         "images": [],
@@ -19,12 +23,16 @@
         "artists": []
       },
       "artists": [],
-      "available_markets": ["US"],
+      "available_markets": [
+        "US"
+      ],
       "disc_number": 1,
       "duration_ms": 180000,
       "explicit": false,
       "external_ids": {},
-      "external_urls": { "spotify": "https://open.spotify.com/track/track1" },
+      "external_urls": {
+        "spotify": "https://open.spotify.com/track/track1"
+      },
       "href": "https://api.spotify.com/v1/tracks/track1",
       "is_local": false,
       "is_playable": true,
@@ -40,8 +48,12 @@
       "album": {
         "album_type": "album",
         "total_tracks": 10,
-        "available_markets": ["US"],
-        "external_urls": { "spotify": "https://open.spotify.com/album/album2" },
+        "available_markets": [
+          "US"
+        ],
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/album2"
+        },
         "href": "https://api.spotify.com/v1/albums/album2",
         "id": "album2",
         "images": [],
@@ -53,12 +65,16 @@
         "artists": []
       },
       "artists": [],
-      "available_markets": ["US"],
+      "available_markets": [
+        "US"
+      ],
       "disc_number": 1,
       "duration_ms": 200000,
       "explicit": false,
       "external_ids": {},
-      "external_urls": { "spotify": "https://open.spotify.com/track/track2" },
+      "external_urls": {
+        "spotify": "https://open.spotify.com/track/track2"
+      },
       "href": "https://api.spotify.com/v1/tracks/track2",
       "is_local": false,
       "is_playable": true,

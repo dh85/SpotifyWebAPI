@@ -35,7 +35,7 @@ public struct Episode: Codable, Sendable, Equatable {
     /// User's most recent playback position. Requires `user-read-playback-position` scope.
     public let resumePoint: ResumePoint?
     /// Object type (always "episode").
-    public let type: MediaType
+    public let type: SpotifyObjectType
     /// The Spotify URI.
     public let uri: String
     /// Content restriction information.

@@ -43,22 +43,7 @@ import Testing
 extension Audiobook {
     fileprivate static let fullExample = Audiobook(
         authors: [Author(name: "Frank Herbert")],
-        availableMarkets: [
-            "AR", "AU", "AT", "BE", "BO", "BR", "BG", "CA", "CL", "CO", "CR", "CY", "CZ", "DK",
-            "DO", "DE", "EC", "EE", "SV", "FI", "FR", "GR", "GT", "HN", "HK", "HU", "IS", "IE",
-            "IT", "LV", "LT", "LU", "MY", "MT", "MX", "NL", "NZ", "NI", "NO", "PA", "PY", "PE",
-            "PH", "PL", "PT", "SG", "SK", "ES", "SE", "CH", "TW", "TR", "UY", "US", "GB", "AD",
-            "LI", "MC", "ID", "JP", "TH", "VN", "RO", "IL", "ZA", "SA", "AE", "BH", "QA", "OM",
-            "KW", "EG", "MA", "DZ", "TN", "LB", "JO", "PS", "IN", "BY", "KZ", "MD", "UA", "AL",
-            "BA", "HR", "ME", "MK", "RS", "SI", "KR", "BD", "PK", "LK", "GH", "KE", "NG", "TZ",
-            "UG", "AG", "AM", "BS", "BB", "BZ", "BT", "BW", "BF", "CV", "CW", "DM", "FJ", "GM",
-            "GE", "GD", "GW", "GY", "HT", "JM", "KI", "LS", "LR", "MW", "MV", "ML", "MH", "FM",
-            "NA", "NR", "NE", "PW", "PG", "PR", "WS", "SM", "ST", "SN", "SC", "SL", "SB", "KN",
-            "LC", "VC", "SR", "TL", "TO", "TT", "TV", "VU", "AZ", "BN", "BI", "KH", "CM", "TD",
-            "KM", "GQ", "SZ", "GA", "GN", "KG", "LA", "MO", "MR", "MN", "NP", "RW", "TG", "UZ",
-            "ZW", "BJ", "MG", "MU", "MZ", "AO", "CI", "DJ", "ZM", "CD", "CG", "IQ", "LY", "TJ",
-            "VE", "ET", "XK",
-        ],
+        availableMarkets: ["US", "GB"],
         copyrights: [],
         description: "Description",
         htmlDescription: "HTML Description",
@@ -74,76 +59,16 @@ extension Audiobook {
         mediaType: "audio",
         name: "Dune: Book One in the Dune Chronicles",
         narrators: [
-            Narrator(name: "Scott Brick"), Narrator(name: "Other"), Narrator(name: "Other"),
-            Narrator(name: "Other"), Narrator(name: "Other"),
+            Narrator(name: "Scott Brick")
         ],
-        publisher: "Frank Herbert",
+        publisher: "Macmillan Audio",
         type: .audiobook,
         uri: "spotify:show:7iHfbu1YPACw6oZPAFJtqe",
         totalChapters: 51,
         chapters: Page(
             href: URL(
                 string: "https://api.spotify.com/v1/audiobooks/7iHfbu1YPACw6oZPAFJtqe/chapters")!,
-            items: [
-                SimplifiedChapter(
-                    availableMarkets: [
-                        "AR", "AU", "AT", "BE", "BO", "BR", "BG", "CA", "CL", "CO", "CR", "CY",
-                        "CZ", "DK", "DO", "DE", "EC", "EE", "SV", "FI", "FR", "GR", "GT", "HN",
-                        "HK", "HU", "IS", "IE", "IT", "LV", "LT", "LU", "MY", "MT", "MX", "NL",
-                        "NZ", "NI", "NO", "PA", "PY", "PE", "PH", "PL", "PT", "SG", "SK", "ES",
-                        "SE", "CH", "TW", "TR", "UY", "US", "GB", "AD", "LI", "MC", "ID", "JP",
-                        "TH", "VN", "RO", "IL", "ZA", "SA", "AE", "BH", "QA", "OM", "KW", "EG",
-                        "MA", "DZ", "TN", "LB", "JO", "PS", "IN", "BY", "KZ", "MD", "UA", "AL",
-                        "BA", "HR", "ME", "MK", "RS", "SI", "KR", "BD", "PK", "LK", "GH", "KE",
-                        "NG", "TZ", "UG", "AG", "AM", "BS", "BB", "BZ", "BT", "BW", "BF", "CV",
-                        "CW", "DM", "FJ", "GM", "GE", "GD", "GW", "GY", "HT", "JM", "KI", "LS",
-                        "LR", "MW", "MV", "ML", "MH", "FM", "NA", "NR", "NE", "PW", "PG", "PR",
-                        "WS", "SM", "ST", "SN", "SC", "SL", "SB", "KN", "LC", "VC", "SR", "TL",
-                        "TO", "TT", "TV", "VU", "AZ", "BN", "BI", "KH", "CM", "TD", "KM", "GQ",
-                        "SZ", "GA", "GN", "KG", "LA", "MO", "MR", "MN", "NP", "RW", "TG", "UZ",
-                        "ZW", "BJ", "MG", "MU", "MZ", "AO", "CI", "DJ", "ZM", "CD", "CG", "IQ",
-                        "LY", "TJ", "VE", "ET", "XK",
-                    ],
-                    chapterNumber: 0,
-                    description: "",
-                    htmlDescription: "",
-                    durationMs: 60056,
-                    explicit: false,
-                    externalUrls: SpotifyExternalUrls(
-                        spotify: URL(
-                            string: "https://open.spotify.com/episode/73ThiUvDp7VbVX6tWTNjE4")),
-                    href: URL(
-                        string: "https://api.spotify.com/v1/chapters/73ThiUvDp7VbVX6tWTNjE4")!,
-                    id: "73ThiUvDp7VbVX6tWTNjE4",
-                    images: [
-                        SpotifyImage(
-                            url: URL(
-                                string:
-                                    "https://i.scdn.co/image/ab676663000022a8706d7d39148810e742cef314"
-                            )!, height: 640, width: 640),
-                        SpotifyImage(
-                            url: URL(
-                                string:
-                                    "https://i.scdn.co/image/ab6766630000db5b706d7d39148810e742cef314"
-                            )!, height: 300, width: 300),
-                        SpotifyImage(
-                            url: URL(
-                                string:
-                                    "https://i.scdn.co/image/ab6766630000703b706d7d39148810e742cef314"
-                            )!, height: 64, width: 64),
-                    ],
-                    isPlayable: nil,
-                    languages: [""],
-                    name: "Opening Credits",
-                    releaseDate: "2007-05-29",
-                    releaseDatePrecision: .day,
-                    resumePoint: ResumePoint(fullyPlayed: false, resumePositionMs: 0),
-                    type: .chapter,
-                    uri: "spotify:episode:73ThiUvDp7VbVX6tWTNjE4",
-                    restrictions: nil,
-                    audioPreviewUrl: nil
-                )
-            ],
+            items: [],
             limit: 50,
             next: nil,
             offset: 0,
