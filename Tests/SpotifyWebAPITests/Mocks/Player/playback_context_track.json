@@ -12,9 +12,7 @@
     "is_playing": true,
     "currently_playing_type": "track",
     "actions": {
-        "disallows": {
-            "resuming": true
-        }
+        "resuming": true
     },
     "item": {
         "id": "track123",

@@ -85,11 +85,11 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// - Parameters:
     ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    ///   - additionalTypes: Optional. A list of item types to include in the response (e.g., "track", "episode").
+    ///   - additionalTypes: Optional. A list of item types to include in the response.
     /// - Returns: A `PlaybackState` object, or `nil` if nothing is playing (204 No Content).
     public func state(
         market: String? = nil,
-        additionalTypes: [String]? = nil
+        additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> PlaybackState? {
         var query: [URLQueryItem] = []
 
@@ -98,7 +98,7 @@ extension PlayerService where Capability == UserAuthCapability {
         }
 
         if let additionalTypes {
-            let value = additionalTypes.joined(separator: ",")
+            let value = additionalTypes.map { $0.rawValue }.sorted().joined(separator: ",")
             query.append(.init(name: "additional_types", value: value))
         }
 
@@ -120,11 +120,11 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// - Parameters:
     ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    ///   - additionalTypes: Optional. A list of item types to include in the response (e.g., "track", "episode").
+    ///   - additionalTypes: Optional. A list of item types to include in the response.
     /// - Returns: A `CurrentlyPlayingContext` object, or `nil` if nothing is playing (204 No Content).
     public func currentlyPlaying(
         market: String? = nil,
-        additionalTypes: [String]? = nil
+        additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> CurrentlyPlayingContext? {
 
         var query: [URLQueryItem] = []
@@ -134,8 +134,7 @@ extension PlayerService where Capability == UserAuthCapability {
         }
 
         if let additionalTypes {
-            // FIX: Simple conditional logic for the second parameter
-            let value = additionalTypes.joined(separator: ",")
+            let value = additionalTypes.map { $0.rawValue }.sorted().joined(separator: ",")
             query.append(.init(name: "additional_types", value: value))
         }
 

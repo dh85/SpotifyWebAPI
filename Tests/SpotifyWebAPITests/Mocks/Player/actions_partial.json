@@ -1,6 +1,4 @@
 {
-    "disallows": {
-        "resuming": true,
-        "skipping_next": false
-    }
+    "resuming": true,
+    "skipping_next": false
 }

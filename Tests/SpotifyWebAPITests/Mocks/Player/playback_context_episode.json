@@ -11,9 +11,7 @@
     "progress_ms": 654321,
     "is_playing": true,
     "currently_playing_type": "episode",
-    "actions": {
-        "disallows": {}
-    },
+    "actions": {},
     "item": {
         "id": "episode123",
         "name": "Mock Episode Title",

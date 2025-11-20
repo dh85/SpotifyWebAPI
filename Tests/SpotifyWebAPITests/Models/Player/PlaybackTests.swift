@@ -14,8 +14,8 @@ import Testing
         #expect(context.isPlaying == true)
         #expect(context.progressMs == 123456)
         #expect(context.currentlyPlayingType == "track")
-        #expect(context.context?.type == .playlist)
-        #expect(context.actions.disallows.resuming == true)
+        #expect(context.context?.type == "playlist")
+        #expect(context.actions.resuming == true)
 
         // Verify Timestamp (1610000000000 ms is 2021-01-07T06:13:20Z)
         #expect(context.timestamp.timeIntervalSince1970 == 1_610_000_000)
@@ -41,7 +41,7 @@ import Testing
         #expect(context.isPlaying == true)
         #expect(context.progressMs == 654321)
         #expect(context.currentlyPlayingType == "episode")
-        #expect(context.context?.type == .show)
+        #expect(context.context?.type == "show")
 
         // Verify Timestamp (1620000000000 ms is 2021-05-03T00:00:00Z)
         #expect(context.timestamp.timeIntervalSince1970 == 1_620_000_000)

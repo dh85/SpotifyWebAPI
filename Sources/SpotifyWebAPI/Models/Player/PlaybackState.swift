@@ -77,15 +77,10 @@ public struct PlaybackState: Decodable, Sendable, Equatable {
 
 extension PlaybackState {
     public enum RepeatState: String, Codable, Sendable {
-        case off = "off"
-        case track = "track"
-        case context = "context"
+        case off, track, context
     }
 
     public enum CurrentlyPlayingType: String, Codable, Sendable {
-        case track = "track"
-        case episode = "episode"
-        case ad = "ad"
-        case unknown = "unknown"
+        case track, episode, ad, unknown
     }
 }

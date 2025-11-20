@@ -16,9 +16,7 @@
     "progress_ms": 120000,
     "is_playing": true,
     "currently_playing_type": "episode",
-    "actions": {
-        "disallows": {}
-    },
+    "actions": {},
     "item": {
         "id": "episode_1",
         "name": "Test Episode",
