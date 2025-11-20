@@ -39,7 +39,7 @@
             },
             "extensions": [
                 "swiftlang.swift-vscode",
-                "AmazonWebServices.amazon-q-vscode"
+                "openai.chatgpt"
             ]
         }
     },

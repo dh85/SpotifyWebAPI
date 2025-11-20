@@ -119,7 +119,8 @@ struct PlaylistsServiceTests {
         let images = try await client.playlists.coverImage(id: "playlist123")
 
         #expect(images.count > 0)
-        expectRequest(await http.firstRequest, path: "/v1/playlists/playlist123/images", method: "GET")
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/images", method: "GET")
     }
 
     // MARK: - User Access Tests
@@ -180,6 +181,43 @@ struct PlaylistsServiceTests {
             id: "playlist123", name: "New Name", isPublic: false)
 
         expectRequest(await http.firstRequest, path: "/v1/playlists/playlist123", method: "PUT")
+    }
+
+    @Test
+    func changeDetailsWithoutArgumentsDoesNothing() async throws {
+        let (client, http) = makeUserAuthClient()
+
+        try await client.playlists.changeDetails(id: "playlist123")
+
+        let request = await http.firstRequest
+        #expect(request == nil)
+    }
+
+    @Test(
+        "Change playlist details",
+        arguments: [
+            ("Updated Name" as String?, nil as Bool?, nil as Bool?, nil as String?),
+            (nil, false, nil, nil),
+            (nil, nil, true, nil),
+            (nil, nil, nil, "Updated description"),
+        ])
+    func changeDetailsSendsRequestForEachField(scenario: (String?, Bool?, Bool?, String?))
+        async throws
+    {
+
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 200)
+
+        try await client.playlists.changeDetails(
+            id: "playlist123",
+            name: scenario.0,
+            isPublic: scenario.1,
+            collaborative: scenario.2,
+            description: scenario.3
+        )
+
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123", method: "PUT")
     }
 
     @Test
@@ -285,7 +323,7 @@ struct PlaylistsServiceTests {
         await http.addMockResponse(statusCode: 400)
 
         let jpegData = Data([0xFF, 0xD8, 0xFF, 0xE0])
-        
+
         do {
             try await client.playlists.uploadCoverImage(for: "playlist123", jpegData: jpegData)
             Issue.record("Expected error to be thrown")
