@@ -3,11 +3,17 @@ import Foundation
 private struct SeveralTracksWrapper: Decodable { let tracks: [Track?] }
 
 /// A service for fetching and managing Spotify Track resources.
+///
+/// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
 public struct TracksService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
     init(client: SpotifyClient<Capability>) {
         self.client = client
+    }
+
+    private func validateTrackIDs(_ ids: Set<String>) throws {
+        try validateMaxIdCount(50, for: ids)
     }
 }
 
@@ -16,42 +22,34 @@ extension TracksService where Capability: PublicSpotifyCapability {
 
     /// Get Spotify catalog information for a single track.
     ///
-    /// Corresponds to: `GET /v1/tracks/{id}`
-    ///
     /// - Parameters:
     ///   - id: The Spotify ID for the track.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
+    ///   - market: An [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
     /// - Returns: A full `Track` object.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
     public func get(_ id: String, market: String? = nil) async throws -> Track {
-        let query: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
+        let query = makeMarketQueryItems(from: market)
         let request = SpotifyRequest<Track>.get("/tracks/\(id)", query: query)
         return try await client.perform(request)
     }
 
     /// Get Spotify catalog information for several tracks based on their Spotify IDs.
     ///
-    /// Corresponds to: `GET /v1/tracks`
-    ///
     /// - Parameters:
-    ///   - ids: A list of the Spotify IDs for the tracks (max 50).
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    /// - Returns: A list of full `Track` objects (invalid IDs are filtered out).
-    public func several(ids: Set<String>, market: String? = nil) async throws
-        -> [Track]
-    {
-        let sortedIDs = ids.sorted()
-        let marketQuery: [URLQueryItem] =
-            market.map { [.init(name: "market", value: $0)] } ?? []
-        let query: [URLQueryItem] =
-            [.init(name: "ids", value: sortedIDs.joined(separator: ","))]
-            + marketQuery
-
-        let request = SpotifyRequest<SeveralTracksWrapper>.get(
-            "/tracks",
-            query: query
-        )
-        // Filter out null tracks returned by the API for invalid IDs
+    ///   - ids: A list of Spotify IDs (max 50).
+    ///   - market: An [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
+    /// - Returns: A list of `Track` objects.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-tracks)
+    public func several(ids: Set<String>, market: String? = nil) async throws -> [Track] {
+        try validateTrackIDs(ids)
+        let query =
+            [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
+            + makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<SeveralTracksWrapper>.get("/tracks", query: query)
         return try await client.perform(request).tracks.compactMap { $0 }
     }
 }
@@ -61,80 +59,57 @@ extension TracksService where Capability == UserAuthCapability {
 
     /// Get a list of the songs saved in the current Spotify user's "Liked Songs" library.
     ///
-    /// Corresponds to: `GET /v1/me/tracks`
-    /// Requires the `user-library-read` scope.
-    ///
     /// - Parameters:
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
+    ///   - market: An [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
     /// - Returns: A paginated list of `SavedTrack` items.
-    public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil)
-        async throws -> Page<SavedTrack>
-    {
-        let marketQuery: [URLQueryItem] =
-            market.map {
-                [.init(name: "market", value: $0)]
-            } ?? []
-
-        let query: [URLQueryItem] =
-            [
-                .init(name: "limit", value: String(limit)),
-                .init(name: "offset", value: String(offset)),
-            ] + marketQuery
-
-        let request = SpotifyRequest<Page<SavedTrack>>.get(
-            "/me/tracks",
-            query: query
-        )
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-tracks)
+    public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil) async throws -> Page<
+        SavedTrack
+    > {
+        try validateLimit(limit)
+        let query =
+            makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let request = SpotifyRequest<Page<SavedTrack>>.get("/me/tracks", query: query)
         return try await client.perform(request)
     }
 
     /// Save one or more tracks to the current user's library.
     ///
-    /// Corresponds to: `PUT /v1/me/tracks`
-    /// Requires the `user-library-modify` scope.
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
     ///
-    /// - Parameter ids: A list of the Spotify IDs for the tracks (max 50).
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/save-tracks-user)
     public func save(_ ids: Set<String>) async throws {
-        let request = SpotifyRequest<EmptyResponse>.put(
-            "/me/tracks",
-            body: IDsBody(ids: ids)
-        )
-        try await client.perform(request)
+        try validateTrackIDs(ids)
+        try await performLibraryOperation(.put, endpoint: "/me/tracks", ids: ids, client: client)
     }
 
     /// Remove one or more tracks from the current user's library.
     ///
-    /// Corresponds to: `DELETE /v1/me/tracks`
-    /// Requires the `user-library-modify` scope.
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
     ///
-    /// - Parameter ids: A list of the Spotify IDs for the tracks (max 50).
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-tracks-user)
     public func remove(_ ids: Set<String>) async throws {
-        let request = SpotifyRequest<EmptyResponse>.delete(
-            "/me/tracks",
-            body: IDsBody(ids: ids)
-        )
-        try await client.perform(request)
+        try validateTrackIDs(ids)
+        try await performLibraryOperation(.delete, endpoint: "/me/tracks", ids: ids, client: client)
     }
 
     /// Check if one or more tracks are already saved in the current user's library.
     ///
-    /// Corresponds to: `GET /v1/me/tracks/contains`
-    /// Requires the `user-library-read` scope.
-    ///
-    /// - Parameter ids: A list of the Spotify IDs for the tracks (max 50).
+    /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-tracks)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {
-        let sortedIDs = ids.sorted()
-
-        let query = [
-            URLQueryItem(name: "ids", value: sortedIDs.joined(separator: ","))
-        ]
-        let request = SpotifyRequest<[Bool]>.get(
-            "/me/tracks/contains",
-            query: query
-        )
+        try validateTrackIDs(ids)
+        let query = [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
+        let request = SpotifyRequest<[Bool]>.get("/me/tracks/contains", query: query)
         return try await client.perform(request)
     }
 }

@@ -28,9 +28,11 @@
         "href": "https://api.spotify.com/v1/episodes/episode_1",
         "external_urls": { "spotify": "https://open.spotify.com/episode/episode_1" },
         "images": [],
+        "is_externally_hosted": false,
         "release_date": "2024-01-01",
         "release_date_precision": "day",
         "languages": ["en"],
+        "type": "episode",
         "show": {
              "id": "show_1",
              "name": "Test Show",
@@ -44,8 +46,11 @@
              "uri": "spotify:show:show_1",
              "href": "https://api.spotify.com/v1/shows/show_1",
              "external_urls": { "spotify": "https://open.spotify.com/show/show_1" },
+             "is_externally_hosted": false,
+             "languages": ["en"],
              "copyrights": [],
-             "available_markets": ["US"]
+             "available_markets": ["US"],
+             "type": "show"
         }
     }
 }

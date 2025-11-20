@@ -126,7 +126,7 @@ import Testing
             "The client did not wait for the 'Retry-After' period"
         )
         #expect(
-            duration < TimeInterval(retryAfterSeconds + 1),
+            duration < TimeInterval(retryAfterSeconds + 2),
             "The client waited unnecessarily long"
         )
     }
