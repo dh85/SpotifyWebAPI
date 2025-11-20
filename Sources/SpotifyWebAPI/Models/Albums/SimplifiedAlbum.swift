@@ -13,7 +13,7 @@ public struct SimplifiedAlbum: Codable, Sendable, Equatable {
     public let releaseDate: String
     public let releaseDatePrecision: ReleaseDatePrecision
     public let restrictions: Restriction?
-    public let type: MediaType
+    public let type: SpotifyObjectType
     public let uri: String
     public let artists: [SimplifiedArtist]
     public let albumGroup: AlbumGroup?

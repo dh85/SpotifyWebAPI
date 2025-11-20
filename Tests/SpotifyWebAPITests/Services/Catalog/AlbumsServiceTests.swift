@@ -9,12 +9,12 @@ import Testing
 
 @Suite
 @MainActor
-struct AlbumServiceTests {
+struct AlbumsServiceTests {
 
     // MARK: - Public Access Tests
 
     @Test
-    func getAlbum_buildsCorrectRequest_andDecodes() async throws {
+    func getBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let albumData = try TestDataLoader.load("album_full.json")
         await http.addMockResponse(data: albumData, statusCode: 200)
@@ -30,7 +30,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func severalAlbums_buildsCorrectRequest_andUnwrapsDTO() async throws {
+    func severalBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let albumsData = try TestDataLoader.load("albums_several.json")
         await http.addMockResponse(data: albumsData, statusCode: 200)
@@ -47,7 +47,7 @@ struct AlbumServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func getAlbum_marketParameter(market: String?) async throws {
+    func getIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let albumData = try TestDataLoader.load("album_full.json")
         await http.addMockResponse(data: albumData, statusCode: 200)
@@ -58,7 +58,7 @@ struct AlbumServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func severalAlbums_marketParameter(market: String?) async throws {
+    func severalIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let albumsData = try TestDataLoader.load("albums_several.json")
         await http.addMockResponse(data: albumsData, statusCode: 200)
@@ -69,7 +69,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func severalAlbums_allowsMaximumIDBatchSize() async throws {
+    func severalAllowsMaximumIDBatchSize() async throws {
         let (client, http) = makeUserAuthClient()
         let ids = makeIDs(count: 20)
         let albumsData = try TestDataLoader.load("albums_several_20.json")
@@ -82,7 +82,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func severalAlbums_throwsError_whenIDLimitExceeded() async throws {
+    func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 21) {
             _ = try await client.albums.several(ids: makeIDs(count: 21))
@@ -92,7 +92,7 @@ struct AlbumServiceTests {
     // MARK: - Album Tracks Tests
 
     @Test(arguments: [nil, "US"])
-    func albumTracks_buildsCorrectRequest(market: String?) async throws {
+    func tracksBuildsCorrectRequest(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let tracksData = try TestDataLoader.load("album_tracks.json")
         await http.addMockResponse(data: tracksData, statusCode: 200)
@@ -109,7 +109,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func albumTracks_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func tracksUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let tracksData = try TestDataLoader.load("album_tracks.json")
         await http.addMockResponse(data: tracksData, statusCode: 200)
@@ -120,7 +120,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func albumTracks_throwError_whenLimitIsOutOfBounds() async throws {
+    func tracksThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.albums.tracks("id", limit: limit)
@@ -130,7 +130,7 @@ struct AlbumServiceTests {
     // MARK: - User Library Tests
 
     @Test
-    func savedAlbums_buildsCorrectRequest() async throws {
+    func savedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let savedData = try TestDataLoader.load("albums_saved.json")
         await http.addMockResponse(data: savedData, statusCode: 200)
@@ -147,7 +147,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func savedAlbums_usesDefaultLimitAndOffsetWhenOmitted() async throws {
+    func savedUsesDefaultPagination() async throws {
         let (client, http) = makeUserAuthClient()
         let savedData = try TestDataLoader.load("albums_saved.json")
         await http.addMockResponse(data: savedData, statusCode: 200)
@@ -158,7 +158,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func savedAlbums_throwError_whenLimitIsOutOfBounds() async throws {
+    func savedThrowsErrorWhenLimitOutOfBounds() async throws {
         let (client, _) = makeUserAuthClient()
         await expectLimitErrors { limit in
             _ = try await client.albums.saved(limit: limit)
@@ -166,7 +166,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func saveAlbums_buildsCorrectRequest() async throws {
+    func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let albumIDs = makeIDs(count: 20)
@@ -178,7 +178,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func saveAlbums_throwsError_whenIDLimitExceeded() async throws {
+    func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 21) {
             _ = try await client.albums.save(makeIDs(count: 21))
@@ -186,7 +186,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func removeAlbums_buildsCorrectRequest() async throws {
+    func removeBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
         let albumIDs = makeIDs(count: 20)
@@ -198,7 +198,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func removeAlbums_throwsError_whenIDLimitExceeded() async throws {
+    func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 21) {
             _ = try await client.albums.remove(makeIDs(count: 21))
@@ -206,7 +206,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func checkSavedAlbums_buildsCorrectRequest() async throws {
+    func checkSavedBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let checkData = try TestDataLoader.load("check_saved_albums.json")
         await http.addMockResponse(data: checkData, statusCode: 200)
@@ -226,7 +226,7 @@ struct AlbumServiceTests {
     }
 
     @Test
-    func checkSavedAlbums_throwsError_whenIDLimitExceeded() async throws {
+    func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError(count: 21) {
             _ = try await client.albums.checkSaved(makeIDs(count: 21))
@@ -272,7 +272,8 @@ struct AlbumServiceTests {
         #expect(body.ids == expectedIDs)
     }
 
-    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async {
+    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async
+    {
         await expectInvalidRequest(reasonContains: "Maximum of 20", operation: operation)
     }
 }

@@ -4,7 +4,9 @@
     {
       "added_at": "2023-01-01T00:00:00Z",
       "show": {
-        "available_markets": ["US"],
+        "available_markets": [
+          "US"
+        ],
         "copyrights": [],
         "description": "Saved Show description",
         "html_description": "Saved Show description",
@@ -16,7 +18,9 @@
         "id": "saved1",
         "images": [],
         "is_externally_hosted": false,
-        "languages": ["en"],
+        "languages": [
+          "en"
+        ],
         "media_type": "audio",
         "name": "Saved Show",
         "publisher": "Publisher",

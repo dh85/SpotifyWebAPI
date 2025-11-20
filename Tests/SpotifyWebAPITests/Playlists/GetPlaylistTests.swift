@@ -21,16 +21,14 @@ struct GetPlaylistTests {
                     "id": "owner123",
                     "display_name": "Owner User",
                     "href": "https://api.spotify.com/v1/users/owner123",
+                    "uri": "spotify:user:owner123",
+                    "type": "user",
                     "external_urls": [
                         "spotify": "https://open.spotify.com/user/owner123"
                     ],
                 ],
                 "public": true,
                 "snapshot_id": "snapshot123",
-                "followers": [
-                    "href": NSNull(),
-                    "total": 42,
-                ],
                 "tracks": [
                     "href": "https://api.spotify.com/v1/playlists/abc/tracks",
                     "items": [
@@ -40,6 +38,8 @@ struct GetPlaylistTests {
                                 "id": "adder123",
                                 "display_name": "Adder User",
                                 "href": "https://api.spotify.com/v1/users/adder123",
+                                "uri": "spotify:user:adder123",
+                                "type": "user",
                                 "external_urls": [
                                     "spotify":
                                         "https://open.spotify.com/user/adder123"
@@ -53,6 +53,7 @@ struct GetPlaylistTests {
                                 "explicit": false,
                                 "href": "https://api.spotify.com/v1/tracks/track1",
                                 "uri": "spotify:track:track1",
+                                "type": "track",
                                 "external_urls": [
                                     "spotify":
                                         "https://open.spotify.com/track/track1"
@@ -162,7 +163,6 @@ struct GetPlaylistTests {
         #expect(playlist.description == "Chill vibes")
         #expect(playlist.isPublic == true)
         #expect(playlist.snapshotId == "snapshot123")
-        #expect(playlist.followers?.total == 42)
 
         #expect(playlist.tracks.total == 1)
         #expect(playlist.tracks.items.count == 1)
@@ -171,10 +171,15 @@ struct GetPlaylistTests {
         #expect(item.isLocal == false)
         #expect(item.addedBy?.id == "adder123")
         #expect(item.addedBy?.displayName == "Adder User")
-        #expect(item.track?.name == "Track One")
-        #expect(item.track?.durationMs == 123000)
-        #expect(item.track?.album.name == "Album One")
-        #expect(item.track?.artists.first?.name == "Artist One")
+        
+        if case .track(let track) = item.track {
+            #expect(track.name == "Track One")
+            #expect(track.durationMs == 123000)
+            #expect(track.album?.name == "Album One")
+            #expect(track.artists?.first?.name == "Artist One")
+        } else {
+            Issue.record("Expected track, got episode or nil")
+        }
 
         #expect(http.requests.count == 1)
         let request = http.requests[0]

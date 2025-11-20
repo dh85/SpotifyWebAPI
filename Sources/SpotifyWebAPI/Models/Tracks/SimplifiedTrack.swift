@@ -16,7 +16,7 @@ public struct SimplifiedTrack: Codable, Sendable, Equatable {
     public let restrictions: Restriction?
     public let name: String?
     public let trackNumber: Int?
-    public let type: MediaType?
+    public let type: SpotifyObjectType?
     public let uri: String?
     public let isLocal: Bool?
 }

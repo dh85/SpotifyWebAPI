@@ -6,7 +6,9 @@
         "album_type": "album",
         "artists": [
           {
-            "external_urls": { "spotify": "https://open.spotify.com/artist/id1" },
+            "external_urls": {
+              "spotify": "https://open.spotify.com/artist/id1"
+            },
             "href": "https://api.spotify.com/v1/artists/id1",
             "id": "id1",
             "name": "Artist One",
@@ -14,8 +16,13 @@
             "uri": "spotify:artist:id1"
           }
         ],
-        "available_markets": ["US", "GB"],
-        "external_urls": { "spotify": "https://open.spotify.com/album/album1" },
+        "available_markets": [
+          "US",
+          "GB"
+        ],
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/album1"
+        },
         "href": "https://api.spotify.com/v1/albums/album1",
         "id": "album1",
         "images": [],

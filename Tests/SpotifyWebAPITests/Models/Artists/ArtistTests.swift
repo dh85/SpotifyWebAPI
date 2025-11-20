@@ -14,7 +14,18 @@ import Testing
 
     @Test
     func artistDecodesWithMissingOptionalFields() throws {
-        let data = "{}".data(using: .utf8)!
+        let json = """
+            {
+                "genres": [],
+                "href": "https://api.spotify.com/v1/artists/minimal",
+                "id": "minimal",
+                "name": "Minimal Artist",
+                "popularity": 0,
+                "type": "artist",
+                "uri": "spotify:artist:minimal"
+            }
+            """
+        let data = json.data(using: .utf8)!
         let artist: Artist = try decodeModel(from: data)
         expectArtistMatches(artist, Artist.minimalExample)
     }
@@ -48,7 +59,7 @@ extension Artist {
         href: URL(
             string:
                 "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg?locale=en-GB%2Cen%3Bq%3D0.9"
-        ),
+        )!,
         id: "0TnOYISbd1XYRBk9myaseg",
         images: [
             SpotifyImage(
@@ -79,13 +90,13 @@ extension Artist {
     fileprivate static let minimalExample = Artist(
         externalUrls: nil,
         followers: nil,
-        genres: nil,
-        href: nil,
-        id: nil,
+        genres: [],
+        href: URL(string: "https://api.spotify.com/v1/artists/minimal")!,
+        id: "minimal",
         images: nil,
-        name: nil,
-        popularity: nil,
-        type: nil,
-        uri: nil
+        name: "Minimal Artist",
+        popularity: 0,
+        type: .artist,
+        uri: "spotify:artist:minimal"
     )
 }

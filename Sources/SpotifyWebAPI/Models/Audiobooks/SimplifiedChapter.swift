@@ -18,7 +18,7 @@ public struct SimplifiedChapter: Codable, Sendable, Equatable {
     public let releaseDate: String
     public let releaseDatePrecision: ReleaseDatePrecision
     public let resumePoint: ResumePoint?
-    public let type: MediaType
+    public let type: SpotifyObjectType
     public let uri: String
     public let restrictions: Restriction?
 

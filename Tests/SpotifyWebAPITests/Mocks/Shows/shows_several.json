@@ -1,7 +1,9 @@
 {
   "shows": [
     {
-      "available_markets": ["US"],
+      "available_markets": [
+        "US"
+      ],
       "copyrights": [],
       "description": "Show 1 description",
       "html_description": "Show 1 description",
@@ -13,7 +15,9 @@
       "id": "id1",
       "images": [],
       "is_externally_hosted": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "media_type": "audio",
       "name": "Show 1",
       "publisher": "Publisher 1",
@@ -22,7 +26,9 @@
       "total_episodes": 5
     },
     {
-      "available_markets": ["US"],
+      "available_markets": [
+        "US"
+      ],
       "copyrights": [],
       "description": "Show 2 description",
       "html_description": "Show 2 description",
@@ -34,7 +40,9 @@
       "id": "id2",
       "images": [],
       "is_externally_hosted": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "media_type": "audio",
       "name": "Show 2",
       "publisher": "Publisher 2",
@@ -43,7 +51,9 @@
       "total_episodes": 10
     },
     {
-      "available_markets": ["US"],
+      "available_markets": [
+        "US"
+      ],
       "copyrights": [],
       "description": "Show 3 description",
       "html_description": "Show 3 description",
@@ -55,7 +65,9 @@
       "id": "id3",
       "images": [],
       "is_externally_hosted": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "media_type": "audio",
       "name": "Show 3",
       "publisher": "Publisher 3",

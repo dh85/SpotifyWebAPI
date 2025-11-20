@@ -9,10 +9,10 @@ import Testing
 
 @Suite
 @MainActor
-struct ChapterServiceTests {
+struct ChaptersServiceTests {
 
     @Test
-    func getChapter_buildsCorrectRequest() async throws {
+    func getBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("chapter_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -22,11 +22,13 @@ struct ChapterServiceTests {
 
         #expect(chapter.id == id)
         #expect(chapter.name == "Chapter 1")
-        expectRequest(await http.firstRequest, path: "/v1/chapters/\(id)", method: "GET", queryContains: "market=US")
+        expectRequest(
+            await http.firstRequest, path: "/v1/chapters/\(id)", method: "GET",
+            queryContains: "market=US")
     }
 
     @Test(arguments: [nil, "US"])
-    func getChapter_marketParameter(market: String?) async throws {
+    func getIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("chapter_full.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -37,7 +39,7 @@ struct ChapterServiceTests {
     }
 
     @Test
-    func severalChapters_buildsCorrectRequest() async throws {
+    func severalBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("chapters_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -54,7 +56,7 @@ struct ChapterServiceTests {
     }
 
     @Test(arguments: [nil, "US"])
-    func severalChapters_marketParameter(market: String?) async throws {
+    func severalIncludesMarketParameter(market: String?) async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("chapters_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -65,7 +67,7 @@ struct ChapterServiceTests {
     }
 
     @Test
-    func severalChapters_allowsMaximumIDBatchSize() async throws {
+    func severalAllowsMaximumIDBatchSize() async throws {
         let (client, http) = makeUserAuthClient()
         let data = try TestDataLoader.load("chapters_several.json")
         await http.addMockResponse(data: data, statusCode: 200)
@@ -76,7 +78,7 @@ struct ChapterServiceTests {
     }
 
     @Test
-    func severalChapters_throwsError_whenIDLimitExceeded() async throws {
+    func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
         await expectIDLimitError {
             _ = try await client.chapters.several(ids: makeIDs(count: 51).map { $0 })
@@ -85,7 +87,9 @@ struct ChapterServiceTests {
 
     // MARK: - Helper Methods
 
-    private func expectRequest(_ request: URLRequest?, path: String, method: String, queryContains: String...) {
+    private func expectRequest(
+        _ request: URLRequest?, path: String, method: String, queryContains: String...
+    ) {
         #expect(request?.url?.path() == path)
         #expect(request?.httpMethod == method)
         for query in queryContains {

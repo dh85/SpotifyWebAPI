@@ -13,14 +13,18 @@
       "images": [],
       "is_externally_hosted": false,
       "is_playable": true,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "name": "Episode 1",
       "release_date": "2023-01-01",
       "release_date_precision": "day",
       "type": "episode",
       "uri": "spotify:episode:episodeid",
       "show": {
-        "available_markets": ["US"],
+        "available_markets": [
+          "US"
+        ],
         "copyrights": [],
         "description": "Show description",
         "html_description": "Show description",
@@ -32,7 +36,9 @@
         "id": "showid",
         "images": [],
         "is_externally_hosted": false,
-        "languages": ["en"],
+        "languages": [
+          "en"
+        ],
         "media_type": "audio",
         "name": "Show Name",
         "publisher": "Publisher",
@@ -53,7 +59,9 @@
       "id": "episodeid2",
       "images": [],
       "is_externally_hosted": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "name": "Episode 2",
       "release_date": "2023-01-02",
       "release_date_precision": "day",
@@ -93,7 +101,9 @@
       "id": "episodeid3",
       "images": [],
       "is_externally_hosted": false,
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "name": "Episode 3",
       "release_date": "2023-01-03",
       "release_date_precision": "day",

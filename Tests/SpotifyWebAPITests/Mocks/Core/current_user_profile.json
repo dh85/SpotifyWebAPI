@@ -7,5 +7,7 @@
     "href": "https_mock_href",
     "external_urls": {},
     "images": [],
-    "followers": { "total": 100 }
+    "followers": {
+        "total": 100
+    }
 }
