@@ -272,19 +272,7 @@ struct AlbumServiceTests {
         #expect(body.ids == expectedIDs)
     }
 
-    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async
-    {
+    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async {
         await expectInvalidRequest(reasonContains: "Maximum of 20", operation: operation)
-    }
-
-    private func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
-        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 51.")
-        {
-            try await operation(51)
-        }
-        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 0.")
-        {
-            try await operation(0)
-        }
     }
 }
