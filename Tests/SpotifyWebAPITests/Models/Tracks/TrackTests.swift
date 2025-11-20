@@ -38,12 +38,13 @@ import Testing
         #expect(actual.isPlayable == expected.isPlayable)
         #expect(actual.trackNumber == expected.trackNumber)
         #expect(actual.discNumber == expected.discNumber)
-        #expect(actual.album?.name == expected.album?.name)
-        #expect(actual.artists?.first?.name == expected.artists?.first?.name)
-        #expect(actual.externalIds?.isrc == expected.externalIds?.isrc)
+        #expect(actual.album.name == expected.album.name)
+        #expect(actual.artists.first?.name == expected.artists.first?.name)
+        #expect(actual.externalIds.isrc == expected.externalIds.isrc)
         #expect(actual.linkedFrom?.id == expected.linkedFrom?.id)
         #expect(actual.restrictions?.reason == expected.restrictions?.reason)
-        #expect(actual.availableMarkets?.contains("US") == expected.availableMarkets?.contains("US"))
+        #expect(
+            actual.availableMarkets?.contains("US") == expected.availableMarkets?.contains("US"))
     }
 }
 
@@ -53,7 +54,8 @@ extension Track {
             albumType: .album,
             totalTracks: 10,
             availableMarkets: ["US"],
-            externalUrls: SpotifyExternalUrls(spotify: URL(string: "https://open.spotify.com/album/album_id")),
+            externalUrls: SpotifyExternalUrls(
+                spotify: URL(string: "https://open.spotify.com/album/album_id")),
             href: URL(string: "https://api.spotify.com/v1/albums/album_id")!,
             id: "album_id",
             images: [],
@@ -66,25 +68,31 @@ extension Track {
             artists: [],
             albumGroup: nil
         ),
-        artists: [SimplifiedArtist(
-            externalUrls: SpotifyExternalUrls(spotify: URL(string: "https://open.spotify.com/artist/artist_id")),
-            href: URL(string: "https://api.spotify.com/v1/artists/artist_id")!,
-            id: "artist_id",
-            name: "Test Artist",
-            type: .artist,
-            uri: "spotify:artist:artist_id"
-        )],
+        artists: [
+            SimplifiedArtist(
+                externalUrls: SpotifyExternalUrls(
+                    spotify: URL(string: "https://open.spotify.com/artist/artist_id")),
+                href: URL(string: "https://api.spotify.com/v1/artists/artist_id")!,
+                id: "artist_id",
+                name: "Test Artist",
+                type: .artist,
+                uri: "spotify:artist:artist_id"
+            )
+        ],
         availableMarkets: ["US"],
         discNumber: 1,
         durationMs: 200_000,
         explicit: false,
-        externalIds: SpotifyExternalIds(isrc: "US-S1Z-23-00001", ean: "1234567890", upc: "0987654321"),
-        externalUrls: SpotifyExternalUrls(spotify: URL(string: "https://open.spotify.com/track/track_id")),
+        externalIds: SpotifyExternalIds(
+            isrc: "US-S1Z-23-00001", ean: "1234567890", upc: "0987654321"),
+        externalUrls: SpotifyExternalUrls(
+            spotify: URL(string: "https://open.spotify.com/track/track_id")),
         href: URL(string: "https://api.spotify.com/v1/tracks/track_id")!,
         id: "track_id",
         isPlayable: true,
         linkedFrom: LinkedFrom(
-            externalUrls: SpotifyExternalUrls(spotify: URL(string: "https://open.spotify.com/track/linked_id")),
+            externalUrls: SpotifyExternalUrls(
+                spotify: URL(string: "https://open.spotify.com/track/linked_id")),
             href: URL(string: "https://api.spotify.com/v1/tracks/linked_id")!,
             id: "linked_id",
             type: .track,
@@ -101,25 +109,42 @@ extension Track {
     )
 
     fileprivate static let minimalExample = Track(
-        album: nil,
-        artists: nil,
+        album: SimplifiedAlbum(
+            albumType: .album,
+            totalTracks: 1,
+            availableMarkets: [],
+            externalUrls: SpotifyExternalUrls(spotify: nil),
+            href: URL(string: "https://api.spotify.com/v1/albums/a")!,
+            id: "a",
+            images: [],
+            name: "A",
+            releaseDate: "2024-01-01",
+            releaseDatePrecision: .day,
+            restrictions: nil,
+            type: .album,
+            uri: "spotify:album:a",
+            artists: [],
+            albumGroup: nil
+        ),
+        artists: [],
         availableMarkets: nil,
-        discNumber: nil,
-        durationMs: nil,
-        explicit: nil,
-        externalIds: nil,
-        externalUrls: SpotifyExternalUrls(spotify: URL(string: "u")),
-        href: URL(string: "h")!,
+        discNumber: 1,
+        durationMs: 180_000,
+        explicit: false,
+        externalIds: SpotifyExternalIds(isrc: "US123", ean: nil, upc: nil),
+        externalUrls: SpotifyExternalUrls(
+            spotify: URL(string: "https://open.spotify.com/track/track_id")),
+        href: URL(string: "https://api.spotify.com/v1/tracks/track_id")!,
         id: "track_id",
         isPlayable: nil,
         linkedFrom: nil,
         restrictions: nil,
         name: "Minimal Track",
-        popularity: nil,
-        trackNumber: nil,
+        popularity: 50,
+        trackNumber: 1,
         type: .track,
         uri: "spotify:track:track_id",
-        isLocal: nil,
+        isLocal: false,
         previewUrl: nil
     )
 }

@@ -50,11 +50,14 @@
         "href": "https://api.spotify.com/v1/episodes/ep1",
         "uri": "spotify:episode:ep1",
         "images": [],
+        "is_externally_hosted": false,
+        "is_playable": true,
         "release_date": "2023-01-01",
         "release_date_precision": "day",
         "languages": [
           "en"
-        ]
+        ],
+        "type": "episode"
       }
     ],
     "limit": 20,

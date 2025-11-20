@@ -1,0 +1,29 @@
+{
+  "collaborative": false,
+  "description": "Test playlist description",
+  "external_urls": {
+    "spotify": "https://open.spotify.com/playlist/playlist123"
+  },
+  "href": "https://api.spotify.com/v1/playlists/playlist123",
+  "id": "playlist123",
+  "images": [],
+  "name": "Test Playlist",
+  "owner": {
+    "id": "user123",
+    "type": "user",
+    "uri": "spotify:user:user123"
+  },
+  "public": true,
+  "snapshot_id": "snap123",
+  "tracks": {
+    "href": "https://api.spotify.com/v1/playlists/playlist123/tracks",
+    "items": [],
+    "limit": 20,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 10
+  },
+  "type": "playlist",
+  "uri": "spotify:playlist:playlist123"
+}

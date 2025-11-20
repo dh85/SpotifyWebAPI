@@ -68,7 +68,7 @@ private struct RemovePlaylistItemsBody: Encodable, Sendable {
     static func byPositions(_ positions: [Int], snapshotId: String? = nil)
         -> Self
     {
-        return .init(tracks: [], positions: positions, snapshotId: snapshotId)
+        return .init(tracks: nil, positions: positions, snapshotId: snapshotId)
     }
 }
 
@@ -77,191 +77,174 @@ private struct TrackURIObject: Encodable, Sendable { let uri: String }
 /// A service for interacting with Spotify Playlists, managing items, and updating details.
 public struct PlaylistsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
-    init(client: SpotifyClient<Capability>) { self.client = client }
+
+    init(client: SpotifyClient<Capability>) {
+        self.client = client
+    }
 }
 
-// MARK: - Public Capability
+// MARK: - Public Access
 extension PlaylistsService where Capability: PublicSpotifyCapability {
 
     /// Get a playlist owned by a Spotify user.
-    ///
-    /// Corresponds to: `GET /v1/playlists/{id}`.
+    /// Corresponds to: `GET /v1/playlists/{id}`
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    ///   - fields: Optional. A comma-separated list of fields to filter the response.
-    ///   - additionalTypes: Optional. A list of types to include (e.g., "track", "episode").
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    ///   - fields: A comma-separated list of fields to filter the response.
+    ///   - additionalTypes: A set of item types to include (track, episode).
     /// - Returns: A full `Playlist` object.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist)
     public func get(
         _ id: String,
         market: String? = nil,
         fields: String? = nil,
-        additionalTypes: [String]? = nil
+        additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> Playlist {
-
-        var queryItems: [URLQueryItem] = []
-        if let market {
-            queryItems.append(.init(name: "market", value: market))
-        }
-        if let fields {
-            queryItems.append(.init(name: "fields", value: fields))
-        }
-        if let types = additionalTypes?.joined(separator: ",") {
-            queryItems.append(.init(name: "additional_types", value: types))
-        }
-
-        let request = SpotifyRequest<Playlist>.get(
-            "/playlists/\(id)",
-            query: queryItems
-        )
+        let query =
+            makeMarketQueryItems(from: market)
+            + makeFieldsQueryItems(from: fields)
+            + makeAdditionalTypesQueryItems(from: additionalTypes)
+        let request = SpotifyRequest<Playlist>.get("/playlists/\(id)", query: query)
         return try await client.perform(request)
     }
 
     /// Get the tracks or episodes in a playlist.
-    ///
-    /// Corresponds to: `GET /v1/playlists/{id}/tracks`.
+    /// Corresponds to: `GET /v1/playlists/{id}/tracks`
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - market: Optional. An ISO 3166-1 alpha-2 country code.
-    ///   - fields: Optional. A comma-separated list of fields to filter the response.
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    ///   - fields: A comma-separated list of fields to filter the response.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
-    ///   - additionalTypes: Optional. A list of types to include (e.g., "track", "episode").
+    ///   - additionalTypes: A set of item types to include (track, episode).
     /// - Returns: A `Page` object containing `PlaylistTrackItem` items.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlists-tracks)
     public func items(
         _ id: String,
-        market: String? = nil,  // FIX: Pass market
-        fields: String? = nil,  // FIX: Pass fields
+        market: String? = nil,
+        fields: String? = nil,
         limit: Int = 20,
         offset: Int = 0,
-        additionalTypes: [String]? = nil  // FIX: Pass additionalTypes
+        additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> Page<PlaylistTrackItem> {
+        try validateLimit(limit)
 
-        let clampedLimit = min(max(limit, 1), 50)
-
-        var queryItems: [URLQueryItem] = [
-            .init(name: "limit", value: String(clampedLimit)),
-            .init(name: "offset", value: String(offset)),
-        ]
-        if let market {
-            queryItems.append(.init(name: "market", value: market))
-        }
-        if let fields {
-            queryItems.append(.init(name: "fields", value: fields))
-        }
-        if let types = additionalTypes?.joined(separator: ",") {
-            queryItems.append(.init(name: "additional_types", value: types))
-        }
-
+        let query =
+            makePaginationQuery(limit: limit, offset: offset)
+            + makeMarketQueryItems(from: market)
+            + makeFieldsQueryItems(from: fields)
+            + makeAdditionalTypesQueryItems(from: additionalTypes)
         let request = SpotifyRequest<Page<PlaylistTrackItem>>.get(
-            "/playlists/\(id)/tracks",
-            query: queryItems
-        )
+            "/playlists/\(id)/tracks", query: query)
         return try await client.perform(request)
     }
 
     /// Get a list of the playlists owned or followed by a specific user.
-    ///
-    /// Corresponds to: `GET /v1/users/{user_id}/playlists`.
+    /// Corresponds to: `GET /v1/users/{user_id}/playlists`
     ///
     /// - Parameters:
     ///   - userID: The Spotify user ID.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A `Page` of `SimplifiedPlaylist` objects.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-list-users-playlists)
     public func userPlaylists(userID: String, limit: Int = 20, offset: Int = 0)
         async throws -> Page<SimplifiedPlaylist>
     {
-        let queryItems: [URLQueryItem] = [
-            .init(name: "limit", value: String(limit)),
-            .init(name: "offset", value: String(offset)),
-        ]
+        try validateLimit(limit)
+        let query = makePaginationQuery(limit: limit, offset: offset)
         let request = SpotifyRequest<Page<SimplifiedPlaylist>>.get(
-            "/users/\(userID)/playlists",
-            query: queryItems
-        )
+            "/users/\(userID)/playlists", query: query)
         return try await client.perform(request)
     }
 
     /// Get the cover image for a playlist.
-    ///
-    /// Corresponds to: `GET /v1/playlists/{id}/images`.
+    /// Corresponds to: `GET /v1/playlists/{id}/images`
     ///
     /// - Parameter id: The Spotify ID for the playlist.
     /// - Returns: A list of `SpotifyImage` objects.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist-cover)
     public func coverImage(id: String) async throws -> [SpotifyImage] {
-        let request = SpotifyRequest<[SpotifyImage]>.get(
-            "/playlists/\(id)/images"
-        )
+        let request = SpotifyRequest<[SpotifyImage]>.get("/playlists/\(id)/images")
         return try await client.perform(request)
     }
 }
 
-// MARK: - User Capability
+// MARK: - User Access
+
 extension PlaylistsService where Capability == UserAuthCapability {
 
     /// Get a list of the playlists owned or followed by the current user.
-    ///
-    /// Corresponds to: `GET /v1/me/playlists`.
-    /// Requires the `playlist-read-private` scope.
+    /// Corresponds to: `GET /v1/me/playlists`. Requires the `playlist-read-private` scope.
     ///
     /// - Parameters:
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A `Page` of `SimplifiedPlaylist` objects.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
     public func myPlaylists(limit: Int = 20, offset: Int = 0) async throws
         -> Page<SimplifiedPlaylist>
     {
-        let queryItems: [URLQueryItem] = [
-            .init(name: "limit", value: String(limit)),
-            .init(name: "offset", value: String(offset)),
-        ]
-        let request = SpotifyRequest<Page<SimplifiedPlaylist>>.get(
-            "/me/playlists",
-            query: queryItems
-        )
+        try validateLimit(limit)
+        let query = makePaginationQuery(limit: limit, offset: offset)
+        let request = SpotifyRequest<Page<SimplifiedPlaylist>>.get("/me/playlists", query: query)
         return try await client.perform(request)
     }
 
     /// Create a new playlist for a Spotify user.
-    ///
     /// Corresponds to: `POST /v1/users/{user_id}/playlists`.
     /// Requires `playlist-modify-public` or `playlist-modify-private` scope.
     ///
     /// - Parameters:
     ///   - userID: The Spotify user ID to create the playlist for.
     ///   - name: The name for the new playlist.
-    ///   - isPublic: Optional. `true` for public, `false` for private.
+    ///   - isPublic: `true` for public, `false` for private (defaults to true).
+    ///   - collaborative: `true` to make collaborative (defaults to false).
+    ///   - description: The playlist description.
     /// - Returns: The newly created `Playlist` object.
-    public func create(for userID: String, name: String, isPublic: Bool? = nil)
-        async throws -> Playlist
-    {
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/create-playlist)
+    public func create(
+        for userID: String,
+        name: String,
+        isPublic: Bool? = nil,
+        collaborative: Bool? = nil,
+        description: String? = nil
+    ) async throws -> Playlist {
         let body = CreatePlaylistBody(
-            name: name,
-            isPublic: isPublic,
-            collaborative: nil,
-            description: nil
-        )
-        let request = SpotifyRequest<Playlist>.post(
-            "/users/\(userID)/playlists",
-            body: body
-        )
+            name: name, isPublic: isPublic, collaborative: collaborative,
+            description: description)
+        let request = SpotifyRequest<Playlist>.post("/users/\(userID)/playlists", body: body)
         return try await client.perform(request)
     }
 
     /// Change a playlist's details.
-    ///
     /// Corresponds to: `PUT /v1/playlists/{id}`.
     /// Requires either `playlist-modify-public` or `playlist-modify-private` scope.
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - name: Optional. The new name for the playlist.
-    ///   - isPublic: Optional. `true` for public, `false` for private.
-    ///   - collaborative: Optional. `true` to make collaborative.
-    ///   - description: Optional. The new description.
+    ///   - name: The new name for the playlist.
+    ///   - isPublic: `true` for public, `false` for private.
+    ///   - collaborative: `true` to make collaborative.
+    ///   - description: The new description.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/change-playlist-details)
     public func changeDetails(
         id: String,
         name: String? = nil,
@@ -269,67 +252,84 @@ extension PlaylistsService where Capability == UserAuthCapability {
         collaborative: Bool? = nil,
         description: String? = nil
     ) async throws {
-        guard
-            name != nil || isPublic != nil || collaborative != nil
-                || description != nil
-        else {
-            return
-        }
+        guard name != nil || isPublic != nil || collaborative != nil || description != nil
+        else { return }
 
         let body = ChangePlaylistDetailsBody(
-            name: name,
-            isPublic: isPublic,
-            collaborative: collaborative,
-            description: description
-        )
-
-        let request = SpotifyRequest<EmptyResponse>.put(
-            "/playlists/\(id)",
-            body: body
-        )
+            name: name, isPublic: isPublic, collaborative: collaborative,
+            description: description)
+        let request = SpotifyRequest<EmptyResponse>.put("/playlists/\(id)", body: body)
         let _: EmptyResponse = try await client.perform(request)
     }
 
     /// Add one or more items to a user's playlist.
-    ///
     /// Corresponds to: `POST /v1/playlists/{id}/tracks`.
     /// Requires `playlist-modify-public` or `playlist-modify-private` scope.
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - uris: A list of track/episode URIs to add.
+    ///   - uris: A list of track/episode URIs to add (max 100).
+    ///   - position: The 0-indexed position to insert the items. If omitted, items are appended.
     /// - Returns: A new `snapshotId` for the playlist.
-    public func add(to id: String, uris: [String]) async throws -> String {
-        let body = AddPlaylistItemsBody(uris: uris, position: nil)
+    /// - Throws: `SpotifyError` if the request fails or URI count exceeds 100.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/add-tracks-to-playlist)
+    public func add(to id: String, uris: [String], position: Int? = nil) async throws -> String {
+        try validateURICount(uris)
+        let body = AddPlaylistItemsBody(uris: uris, position: position)
         let request = SpotifyRequest<SnapshotResponse>.post(
-            "/playlists/\(id)/tracks",
-            body: body
-        )
+            "/playlists/\(id)/tracks", body: body)
         let snapshot = try await client.perform(request)
         return snapshot.snapshotId
     }
 
     /// Remove one or more items from a playlist by their URIs.
-    ///
     /// Corresponds to: `DELETE /v1/playlists/{id}/tracks`.
     /// Requires `playlist-modify-public` or `playlist-modify-private` scope.
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - uris: A list of track/episode URIs to remove.
+    ///   - uris: A list of track/episode URIs to remove (max 100).
+    ///   - snapshotId: The playlist's snapshot ID.
     /// - Returns: A new `snapshotId` for the playlist.
-    public func remove(from id: String, uris: [String]) async throws -> String {
-        let body = RemovePlaylistItemsBody.byURIs(uris)
+    /// - Throws: `SpotifyError` if the request fails or URI count exceeds 100.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-tracks-playlist)
+    public func remove(from id: String, uris: [String], snapshotId: String? = nil) async throws
+        -> String
+    {
+        try validateURICount(uris)
+        let body = RemovePlaylistItemsBody.byURIs(uris, snapshotId: snapshotId)
         let request = SpotifyRequest<SnapshotResponse>.delete(
-            "/playlists/\(id)/tracks",
-            body: body
-        )
+            "/playlists/\(id)/tracks", body: body)
+        let snapshot = try await client.perform(request)
+        return snapshot.snapshotId
+    }
+
+    /// Remove one or more items from a playlist by their positions.
+    /// Corresponds to: `DELETE /v1/playlists/{id}/tracks`.
+    /// Requires `playlist-modify-public` or `playlist-modify-private` scope.
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the playlist.
+    ///   - positions: An array of 0-indexed positions of tracks to remove (max 100).
+    ///   - snapshotId: The playlist's snapshot ID.
+    /// - Returns: A new `snapshotId` for the playlist.
+    /// - Throws: `SpotifyError` if the request fails or position count exceeds 100.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-tracks-playlist)
+    public func remove(from id: String, positions: [Int], snapshotId: String? = nil) async throws
+        -> String
+    {
+        try validatePositionCount(positions)
+        let body = RemovePlaylistItemsBody.byPositions(positions, snapshotId: snapshotId)
+        let request = SpotifyRequest<SnapshotResponse>.delete(
+            "/playlists/\(id)/tracks", body: body)
         let snapshot = try await client.perform(request)
         return snapshot.snapshotId
     }
 
     /// Reorder items in a playlist.
-    ///
     /// Corresponds to: `PUT /v1/playlists/{id}/tracks`.
     /// Requires `playlist-modify-public` or `playlist-modify-private` scope.
     ///
@@ -337,9 +337,12 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - id: The Spotify ID for the playlist.
     ///   - rangeStart: The 0-indexed position of the first item to move.
     ///   - insertBefore: The 0-indexed position to move the items to.
-    ///   - rangeLength: Optional. The number of items to move. Defaults to 1.
-    ///   - snapshotId: Optional. The playlist's snapshot ID.
+    ///   - rangeLength: The number of items to move. Defaults to 1.
+    ///   - snapshotId: The playlist's snapshot ID.
     /// - Returns: A new `snapshotId` for the playlist.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/reorder-or-replace-playlists-tracks)
     public func reorder(
         id: String,
         rangeStart: Int,
@@ -348,91 +351,110 @@ extension PlaylistsService where Capability == UserAuthCapability {
         snapshotId: String? = nil
     ) async throws -> String {
         let body = ReorderPlaylistItemsBody(
-            rangeStart: rangeStart,
-            insertBefore: insertBefore,
-            rangeLength: rangeLength,
-            snapshotId: snapshotId
-        )
+            rangeStart: rangeStart, insertBefore: insertBefore, rangeLength: rangeLength,
+            snapshotId: snapshotId)
         let request = SpotifyRequest<SnapshotResponse>.put(
-            "/playlists/\(id)/tracks",
-            body: body
-        )
+            "/playlists/\(id)/tracks", body: body)
         let snapshot = try await client.perform(request)
         return snapshot.snapshotId
     }
 
     /// Replace all items in a playlist.
-    ///
     /// Corresponds to: `PUT /v1/playlists/{id}/tracks`.
     /// Requires `playlist-modify-public` or `playlist-modify-private` scope.
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - uris: A list of track/episode URIs to set.
+    ///   - uris: A list of track/episode URIs to set (max 100).
+    /// - Throws: `SpotifyError` if the request fails or URI count exceeds 100.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/reorder-or-replace-playlists-tracks)
     public func replace(itemsIn id: String, with uris: [String]) async throws {
-        let query: [URLQueryItem] = [
-            .init(name: "uris", value: uris.joined(separator: ","))
-        ]
-        let request = SpotifyRequest<EmptyResponse>.put(
-            "/playlists/\(id)/tracks",
-            query: query
-        )
+        try validateURICount(uris)
+        let query: [URLQueryItem] = [.init(name: "uris", value: uris.joined(separator: ","))]
+        let request = SpotifyRequest<EmptyResponse>.put("/playlists/\(id)/tracks", query: query)
         let _: EmptyResponse = try await client.perform(request)
     }
 
     /// Upload a custom cover image for a playlist.
-    ///
-    /// Corresponds to: `PUT /v1/playlists/{id}/images`.
-    /// Requires `ugc-image-upload` scope.
+    /// Corresponds to: `PUT /v1/playlists/{id}/images`. Requires `ugc-image-upload` scope.
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
     ///   - jpegData: The raw image data (must be a JPEG).
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/upload-custom-playlist-cover)
     public func uploadCoverImage(for id: String, jpegData: Data) async throws {
-        // The API requires Base64 encoded string as the body, not raw data
         let base64 = jpegData.base64EncodedData()
-
         let (_, response) = try await client.authorizedRequest(
-            url: client.apiURL(path: "/playlists/\(id)/images"),  // Manually building URL for raw data
+            url: client.apiURL(path: "/playlists/\(id)/images"),
             method: "PUT",
             body: base64,
             contentType: "image/jpeg"
         )
-
         guard (200..<300).contains(response.statusCode) else {
             throw SpotifyAuthError.httpError(
-                statusCode: response.statusCode,
-                body: "Image upload failed"
-            )
+                statusCode: response.statusCode, body: "Image upload failed")
         }
     }
 
     /// Add the current user as a follower of a playlist.
-    ///
     /// Corresponds to: `PUT /v1/playlists/{id}/followers`.
     /// Requires the `playlist-modify-public` or `playlist-modify-private` scope.
     ///
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
-    ///   - isPublic: Optional. If true, the playlist will be public.
+    ///   - isPublic: If true, the playlist will be public.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-playlist)
     public func follow(_ id: String, isPublic: Bool = true) async throws {
         let body = FollowPlaylistBody(isPublic: isPublic)
         let request = SpotifyRequest<EmptyResponse>.put(
-            "/playlists/\(id)/followers",
-            body: body
-        )
+            "/playlists/\(id)/followers", body: body)
         let _: EmptyResponse = try await client.perform(request)
     }
 
     /// Remove the current user as a follower of a playlist.
-    ///
     /// Corresponds to: `DELETE /v1/playlists/{id}/followers`.
     ///
     /// - Parameter id: The Spotify ID for the playlist.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-playlist)
     public func unfollow(_ id: String) async throws {
-        let request = SpotifyRequest<EmptyResponse>.delete(
-            "/playlists/\(id)/followers"
-        )
+        let request = SpotifyRequest<EmptyResponse>.delete("/playlists/\(id)/followers")
         let _: EmptyResponse = try await client.perform(request)
+    }
+}
+
+// MARK: - Helper Methods
+
+extension PlaylistsService {
+    fileprivate func makeFieldsQueryItems(from fields: String?) -> [URLQueryItem] {
+        guard let fields else { return [] }
+        return [.init(name: "fields", value: fields)]
+    }
+
+    fileprivate func makeAdditionalTypesQueryItems(from types: Set<AdditionalItemType>?) -> [URLQueryItem] {
+        guard let types, !types.isEmpty else { return [] }
+        return [.init(name: "additional_types", value: types.spotifyQueryValue)]
+    }
+
+    fileprivate func validateURICount(_ uris: [String]) throws {
+        guard uris.count <= 100 else {
+            throw SpotifyClientError.invalidRequest(
+                reason: "Maximum of 100 URIs allowed per request. You provided \(uris.count).")
+        }
+    }
+
+    fileprivate func validatePositionCount(_ positions: [Int]) throws {
+        guard positions.count <= 100 else {
+            throw SpotifyClientError.invalidRequest(
+                reason:
+                    "Maximum of 100 positions allowed per request. You provided \(positions.count)."
+            )
+        }
     }
 }

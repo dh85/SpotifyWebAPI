@@ -4,45 +4,64 @@ private struct FollowedArtistsWrapper: Decodable {
     let artists: CursorBasedPage<Artist>
 }
 
-/// A service providing access to Spotify user profiles, following status, and affinity data (Top Artists/Tracks).
+private enum FollowType: String {
+    case artist
+    case user
+}
+
+/// A service for accessing Spotify user profiles, following status, and affinity data.
+///
+/// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile)
 public struct UsersService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
     init(client: SpotifyClient<Capability>) {
         self.client = client
     }
+
+    private func validateUserIDs(_ ids: Set<String>) throws {
+        try validateMaxIdCount(50, for: ids)
+    }
+
+    private func validatePlaylistFollowUserIDs(_ ids: Set<String>) throws {
+        guard ids.count <= 5 else {
+            throw SpotifyClientError.invalidRequest(
+                reason: "Maximum of 5 user IDs allowed. You provided \(ids.count)."
+            )
+        }
+    }
 }
 
-// MARK: - Public Access (Get any user)
+// MARK: - Public Access
 extension UsersService where Capability: PublicSpotifyCapability {
 
     /// Get public profile information for a specified user.
     ///
-    /// Corresponds to: `GET /v1/users/{user_id}`.
+    /// - Parameter id: The Spotify ID for the user.
+    /// - Returns: A `PublicUserProfile` object.
+    /// - Throws: `SpotifyError` if the request fails.
     ///
-    /// - Parameter id: The Spotify ID of the target user.
-    /// - Returns: A ``PublicUserProfile`` object.
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-profile)
     public func get(_ id: String) async throws -> PublicUserProfile {
         let request = SpotifyRequest<PublicUserProfile>.get("/users/\(id)")
         return try await client.perform(request)
     }
 
-    /// Check to see if one or more Spotify users are following a specified playlist.
-    ///
-    /// Corresponds to: `GET /v1/playlists/{playlist_id}/followers/contains`.
+    /// Check if one or more users are following a specified playlist.
     ///
     /// - Parameters:
-    ///   - playlistID: The Spotify ID of the target playlist.
-    ///   - userIDs: A list of Spotify User IDs to check (max 5).
+    ///   - playlistID: The Spotify ID for the playlist.
+    ///   - userIDs: A list of Spotify User IDs (max 5).
     /// - Returns: An array of booleans indicating follow status.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-if-user-follows-playlist)
     public func checkFollowing(
         playlist playlistID: String,
         users userIDs: Set<String>
     ) async throws -> [Bool] {
-        let sortedUserIDs = userIDs.sorted()
-        let query: [URLQueryItem] = [
-            .init(name: "ids", value: sortedUserIDs.joined(separator: ","))
-        ]
+        try validatePlaylistFollowUserIDs(userIDs)
+        let query = [URLQueryItem(name: "ids", value: userIDs.sorted().joined(separator: ","))]
         let request = SpotifyRequest<[Bool]>.get(
             "/playlists/\(playlistID)/followers/contains",
             query: query
@@ -51,15 +70,15 @@ extension UsersService where Capability: PublicSpotifyCapability {
     }
 }
 
-// MARK: - Private Access (Current User operations)
+// MARK: - User Access
 extension UsersService where Capability == UserAuthCapability {
 
     /// Get detailed profile information about the current user.
     ///
-    /// Corresponds to: `GET /v1/me`.
-    /// Requires `user-read-private` and `user-read-email` scopes.
+    /// - Returns: A `CurrentUserProfile` object.
+    /// - Throws: `SpotifyError` if the request fails.
     ///
-    /// - Returns: A ``CurrentUserProfile`` object.
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile)
     public func me() async throws -> CurrentUserProfile {
         let request = SpotifyRequest<CurrentUserProfile>.get("/me")
         return try await client.perform(request)
@@ -67,141 +86,145 @@ extension UsersService where Capability == UserAuthCapability {
 
     /// Get the current user's top artists based on calculated affinity.
     ///
-    /// Corresponds to: `GET /v1/me/top/artists`.
-    /// Requires the `user-top-read` scope.
-    ///
     /// - Parameters:
     ///   - range: The time frame for affinity calculation. Default: `.mediumTerm`.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
-    /// - Returns: A paginated list of ``Artist`` items.
+    /// - Returns: A paginated list of `Artist` items.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks)
     public func topArtists(
         range: TimeRange = .mediumTerm,
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<Artist> {
-
-        let clampedLimit = min(max(limit, 1), 50)
-
-        let query: [URLQueryItem] = [
-            .init(name: "type", value: "artists"),
-            .init(name: "time_range", value: range.rawValue),
-            .init(name: "limit", value: String(clampedLimit)),
-            .init(name: "offset", value: String(offset)),
-        ]
-
-        let request = SpotifyRequest<Page<Artist>>.get(
-            "/me/top/artists",
-            query: query
-        )
+        try validateLimit(limit)
+        let query =
+            [
+                URLQueryItem(name: "time_range", value: range.rawValue)
+            ] + makePaginationQuery(limit: limit, offset: offset)
+        let request = SpotifyRequest<Page<Artist>>.get("/me/top/artists", query: query)
         return try await client.perform(request)
     }
 
     /// Get the current user's top tracks based on calculated affinity.
     ///
-    /// Corresponds to: `GET /v1/me/top/tracks`.
-    /// Requires the `user-top-read` scope.
-    ///
     /// - Parameters:
     ///   - range: The time frame for affinity calculation. Default: `.mediumTerm`.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
-    /// - Returns: A paginated list of ``Track`` items.
+    /// - Returns: A paginated list of `Track` items.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks)
     public func topTracks(
         range: TimeRange = .mediumTerm,
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<Track> {
-
-        let clampedLimit = min(max(limit, 1), 50)
-
-        let query: [URLQueryItem] = [
-            .init(name: "type", value: "tracks"),
-            .init(name: "time_range", value: range.rawValue),
-            .init(name: "limit", value: String(clampedLimit)),
-            .init(name: "offset", value: String(offset)),
-        ]
-
-        let request = SpotifyRequest<Page<Track>>.get(
-            "/me/top/tracks",
-            query: query
-        )
+        try validateLimit(limit)
+        let query =
+            [
+                URLQueryItem(name: "time_range", value: range.rawValue)
+            ] + makePaginationQuery(limit: limit, offset: offset)
+        let request = SpotifyRequest<Page<Track>>.get("/me/top/tracks", query: query)
         return try await client.perform(request)
     }
 
     /// Get the current user's followed artists.
     ///
-    /// Corresponds to: `GET /v1/me/following?type=artist`.
-    /// Requires the `user-follow-read` scope.
-    ///
     /// - Parameters:
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - after: The last artist ID retrieved for cursor-based paging.
-    /// - Returns: A cursor-based page of ``Artist`` items.
+    /// - Returns: A cursor-based page of `Artist` items.
+    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-followed)
     public func followedArtists(
         limit: Int = 20,
         after: String? = nil
     ) async throws -> CursorBasedPage<Artist> {
-
-        let clampedLimit = min(max(limit, 1), 50)
-
-        var query: [URLQueryItem] = [
-            .init(name: "type", value: "artist"),
-            .init(name: "limit", value: String(clampedLimit)),
+        try validateLimit(limit)
+        var query = [
+            URLQueryItem(name: "type", value: "artist"),
+            URLQueryItem(name: "limit", value: String(limit)),
         ]
         if let after {
-            query.append(.init(name: "after", value: after))
+            query.append(URLQueryItem(name: "after", value: after))
         }
-
-        let request = SpotifyRequest<FollowedArtistsWrapper>.get(
-            "/me/following",
-            query: query
-        )
+        let request = SpotifyRequest<FollowedArtistsWrapper>.get("/me/following", query: query)
         return try await client.perform(request).artists
     }
 
-    // MARK: - Following Modifiers
-
     /// Follow one or more artists.
-    /// Requires the `user-follow-modify` scope.
+    ///
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-artists-users)
     public func follow(artists ids: Set<String>) async throws {
         try await follow(ids: ids, type: .artist)
     }
 
     /// Follow one or more users.
-    /// Requires the `user-follow-modify` scope.
+    ///
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-artists-users)
     public func follow(users ids: Set<String>) async throws {
         try await follow(ids: ids, type: .user)
     }
 
     /// Unfollow one or more artists.
-    /// Requires the `user-follow-modify` scope.
+    ///
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-artists-users)
     public func unfollow(artists ids: Set<String>) async throws {
         try await unfollow(ids: ids, type: .artist)
     }
 
     /// Unfollow one or more users.
-    /// Requires the `user-follow-modify` scope.
+    ///
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-artists-users)
     public func unfollow(users ids: Set<String>) async throws {
         try await unfollow(ids: ids, type: .user)
     }
 
     /// Check if the current user follows one or more artists.
-    /// Requires the `user-follow-read` scope.
+    ///
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Returns: An array of booleans corresponding to the IDs requested.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-current-user-follows)
     public func checkFollowing(artists ids: Set<String>) async throws -> [Bool] {
-        try await check(ids: ids, type: .artist)
+        return try await check(ids: ids, type: .artist)
     }
 
     /// Check if the current user follows one or more users.
-    /// Requires the `user-follow-read` scope.
+    ///
+    /// - Parameter ids: A list of Spotify IDs (max 50).
+    /// - Returns: An array of booleans corresponding to the IDs requested.
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-current-user-follows)
     public func checkFollowing(users ids: Set<String>) async throws -> [Bool] {
-        try await check(ids: ids, type: .user)
+        return try await check(ids: ids, type: .user)
     }
 
     // MARK: - Private Helpers
 
     private func follow(ids: Set<String>, type: FollowType) async throws {
-        let query: [URLQueryItem] = [.init(name: "type", value: type.rawValue)]
+        try validateUserIDs(ids)
+        let query = [URLQueryItem(name: "type", value: type.rawValue)]
         let request = SpotifyRequest<EmptyResponse>.put(
             "/me/following",
             query: query,
@@ -211,7 +234,8 @@ extension UsersService where Capability == UserAuthCapability {
     }
 
     private func unfollow(ids: Set<String>, type: FollowType) async throws {
-        let query: [URLQueryItem] = [.init(name: "type", value: type.rawValue)]
+        try validateUserIDs(ids)
+        let query = [URLQueryItem(name: "type", value: type.rawValue)]
         let request = SpotifyRequest<EmptyResponse>.delete(
             "/me/following",
             query: query,
@@ -221,15 +245,12 @@ extension UsersService where Capability == UserAuthCapability {
     }
 
     private func check(ids: Set<String>, type: FollowType) async throws -> [Bool] {
-        let sortedIDs = ids.sorted()
-        let query: [URLQueryItem] = [
-            .init(name: "type", value: type.rawValue),
-            .init(name: "ids", value: sortedIDs.joined(separator: ",")),
+        try validateUserIDs(ids)
+        let query = [
+            URLQueryItem(name: "type", value: type.rawValue),
+            URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ",")),
         ]
-        let request = SpotifyRequest<[Bool]>.get(
-            "/me/following/contains",
-            query: query
-        )
+        let request = SpotifyRequest<[Bool]>.get("/me/following/contains", query: query)
         return try await client.perform(request)
     }
 }

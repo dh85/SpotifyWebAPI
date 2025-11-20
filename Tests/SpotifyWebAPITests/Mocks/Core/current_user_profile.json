@@ -9,5 +9,11 @@
     "images": [],
     "followers": {
         "total": 100
-    }
+    },
+    "explicit_content": {
+        "filter_enabled": false,
+        "filter_locked": false
+    },
+    "type": "user",
+    "uri": "spotify:user:mockuser"
 }

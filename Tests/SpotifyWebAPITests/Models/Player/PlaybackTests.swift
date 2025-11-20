@@ -26,7 +26,7 @@ import Testing
             return
         }
         #expect(track.name == "Mock Track Title")
-        #expect(track.album?.name == "Mock Album")
+        #expect(track.album.name == "Mock Album")
     }
 
     @Test

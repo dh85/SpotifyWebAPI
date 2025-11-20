@@ -1,0 +1,372 @@
+import Foundation
+import Testing
+
+@testable import SpotifyWebAPI
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
+@Suite
+@MainActor
+struct PlaylistsServiceTests {
+
+    // MARK: - Public Access Tests
+
+    @Test
+    func getBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistData = try TestDataLoader.load("playlist_full.json")
+        await http.addMockResponse(data: playlistData, statusCode: 200)
+
+        let id = "playlist123"
+        let playlist = try await client.playlists.get(
+            id, market: "US", fields: "name,id", additionalTypes: [.track, .episode])
+
+        #expect(playlist.id == id)
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/\(id)", method: "GET",
+            queryContains: "market=US", "fields=name,id", "additional_types=episode,track")
+    }
+
+    @Test(arguments: [nil, "US"])
+    func getIncludesMarketParameter(market: String?) async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistData = try TestDataLoader.load("playlist_full.json")
+        await http.addMockResponse(data: playlistData, statusCode: 200)
+
+        _ = try await client.playlists.get("playlist123", market: market)
+
+        expectMarketParameter(await http.firstRequest, market: market)
+    }
+
+    @Test
+    func itemsBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+
+        let page = try await client.playlists.items(
+            "playlist123", market: "US", fields: "items", limit: 10, offset: 5,
+            additionalTypes: [.episode])
+
+        #expect(page.items.count > 0)
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "GET",
+            queryContains: "limit=10", "offset=5", "market=US", "fields=items",
+            "additional_types=episode")
+    }
+
+    @Test
+    func itemsUsesDefaultPagination() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+
+        _ = try await client.playlists.items("playlist123")
+
+        expectPaginationDefaults(await http.firstRequest)
+    }
+
+    @Test
+    func itemsThrowsErrorWhenLimitOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.playlists.items("id", limit: limit)
+        }
+    }
+
+    @Test
+    func userPlaylistsBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistsData = try TestDataLoader.load("playlists_user.json")
+        await http.addMockResponse(data: playlistsData, statusCode: 200)
+
+        let page = try await client.playlists.userPlaylists(
+            userID: "user123", limit: 10, offset: 5)
+
+        #expect(page.items.count > 0)
+        expectRequest(
+            await http.firstRequest, path: "/v1/users/user123/playlists", method: "GET",
+            queryContains: "limit=10", "offset=5")
+    }
+
+    @Test
+    func userPlaylistsUsesDefaultPagination() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistsData = try TestDataLoader.load("playlists_user.json")
+        await http.addMockResponse(data: playlistsData, statusCode: 200)
+
+        _ = try await client.playlists.userPlaylists(userID: "user123")
+
+        expectPaginationDefaults(await http.firstRequest)
+    }
+
+    @Test
+    func userPlaylistsThrowsErrorWhenLimitOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.playlists.userPlaylists(userID: "user123", limit: limit)
+        }
+    }
+
+    @Test
+    func coverImageBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let imagesData = try TestDataLoader.load("playlist_images.json")
+        await http.addMockResponse(data: imagesData, statusCode: 200)
+
+        let images = try await client.playlists.coverImage(id: "playlist123")
+
+        #expect(images.count > 0)
+        expectRequest(await http.firstRequest, path: "/v1/playlists/playlist123/images", method: "GET")
+    }
+
+    // MARK: - User Access Tests
+
+    @Test
+    func myPlaylistsBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistsData = try TestDataLoader.load("playlists_user.json")
+        await http.addMockResponse(data: playlistsData, statusCode: 200)
+
+        let page = try await client.playlists.myPlaylists(limit: 10, offset: 5)
+
+        #expect(page.items.count > 0)
+        expectRequest(
+            await http.firstRequest, path: "/v1/me/playlists", method: "GET",
+            queryContains: "limit=10", "offset=5")
+    }
+
+    @Test
+    func myPlaylistsUsesDefaultPagination() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistsData = try TestDataLoader.load("playlists_user.json")
+        await http.addMockResponse(data: playlistsData, statusCode: 200)
+
+        _ = try await client.playlists.myPlaylists()
+
+        expectPaginationDefaults(await http.firstRequest)
+    }
+
+    @Test
+    func myPlaylistsThrowsErrorWhenLimitOutOfBounds() async throws {
+        let (client, _) = makeUserAuthClient()
+        await expectLimitErrors { limit in
+            _ = try await client.playlists.myPlaylists(limit: limit)
+        }
+    }
+
+    @Test
+    func createBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistData = try TestDataLoader.load("playlist_full.json")
+        await http.addMockResponse(data: playlistData, statusCode: 201)
+
+        let playlist = try await client.playlists.create(
+            for: "user123", name: "My Playlist", isPublic: true)
+
+        #expect(playlist.name == "Test Playlist")
+        expectRequest(
+            await http.firstRequest, path: "/v1/users/user123/playlists", method: "POST")
+    }
+
+    @Test
+    func changeDetailsBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 200)
+
+        try await client.playlists.changeDetails(
+            id: "playlist123", name: "New Name", isPublic: false)
+
+        expectRequest(await http.firstRequest, path: "/v1/playlists/playlist123", method: "PUT")
+    }
+
+    @Test
+    func addBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let snapshotData = """
+            {"snapshot_id": "snap123"}
+            """.data(using: .utf8)!
+        await http.addMockResponse(data: snapshotData, statusCode: 201)
+
+        let snapshotId = try await client.playlists.add(
+            to: "playlist123", uris: ["spotify:track:track1", "spotify:track:track2"])
+
+        #expect(snapshotId == "snap123")
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "POST")
+    }
+
+    @Test
+    func removeBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let snapshotData = """
+            {"snapshot_id": "snap456"}
+            """.data(using: .utf8)!
+        await http.addMockResponse(data: snapshotData, statusCode: 200)
+
+        let snapshotId = try await client.playlists.remove(
+            from: "playlist123", uris: ["spotify:track:track1"])
+
+        #expect(snapshotId == "snap456")
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "DELETE")
+    }
+
+    @Test
+    func reorderBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let snapshotData = """
+            {"snapshot_id": "snap789"}
+            """.data(using: .utf8)!
+        await http.addMockResponse(data: snapshotData, statusCode: 200)
+
+        let snapshotId = try await client.playlists.reorder(
+            id: "playlist123", rangeStart: 0, insertBefore: 5, rangeLength: 2)
+
+        #expect(snapshotId == "snap789")
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "PUT")
+    }
+
+    @Test
+    func replaceBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 201)
+
+        try await client.playlists.replace(
+            itemsIn: "playlist123", with: ["spotify:track:track1", "spotify:track:track2"])
+
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "PUT",
+            queryContains: "uris=")
+    }
+
+    @Test
+    func followBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 200)
+
+        try await client.playlists.follow("playlist123", isPublic: true)
+
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/followers", method: "PUT")
+    }
+
+    @Test
+    func unfollowBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 200)
+
+        try await client.playlists.unfollow("playlist123")
+
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/followers", method: "DELETE")
+    }
+
+    @Test
+    func uploadCoverImageBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 202)
+
+        let jpegData = Data([0xFF, 0xD8, 0xFF, 0xE0])
+        try await client.playlists.uploadCoverImage(for: "playlist123", jpegData: jpegData)
+
+        let request = await http.firstRequest
+        #expect(request?.url?.path() == "/v1/playlists/playlist123/images")
+        #expect(request?.httpMethod == "PUT")
+        #expect(request?.value(forHTTPHeaderField: "Content-Type") == "image/jpeg")
+    }
+
+    @Test
+    func uploadCoverImageThrowsErrorOnFailure() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(statusCode: 400)
+
+        let jpegData = Data([0xFF, 0xD8, 0xFF, 0xE0])
+        
+        do {
+            try await client.playlists.uploadCoverImage(for: "playlist123", jpegData: jpegData)
+            Issue.record("Expected error to be thrown")
+        } catch let error as SpotifyAuthError {
+            if case .httpError(let statusCode, _) = error {
+                #expect(statusCode == 400)
+            } else {
+                Issue.record("Expected httpError, got \(error)")
+            }
+        }
+    }
+
+    @Test
+    func removeByPositionsBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let snapshotData = """
+            {"snapshot_id": "snap999"}
+            """.data(using: .utf8)!
+        await http.addMockResponse(data: snapshotData, statusCode: 200)
+
+        let snapshotId = try await client.playlists.remove(
+            from: "playlist123", positions: [0, 2, 5], snapshotId: "snap123")
+
+        #expect(snapshotId == "snap999")
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "DELETE")
+    }
+
+    @Test
+    func addWithPositionBuildsCorrectRequest() async throws {
+        let (client, http) = makeUserAuthClient()
+        let snapshotData = """
+            {"snapshot_id": "snap555"}
+            """.data(using: .utf8)!
+        await http.addMockResponse(data: snapshotData, statusCode: 201)
+
+        let snapshotId = try await client.playlists.add(
+            to: "playlist123", uris: ["spotify:track:track1"], position: 5)
+
+        #expect(snapshotId == "snap555")
+        expectRequest(
+            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "POST")
+    }
+
+    @Test
+    func addThrowsErrorWhenURILimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        let uris = (1...101).map { "spotify:track:track\($0)" }
+
+        await expectInvalidRequest(reasonContains: "Maximum of 100") {
+            _ = try await client.playlists.add(to: "playlist123", uris: uris)
+        }
+    }
+
+    @Test
+    func removeByURIsThrowsErrorWhenURILimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        let uris = (1...101).map { "spotify:track:track\($0)" }
+
+        await expectInvalidRequest(reasonContains: "Maximum of 100") {
+            _ = try await client.playlists.remove(from: "playlist123", uris: uris)
+        }
+    }
+
+    @Test
+    func removeByPositionsThrowsErrorWhenPositionLimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        let positions = Array(0...100)
+
+        await expectInvalidRequest(reasonContains: "Maximum of 100") {
+            _ = try await client.playlists.remove(from: "playlist123", positions: positions)
+        }
+    }
+
+    @Test
+    func replaceThrowsErrorWhenURILimitExceeded() async throws {
+        let (client, _) = makeUserAuthClient()
+        let uris = (1...101).map { "spotify:track:track\($0)" }
+
+        await expectInvalidRequest(reasonContains: "Maximum of 100") {
+            try await client.playlists.replace(itemsIn: "playlist123", with: uris)
+        }
+    }
+}

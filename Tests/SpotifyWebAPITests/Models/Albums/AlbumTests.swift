@@ -146,7 +146,7 @@ extension Album {
         externalUrls: SpotifyExternalUrls(
             spotify: URL(string: "https://open.spotify.com/artist/0TnOYISbd1XYRBk9myaseg")
         ),
-        href: URL(string: "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg"),
+        href: URL(string: "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg")!,
         id: "0TnOYISbd1XYRBk9myaseg",
         name: "Pitbull",
         type: .artist,
