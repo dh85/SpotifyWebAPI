@@ -181,49 +181,7 @@ struct EpisodeServiceTests {
 
     // MARK: - Helper Methods
 
-    private func expectRequest(_ request: URLRequest?, path: String, method: String, queryContains: String...) {
-        #expect(request?.url?.path() == path)
-        #expect(request?.httpMethod == method)
-        for query in queryContains {
-            #expect(request?.url?.query()?.contains(query) == true)
-        }
-    }
-
-    private func expectMarketParameter(_ request: URLRequest?, market: String?) {
-        if let market {
-            #expect(request?.url?.query()?.contains("market=\(market)") == true)
-        } else {
-            #expect(request?.url?.query()?.contains("market=") == false)
-        }
-    }
-
-    private func expectPaginationDefaults(_ request: URLRequest?) {
-        #expect(request?.url?.query()?.contains("limit=20") == true)
-        #expect(request?.url?.query()?.contains("offset=0") == true)
-    }
-
-    private func expectIDsInBody(_ request: URLRequest?, path: String, method: String, expectedIDs: Set<String>) {
-        expectRequest(request, path: path, method: method)
-
-        guard let bodyData = request?.httpBody,
-            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
-        else {
-            Issue.record("Failed to decode HTTP body or body was nil")
-            return
-        }
-        #expect(body.ids == expectedIDs)
-    }
-
     private func expectIDLimitError(operation: @escaping () async throws -> Void) async {
         await expectInvalidRequest(reasonContains: "Maximum of 50", operation: operation)
-    }
-
-    private func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
-        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 51.") {
-            try await operation(51)
-        }
-        await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 0.") {
-            try await operation(0)
-        }
     }
 }

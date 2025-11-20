@@ -3,6 +3,10 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 // MARK: - Test Data Loader
 
 /// A helper to load mock JSON data from files in the test bundle.
@@ -122,6 +126,61 @@ func makeSourceLocation(
         line: Int(line),
         column: Int(column)
     )
+}
+
+// MARK: - Request expectation helpers
+
+/// Assert that a request matches expected path, method, and query parameters.
+func expectRequest(
+    _ request: URLRequest?, path: String, method: String, queryContains: String...
+) {
+    #expect(request?.url?.path() == path)
+    #expect(request?.httpMethod == method)
+    for query in queryContains {
+        #expect(request?.url?.query()?.contains(query) == true)
+    }
+}
+
+/// Assert that a request has or doesn't have a market parameter.
+func expectMarketParameter(_ request: URLRequest?, market: String?) {
+    if let market {
+        #expect(request?.url?.query()?.contains("market=\(market)") == true)
+    } else {
+        #expect(request?.url?.query()?.contains("market=") == false)
+    }
+}
+
+/// Assert that a request uses default pagination values.
+func expectPaginationDefaults(_ request: URLRequest?) {
+    #expect(request?.url?.query()?.contains("limit=20") == true)
+    #expect(request?.url?.query()?.contains("offset=0") == true)
+}
+
+/// Assert that a request body contains expected IDs.
+func expectIDsInBody(
+    _ request: URLRequest?, path: String, method: String, expectedIDs: Set<String>
+) {
+    expectRequest(request, path: path, method: method)
+    guard let bodyData = request?.httpBody,
+          let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
+    else {
+        Issue.record("Failed to decode HTTP body or body was nil")
+        return
+    }
+    #expect(body.ids == expectedIDs)
+}
+
+// MARK: - Common test expectation helpers
+
+/// Assert that an operation throws limit errors for out-of-bounds values.
+@MainActor
+func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
+    await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 51.") {
+        try await operation(51)
+    }
+    await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 0.") {
+        try await operation(0)
+    }
 }
 
 // MARK: - invalidRequest expectation helpers
