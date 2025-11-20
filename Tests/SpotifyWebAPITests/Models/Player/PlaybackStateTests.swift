@@ -36,7 +36,7 @@ import Testing
             return
         }
         #expect(track.name == "Test Track")
-        #expect(track.artists?.first?.name == "Test Artist")
+        #expect(track.artists.first?.name == "Test Artist")
     }
 
     @Test

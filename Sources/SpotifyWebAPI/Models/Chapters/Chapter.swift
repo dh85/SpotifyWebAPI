@@ -44,12 +44,4 @@ public struct Chapter: Codable, Sendable, Equatable {
     public let restrictions: Restriction?
     /// The audiobook this chapter belongs to.
     public let audiobook: Audiobook
-
-    @available(
-        *,
-        deprecated,
-        message:
-            "Deprecated by Spotify. Spotify Audio preview clips can not be a standalone service."
-    )
-    public let audioPreviewUrl: URL?
 }

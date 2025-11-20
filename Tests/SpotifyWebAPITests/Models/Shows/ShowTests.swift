@@ -64,21 +64,24 @@ extension Show {
             href: URL(string: "https://api.spotify.com/v1/shows/showid/episodes")!,
             items: [
                 SimplifiedEpisode(
-                    id: "ep1",
-                    name: "Episode 1",
                     description: "Episode description",
                     htmlDescription: "<p>Episode description</p>",
                     durationMs: 1800000,
                     explicit: false,
                     externalUrls: SpotifyExternalUrls(spotify: URL(string: "https://open.spotify.com/episode/ep1")),
                     href: URL(string: "https://api.spotify.com/v1/episodes/ep1")!,
-                    uri: "spotify:episode:ep1",
+                    id: "ep1",
                     images: [],
-                    previewUrl: nil,
-                    releaseDate: "2023-01-01",
-                    releaseDatePrecision: "day",
+                    isExternallyHosted: false,
+                    isPlayable: true,
                     languages: ["en"],
-                    resumePoint: nil
+                    name: "Episode 1",
+                    releaseDate: "2023-01-01",
+                    releaseDatePrecision: .day,
+                    resumePoint: nil,
+                    type: .episode,
+                    uri: "spotify:episode:ep1",
+                    restrictions: nil
                 )
             ],
             limit: 20,

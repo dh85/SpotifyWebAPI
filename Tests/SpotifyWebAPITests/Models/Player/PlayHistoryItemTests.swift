@@ -17,7 +17,7 @@ import Testing
 
         // Assert - Track
         #expect(item.track.name == "History Track")
-        #expect(item.track.artists?.first?.name == "History Artist")
+        #expect(item.track.artists.first?.name == "History Artist")
 
         // Assert - Context
         #expect(item.context?.type == .playlist)
@@ -41,6 +41,12 @@ import Testing
                     "explicit": false,
                     "uri": "u",
                     "href": "h",
+                    "type": "track",
+                    "disc_number": 1,
+                    "track_number": 1,
+                    "popularity": 50,
+                    "is_local": false,
+                    "external_ids": {"isrc": "US123"},
                     "external_urls": {},
                     "artists": [],
                     "album": { 

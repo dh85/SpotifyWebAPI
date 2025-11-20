@@ -23,6 +23,14 @@
         "explicit": false,
         "href": "https://api.spotify.com/v1/tracks/track123",
         "uri": "spotify:track:track123",
+        "type": "track",
+        "disc_number": 1,
+        "track_number": 1,
+        "popularity": 50,
+        "is_local": false,
+        "external_ids": {
+            "isrc": "US123"
+        },
         "external_urls": {
             "spotify": "https://open.spotify.com/track/track123"
         },
@@ -30,6 +38,7 @@
             {
                 "id": "artist123",
                 "name": "Mock Artist",
+                "type": "artist",
                 "href": "https://api.spotify.com/v1/artists/artist123",
                 "uri": "spotify:artist:artist123",
                 "external_urls": {

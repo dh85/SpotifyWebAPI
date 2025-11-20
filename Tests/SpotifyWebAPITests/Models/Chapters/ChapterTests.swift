@@ -89,8 +89,7 @@ extension Chapter {
             uri: "spotify:audiobook:audiobookid",
             totalChapters: 10,
             chapters: nil
-        ),
-        audioPreviewUrl: nil
+        )
     )
 
     fileprivate static let minimalExample = Chapter(
@@ -134,8 +133,7 @@ extension Chapter {
             uri: "auri",
             totalChapters: 1,
             chapters: nil
-        ),
-        audioPreviewUrl: nil
+        )
     )
 
     fileprivate static let minimalJSON = """

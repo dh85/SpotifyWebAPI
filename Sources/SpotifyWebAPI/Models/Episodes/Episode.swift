@@ -42,19 +42,4 @@ public struct Episode: Codable, Sendable, Equatable {
     public let restrictions: Restriction?
     /// The show this episode belongs to.
     public let show: SimplifiedShow
-
-    @available(
-        *,
-        deprecated,
-        message:
-            "Deprecated by Spotify. Spotify Audio preview clips can not be a standalone service."
-    )
-    public let audioPreviewUrl: URL?
-
-    @available(
-        *,
-        deprecated,
-        message: "Deprecated by Spotify."
-    )
-    public let language: String?
 }

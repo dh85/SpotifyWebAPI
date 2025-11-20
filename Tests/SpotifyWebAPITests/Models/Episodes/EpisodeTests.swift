@@ -80,9 +80,7 @@ extension Episode {
             type: .show,
             uri: "spotify:show:showid",
             totalEpisodes: 10
-        ),
-        audioPreviewUrl: nil,
-        language: nil
+        )
     )
 
     fileprivate static let minimalExample = Episode(
@@ -122,9 +120,7 @@ extension Episode {
             type: .show,
             uri: "suri",
             totalEpisodes: 1
-        ),
-        audioPreviewUrl: nil,
-        language: nil
+        )
     )
 
     fileprivate static let minimalJSON = """
