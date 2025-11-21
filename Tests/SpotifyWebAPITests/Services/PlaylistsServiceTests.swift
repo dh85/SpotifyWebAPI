@@ -407,4 +407,256 @@ struct PlaylistsServiceTests {
             try await client.playlists.replace(itemsIn: "playlist123", with: uris)
         }
     }
+
+    // MARK: - Convenience Method Tests
+
+    @Test
+    func allMyPlaylistsFetchesAllPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        
+        // Page 1: 2 playlists, has next
+        let page1 = makePage(
+            items: ["playlist1", "playlist2"],
+            limit: 2,
+            offset: 0,
+            total: 5,
+            hasNext: true
+        )
+        // Page 2: 2 playlists, has next
+        let page2 = makePage(
+            items: ["playlist3", "playlist4"],
+            limit: 2,
+            offset: 2,
+            total: 5,
+            hasNext: true
+        )
+        // Page 3: 1 playlist, no next
+        let page3 = makePage(
+            items: ["playlist5"],
+            limit: 2,
+            offset: 4,
+            total: 5,
+            hasNext: false
+        )
+        
+        await http.addMockResponse(data: page1, statusCode: 200)
+        await http.addMockResponse(data: page2, statusCode: 200)
+        await http.addMockResponse(data: page3, statusCode: 200)
+        
+        let allPlaylists = try await client.playlists.allMyPlaylists()
+        
+        #expect(allPlaylists.count == 5)
+        #expect(allPlaylists.map(\.id) == ["playlist1", "playlist2", "playlist3", "playlist4", "playlist5"])
+    }
+
+    @Test
+    func allMyPlaylistsRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        
+        let page1 = makePage(
+            items: ["playlist1", "playlist2"],
+            limit: 2,
+            offset: 0,
+            total: 10,
+            hasNext: true
+        )
+        let page2 = makePage(
+            items: ["playlist3", "playlist4"],
+            limit: 2,
+            offset: 2,
+            total: 10,
+            hasNext: true
+        )
+        
+        await http.addMockResponse(data: page1, statusCode: 200)
+        await http.addMockResponse(data: page2, statusCode: 200)
+        
+        let playlists = try await client.playlists.allMyPlaylists(maxItems: 3)
+        
+        #expect(playlists.count == 3)
+        #expect(playlists.map(\.id) == ["playlist1", "playlist2", "playlist3"])
+    }
+
+    @Test
+    func allMyPlaylistsHandlesEmptyResult() async throws {
+        let (client, http) = makeUserAuthClient()
+        
+        let emptyPage = makePage(
+            items: [] as [String],
+            limit: 50,
+            offset: 0,
+            total: 0,
+            hasNext: false
+        )
+        
+        await http.addMockResponse(data: emptyPage, statusCode: 200)
+        
+        let playlists = try await client.playlists.allMyPlaylists()
+        
+        #expect(playlists.isEmpty)
+    }
+
+    @Test
+    func allMyPlaylistsUsesDefaultMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let playlistsData = try TestDataLoader.load("playlists_user.json")
+        
+        // Mock enough responses to exceed default limit
+        for _ in 0..<25 {
+            await http.addMockResponse(data: playlistsData, statusCode: 200)
+        }
+        
+        let playlists = try await client.playlists.allMyPlaylists()
+        
+        // Should stop at default limit of 1000, not fetch all
+        #expect(playlists.count <= 1000)
+    }
+
+    @Test
+    func allMyPlaylistsAllowsUnlimitedWithNil() async throws {
+        let (client, http) = makeUserAuthClient()
+        
+        let page = makePage(
+            items: ["p1", "p2"],
+            limit: 2,
+            offset: 0,
+            total: 2,
+            hasNext: false
+        )
+        
+        await http.addMockResponse(data: page, statusCode: 200)
+        
+        let playlists = try await client.playlists.allMyPlaylists(maxItems: nil)
+        
+        #expect(playlists.count == 2)
+    }
+
+    @Test
+    func allItemsFetchesAllPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        // Mock 3 pages of results
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        let allItems = try await client.playlists.allItems("playlist123")
+        
+        #expect(allItems.count > 0)
+    }
+
+    @Test
+    func allItemsRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        let items = try await client.playlists.allItems("playlist123", maxItems: 1)
+        
+        #expect(items.count == 1)
+    }
+
+    @Test
+    func allItemsPassesParametersCorrectly() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        _ = try await client.playlists.allItems(
+            "playlist123",
+            market: "US",
+            fields: "items(track(name))",
+            additionalTypes: [.episode]
+        )
+        
+        let request = await http.firstRequest
+        #expect(request?.url?.query()?.contains("market=US") == true)
+        #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
+        #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+    }
+
+    @Test
+    func allItemsUsesDefaultMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        // Mock enough responses to exceed default limit
+        for _ in 0..<150 {
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+        }
+        
+        let items = try await client.playlists.allItems("playlist123")
+        
+        // Should stop at default limit of 5000, not fetch all
+        #expect(items.count <= 5000)
+    }
+
+    @Test
+    func allItemsAllowsUnlimitedWithNil() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        let items = try await client.playlists.allItems("playlist123", maxItems: nil)
+        
+        #expect(items.count > 0)
+    }
+
+    // MARK: - Helper Methods
+
+    private func makePage(
+        items: [String],
+        limit: Int,
+        offset: Int,
+        total: Int,
+        hasNext: Bool
+    ) -> Data {
+        let itemsJSON = items.map { id in
+            """
+            {
+                "collaborative": false,
+                "description": "Test playlist",
+                "external_urls": {"spotify": "https://open.spotify.com/playlist/\(id)"},
+                "href": "https://api.spotify.com/v1/playlists/\(id)",
+                "id": "\(id)",
+                "images": [],
+                "name": "Playlist \(id)",
+                "owner": {
+                    "id": "user123",
+                    "display_name": "Test User",
+                    "href": "https://api.spotify.com/v1/users/user123",
+                    "type": "user",
+                    "uri": "spotify:user:user123",
+                    "external_urls": {"spotify": "https://open.spotify.com/user/user123"}
+                },
+                "public": true,
+                "snapshot_id": "snapshot",
+                "tracks": {"href": "https://api.spotify.com/v1/playlists/\(id)/tracks", "total": 10},
+                "type": "playlist",
+                "uri": "spotify:playlist:\(id)"
+            }
+            """
+        }.joined(separator: ",")
+        
+        let nextURL = hasNext ? "\"https://api.spotify.com/v1/me/playlists?offset=\(offset + limit)&limit=\(limit)\"" : "null"
+        
+        let json = """
+        {
+            "href": "https://api.spotify.com/v1/me/playlists?offset=\(offset)&limit=\(limit)",
+            "items": [\(itemsJSON)],
+            "limit": \(limit),
+            "next": \(nextURL),
+            "offset": \(offset),
+            "previous": null,
+            "total": \(total)
+        }
+        """
+        
+        return json.data(using: .utf8)!
+    }
 }

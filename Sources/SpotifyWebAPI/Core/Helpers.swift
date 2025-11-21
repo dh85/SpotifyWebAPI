@@ -1,5 +1,15 @@
 import Foundation
 
+// MARK: - Query Helpers
+
+/// Build pagination query items.
+func makePaginationQuery(limit: Int, offset: Int) -> [URLQueryItem] {
+    [
+        .init(name: "limit", value: String(limit)),
+        .init(name: "offset", value: String(offset))
+    ]
+}
+
 /// Build a single `ids` query item from a set of IDs, sorted for determinism.
 func makeIDsQueryItem(from ids: Set<String>) -> URLQueryItem {
     return .init(name: "ids", value: ids.joined(separator: ","))
@@ -16,6 +26,8 @@ func makePagedMarketQuery(limit: Int, offset: Int, market: String?) -> [URLQuery
     makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
 }
 
+// MARK: - Date Helpers
+
 /// Convert Date to Unix timestamp in milliseconds.
 func dateToUnixMilliseconds(_ date: Date) -> Int64 {
     Int64(date.timeIntervalSince1970 * 1000)
@@ -25,6 +37,8 @@ func dateToUnixMilliseconds(_ date: Date) -> Int64 {
 func dateFromUnixMilliseconds(_ milliseconds: Int64) -> Date {
     Date(timeIntervalSince1970: TimeInterval(milliseconds) / 1000.0)
 }
+
+// MARK: - Library Operation Helpers
 
 /// Perform a library operation (save/remove) for a given endpoint.
 func performLibraryOperation<Capability: Sendable>(
