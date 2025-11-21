@@ -69,6 +69,7 @@ public actor SpotifyClient<Capability: Sendable> {
     var interceptors: [RequestInterceptor] = []
     private var tokenExpirationCallback: TokenExpirationCallback?
     let networkRecovery: NetworkRecoveryHandler
+    var ongoingRequests: [String: Task<(any Sendable), Error>] = [:]
 
     init(
         backend: TokenGrantAuthenticator,
@@ -79,6 +80,10 @@ public actor SpotifyClient<Capability: Sendable> {
         self.httpClient = httpClient
         self.configuration = configuration
         self.networkRecovery = NetworkRecoveryHandler(configuration: configuration.networkRecovery)
+
+        Task {
+            await DebugLogger.shared.configure(configuration.debug)
+        }
     }
 
     /// Add a request interceptor.
@@ -99,7 +104,7 @@ public actor SpotifyClient<Capability: Sendable> {
     public func removeAllInterceptors() {
         interceptors.removeAll()
     }
-    
+
     /// Set a callback to be notified of token expiration.
     ///
     /// The callback receives the number of seconds until expiration.
@@ -124,13 +129,13 @@ public actor SpotifyClient<Capability: Sendable> {
         let tokens = try await backend.accessToken(
             invalidatingPrevious: invalidatingPrevious
         )
-        
+
         // Notify callback of expiration
         if let callback = tokenExpirationCallback {
             let expiresIn = tokens.expiresAt.timeIntervalSinceNow
             callback(expiresIn)
         }
-        
+
         return tokens.accessToken
     }
 }

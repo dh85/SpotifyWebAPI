@@ -14,6 +14,9 @@ public struct SpotifyClientConfiguration: Sendable {
     /// Custom HTTP headers to include in all requests.
     public let customHeaders: [String: String]
     
+    /// Debug configuration for logging and monitoring.
+    public let debug: DebugConfiguration
+    
     /// Creates a new configuration.
     ///
     /// - Parameters:
@@ -25,12 +28,14 @@ public struct SpotifyClientConfiguration: Sendable {
         requestTimeout: TimeInterval = 30,
         maxRateLimitRetries: Int = 1,
         networkRecovery: NetworkRecoveryConfiguration = .default,
-        customHeaders: [String: String] = [:]
+        customHeaders: [String: String] = [:],
+        debug: DebugConfiguration = .disabled
     ) {
         self.requestTimeout = requestTimeout
         self.maxRateLimitRetries = maxRateLimitRetries
         self.networkRecovery = networkRecovery
         self.customHeaders = customHeaders
+        self.debug = debug
     }
     
     /// Default configuration.
