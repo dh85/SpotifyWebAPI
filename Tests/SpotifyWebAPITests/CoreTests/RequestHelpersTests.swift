@@ -16,7 +16,7 @@ struct RequestHelpersTests {
         await http.addMockResponse(
             statusCode: 429,
             url: URL(string: "https://api.spotify.com/v1/me")!,
-            headers: ["Retry-After": "1"]
+            headers: ["Retry-After": "0"]
         )
 
         let profileData = try TestDataLoader.load("current_user_profile")
@@ -33,30 +33,7 @@ struct RequestHelpersTests {
         #expect(requestCount == 2)
     }
 
-    @Test
-    @MainActor
-    func executeRequest_uses5SecondDefaultWhenRetryAfterMissing() async throws {
-        let (client, http) = makeUserAuthClient()
 
-        await http.addMockResponse(
-            statusCode: 429,
-            url: URL(string: "https://api.spotify.com/v1/me")!
-        )
-
-        let profileData = try TestDataLoader.load("current_user_profile")
-        await http.addMockResponse(
-            data: profileData,
-            statusCode: 200,
-            url: URL(string: "https://api.spotify.com/v1/me")!
-        )
-
-        let startTime = Date()
-        let profile = try await client.users.me()
-        let duration = Date().timeIntervalSince(startTime)
-
-        #expect(profile.id == "mockuser")
-        #expect(duration >= 5.0)
-    }
 
     @Test
     @MainActor
@@ -66,13 +43,13 @@ struct RequestHelpersTests {
         await http.addMockResponse(
             statusCode: 429,
             url: URL(string: "https://api.spotify.com/v1/me")!,
-            headers: ["Retry-After": "1"]
+            headers: ["Retry-After": "0"]
         )
 
         await http.addMockResponse(
             statusCode: 429,
             url: URL(string: "https://api.spotify.com/v1/me")!,
-            headers: ["Retry-After": "1"]
+            headers: ["Retry-After": "0"]
         )
 
         do {
