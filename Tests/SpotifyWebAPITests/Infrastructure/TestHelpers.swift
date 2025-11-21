@@ -7,7 +7,7 @@ import Testing
     import FoundationNetworking
 #endif
 
-// MARK: - Test Data Loader
+// MARK: - JSON Loading
 
 /// A helper to load mock JSON data from files in the test bundle.
 enum TestDataLoader {
@@ -41,9 +41,8 @@ enum TestDataLoader {
     }
 }
 
-// MARK: - Mock Model Objects
+// MARK: - Mock Models
 
-// This is a great place to move your mock model extensions
 extension SpotifyTokens {
     static let mockValid = SpotifyTokens(
         accessToken: "VALID_ACCESS_TOKEN",
@@ -77,7 +76,7 @@ func encodeModel<T: Encodable>(_ model: T) throws -> Data {
     return try encoder.encode(model)
 }
 
-// MARK: - Client helpers
+// MARK: - Test Client Factories
 
 func extractIDs(from url: URL?) -> Set<String> {
     guard
@@ -112,7 +111,7 @@ func makeIDs(prefix: String = "id_", count: Int) -> Set<String> {
     Set((1...count).map { "\(prefix)\($0)" })
 }
 
-// MARK: - Source location helpers
+// MARK: - Testing Framework Helpers
 
 func makeSourceLocation(
     fileID: StaticString = #fileID,
@@ -128,7 +127,7 @@ func makeSourceLocation(
     )
 }
 
-// MARK: - Request expectation helpers
+// MARK: - Request Assertions
 
 /// Assert that a request matches expected path, method, and query parameters.
 func expectRequest(
@@ -170,7 +169,7 @@ func expectIDsInBody(
     #expect(body.ids == expectedIDs)
 }
 
-// MARK: - Common test expectation helpers
+// MARK: - Validation Assertions
 
 /// Assert that an operation throws limit errors for out-of-bounds values.
 @MainActor
@@ -183,7 +182,7 @@ func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
     }
 }
 
-// MARK: - invalidRequest expectation helpers
+// MARK: - Error Assertions
 
 /// Assert that an async operation throws `SpotifyClientError.invalidRequest`
 /// with a reason **equal** to a string.

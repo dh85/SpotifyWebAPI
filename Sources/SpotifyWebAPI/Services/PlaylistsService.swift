@@ -146,6 +146,73 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
         return try await client.perform(request)
     }
 
+    /// Get all tracks or episodes in a playlist.
+    ///
+    /// Automatically fetches all pages.
+    ///
+    /// - Warning: Fetches up to 5,000 items by default. Use `maxItems: nil` to fetch all (may be slow for large playlists).
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the playlist.
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    ///   - fields: A comma-separated list of fields to filter the response.
+    ///   - additionalTypes: A set of item types to include (track, episode).
+    ///   - maxItems: Limit on total items to fetch. Default: 5,000. Use `nil` for unlimited.
+    /// - Returns: Array of all `PlaylistTrackItem` objects.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlists-tracks)
+    public func allItems(
+        _ id: String,
+        market: String? = nil,
+        fields: String? = nil,
+        additionalTypes: Set<AdditionalItemType>? = nil,
+        maxItems: Int? = 5000
+    ) async throws -> [PlaylistTrackItem] {
+        try await client.collectAllPages(pageSize: 50, maxItems: maxItems) { limit, offset in
+            try await self.items(
+                id, market: market, fields: fields, limit: limit, offset: offset,
+                additionalTypes: additionalTypes)
+        }
+    }
+
+    /// Stream tracks or episodes from a playlist.
+    ///
+    /// Returns an `AsyncStream` that yields items one at a time as pages are fetched.
+    /// More memory efficient than `allItems` for large playlists.
+    ///
+    /// ## Example
+    /// ```swift
+    /// for try await item in client.playlists.streamItems("playlist_id") {
+    ///     print("Track: \(item.track?.name ?? "Unknown")")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the playlist.
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    ///   - fields: A comma-separated list of fields to filter the response.
+    ///   - additionalTypes: A set of item types to include (track, episode).
+    ///   - maxItems: Optional limit on total items to stream.
+    /// - Returns: AsyncStream that yields `PlaylistTrackItem` objects.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlists-tracks)
+    public func streamItems(
+        _ id: String,
+        market: String? = nil,
+        fields: String? = nil,
+        additionalTypes: Set<AdditionalItemType>? = nil,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<PlaylistTrackItem, Error> {
+        let client = self.client
+        return client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+            let service = PlaylistsService(client: client)
+            return try await service.items(
+                id, market: market, fields: fields, limit: limit, offset: offset,
+                additionalTypes: additionalTypes)
+        }
+    }
+
     /// Get a list of the playlists owned or followed by a specific user.
     /// Corresponds to: `GET /v1/users/{user_id}/playlists`
     ///
@@ -202,6 +269,23 @@ extension PlaylistsService where Capability == UserAuthCapability {
         let query = makePaginationQuery(limit: limit, offset: offset)
         let request = SpotifyRequest<Page<SimplifiedPlaylist>>.get("/me/playlists", query: query)
         return try await client.perform(request)
+    }
+
+    /// Get all playlists owned or followed by the current user.
+    ///
+    /// Automatically fetches all pages. Requires the `playlist-read-private` scope.
+    ///
+    /// - Warning: Fetches up to 1,000 playlists by default. Use `maxItems: nil` to fetch all (may be slow).
+    ///
+    /// - Parameter maxItems: Limit on total playlists to fetch. Default: 1,000. Use `nil` for unlimited.
+    /// - Returns: Array of all `SimplifiedPlaylist` objects.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
+    public func allMyPlaylists(maxItems: Int? = 1000) async throws -> [SimplifiedPlaylist] {
+        try await client.collectAllPages(pageSize: 50, maxItems: maxItems) { limit, offset in
+            try await self.myPlaylists(limit: limit, offset: offset)
+        }
     }
 
     /// Create a new playlist for a Spotify user.

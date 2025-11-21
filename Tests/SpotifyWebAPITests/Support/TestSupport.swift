@@ -1,5 +1,3 @@
-// Tests/SpotifyWebAPITests/Support/TestSupport.swift
-
 import Foundation
 import Testing
 
@@ -9,7 +7,7 @@ import Testing
     import FoundationNetworking
 #endif
 
-// MARK: - Token store test double
+// MARK: - Mock Token Store
 
 /// In-memory token store for tests.
 actor InMemoryTokenStore: TokenStore {
@@ -32,7 +30,7 @@ actor InMemoryTokenStore: TokenStore {
     }
 }
 
-// MARK: - Simple HTTP clients
+// MARK: - Mock HTTP Clients
 
 /// Simple one-shot HTTP client that always returns the same HTTPURLResponse.
 final class SimpleMockHTTPClient: HTTPClient, @unchecked Sendable {
@@ -133,7 +131,7 @@ final class BinaryBodyMockHTTPClient: HTTPClient, @unchecked Sendable {
     }
 }
 
-// MARK: - Sequenced HTTP client (for paging tests)
+// MARK: - Sequenced HTTP Client
 
 /// HTTP client that returns a pre-defined sequence of responses, in order.
 final class SequencedMockHTTPClient: HTTPClient, @unchecked Sendable {
@@ -169,7 +167,7 @@ final class SequencedMockHTTPClient: HTTPClient, @unchecked Sendable {
     }
 }
 
-// MARK: - PKCE helpers
+// MARK: - PKCE Test Helpers
 
 struct FixedPKCEProvider: PKCEProvider {
     let pair: PKCEPair
@@ -193,7 +191,7 @@ extension DummyPKCEProvider {
     }
 }
 
-// MARK: - JSON builders
+// MARK: - JSON Builders
 
 func makeTokenJSON(
     accessToken: String,
