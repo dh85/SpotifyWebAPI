@@ -71,11 +71,19 @@ public actor SpotifyClientCredentialsAuthenticator {
             "application/x-www-form-urlencoded",
             forHTTPHeaderField: "Content-Type"
         )
+        
+        // Use Basic Authentication as per Spotify documentation
+        let credentials = "\(config.clientID):\(clientSecret)"
+        if let credentialsData = credentials.data(using: .utf8) {
+            let base64Credentials = credentialsData.base64EncodedString()
+            request.setValue(
+                "Basic \(base64Credentials)",
+                forHTTPHeaderField: "Authorization"
+            )
+        }
 
         var items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "client_credentials"),
-            URLQueryItem(name: "client_id", value: config.clientID),
-            URLQueryItem(name: "client_secret", value: clientSecret),
         ]
         if !config.scopes.isEmpty {
             items.append(

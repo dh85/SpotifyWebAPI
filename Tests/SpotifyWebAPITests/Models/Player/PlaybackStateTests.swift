@@ -4,6 +4,135 @@ import Testing
 @testable import SpotifyWebAPI
 
 @Suite struct PlaybackStateTests {
+    
+    @Test
+    func decodesPlaybackStateWithTrack() throws {
+        let data = try TestDataLoader.load("playback_state.json")
+        let state: PlaybackState = try decodeModel(from: data)
+        
+        #expect(state.isPlaying == true)
+        #expect(state.currentlyPlayingType == .track)
+        
+        if case .track(let track) = state.item {
+            #expect(track.name == "Test Track")
+        } else {
+            Issue.record("Expected track item")
+        }
+    }
+    
+    @Test
+    func decodesPlaybackStateWithEpisode() throws {
+        // Create modified JSON with episode type
+        let baseData = try TestDataLoader.load("playback_state.json")
+        var json = try JSONSerialization.jsonObject(with: baseData) as! [String: Any]
+        json["currently_playing_type"] = "episode"
+        
+        // Replace track with episode
+        let episodeData = try TestDataLoader.load("episode_full.json")
+        let episode = try JSONSerialization.jsonObject(with: episodeData)
+        json["item"] = episode
+        
+        let data = try JSONSerialization.data(withJSONObject: json)
+        let state: PlaybackState = try decodeModel(from: data)
+        
+        #expect(state.currentlyPlayingType == .episode)
+        
+        if case .episode(let episode) = state.item {
+            #expect(episode.name == "Episode 1")
+        } else {
+            Issue.record("Expected episode item")
+        }
+    }
+    
+    @Test
+    func decodesPlaybackStateWithAdTypeHasNilItem() throws {
+        let json = """
+        {
+            "device": {
+                "id": "device1",
+                "is_active": true,
+                "is_private_session": false,
+                "is_restricted": false,
+                "name": "Test Device",
+                "type": "Computer",
+                "volume_percent": 50,
+                "supports_volume": true
+            },
+            "repeat_state": "off",
+            "shuffle_state": false,
+            "context": null,
+            "timestamp": 1609459200000,
+            "progress_ms": 30000,
+            "is_playing": true,
+            "currently_playing_type": "ad",
+            "actions": {
+                "interrupting_playback": false,
+                "pausing": false,
+                "resuming": false,
+                "seeking": false,
+                "skipping_next": false,
+                "skipping_prev": false,
+                "toggling_repeat_context": false,
+                "toggling_shuffle": false,
+                "toggling_repeat_track": false,
+                "transferring_playback": false
+            },
+            "item": null
+        }
+        """
+        
+        let data = json.data(using: .utf8)!
+        let state: PlaybackState = try decodeModel(from: data)
+        
+        #expect(state.isPlaying == true)
+        #expect(state.currentlyPlayingType == .ad)
+        #expect(state.item == nil)
+    }
+    
+    @Test
+    func decodesPlaybackStateWithUnknownTypeHasNilItem() throws {
+        let json = """
+        {
+            "device": {
+                "id": "device1",
+                "is_active": true,
+                "is_private_session": false,
+                "is_restricted": false,
+                "name": "Test Device",
+                "type": "Computer",
+                "volume_percent": 50,
+                "supports_volume": true
+            },
+            "repeat_state": "off",
+            "shuffle_state": false,
+            "context": null,
+            "timestamp": 1609459200000,
+            "progress_ms": 30000,
+            "is_playing": true,
+            "currently_playing_type": "unknown",
+            "actions": {
+                "interrupting_playback": false,
+                "pausing": false,
+                "resuming": false,
+                "seeking": false,
+                "skipping_next": false,
+                "skipping_prev": false,
+                "toggling_repeat_context": false,
+                "toggling_shuffle": false,
+                "toggling_repeat_track": false,
+                "transferring_playback": false
+            },
+            "item": null
+        }
+        """
+        
+        let data = json.data(using: .utf8)!
+        let state: PlaybackState = try decodeModel(from: data)
+        
+        #expect(state.isPlaying == true)
+        #expect(state.currentlyPlayingType == .unknown)
+        #expect(state.item == nil)
+    }
 }
 
 @Suite("RepeatState Tests")
