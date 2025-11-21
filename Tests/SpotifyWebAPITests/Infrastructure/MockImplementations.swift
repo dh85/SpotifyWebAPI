@@ -43,7 +43,14 @@ actor MockHTTPClient: HTTPClient {
             throw URLError(.cannotConnectToHost)
         }
 
-        return responseQueue.removeFirst()
+        let (data, response) = responseQueue.removeFirst()
+        
+        // Check for network error simulation
+        if String(data: data, encoding: .utf8) == "NETWORK_ERROR" {
+            throw URLError(.timedOut)
+        }
+
+        return (data, response)
     }
 }
 

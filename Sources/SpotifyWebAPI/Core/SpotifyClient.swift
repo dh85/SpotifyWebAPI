@@ -68,6 +68,7 @@ public actor SpotifyClient<Capability: Sendable> {
     let configuration: SpotifyClientConfiguration
     var interceptors: [RequestInterceptor] = []
     private var tokenExpirationCallback: TokenExpirationCallback?
+    let networkRecovery: NetworkRecoveryHandler
 
     init(
         backend: TokenGrantAuthenticator,
@@ -77,6 +78,7 @@ public actor SpotifyClient<Capability: Sendable> {
         self.backend = backend
         self.httpClient = httpClient
         self.configuration = configuration
+        self.networkRecovery = NetworkRecoveryHandler(configuration: configuration.networkRecovery)
     }
 
     /// Add a request interceptor.
