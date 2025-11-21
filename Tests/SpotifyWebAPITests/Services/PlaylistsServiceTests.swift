@@ -607,6 +607,70 @@ struct PlaylistsServiceTests {
         #expect(items.count > 0)
     }
 
+    @Test
+    func streamItemsYieldsAllItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        // Mock 2 pages
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        var items: [PlaylistTrackItem] = []
+        let stream = await client.playlists.streamItems("playlist123")
+        
+        for try await item in stream {
+            items.append(item)
+        }
+        
+        #expect(items.count > 0)
+    }
+
+    @Test
+    func streamItemsRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        // Mock has 2 items, request only 1
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        var items: [PlaylistTrackItem] = []
+        let stream = await client.playlists.streamItems("playlist123", maxItems: 1)
+        
+        for try await item in stream {
+            items.append(item)
+        }
+        
+        // Should stop at maxItems
+        #expect(items.count == 1)
+    }
+
+    @Test
+    func streamItemsPassesParameters() async throws {
+        let (client, http) = makeUserAuthClient()
+        let itemsData = try TestDataLoader.load("playlist_tracks.json")
+        
+        await http.addMockResponse(data: itemsData, statusCode: 200)
+        
+        var itemCount = 0
+        let stream = await client.playlists.streamItems(
+            "playlist123",
+            market: "US",
+            fields: "items(track(name))",
+            additionalTypes: [.episode]
+        )
+        
+        for try await _ in stream {
+            itemCount += 1
+        }
+        
+        let request = await http.firstRequest
+        #expect(request?.url?.query()?.contains("market=US") == true)
+        #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
+        #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+        #expect(itemCount > 0)
+    }
+
     // MARK: - Helper Methods
 
     private func makePage(

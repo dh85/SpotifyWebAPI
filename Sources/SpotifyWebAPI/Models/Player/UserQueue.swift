@@ -1,5 +1,12 @@
+/// The user's queue of upcoming tracks and episodes.
+///
+/// Contains the currently playing item and a list of queued items.
+///
+/// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-queue)
 public struct UserQueue: Decodable, Sendable, Equatable {
+    /// The currently playing track or episode, or nil if nothing is playing.
     public let currentlyPlaying: PlayableItem?
+    /// The list of tracks and episodes in the queue.
     public let queue: [PlayableItem]
     
     enum CodingKeys: String, CodingKey {

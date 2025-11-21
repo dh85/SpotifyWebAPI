@@ -110,12 +110,20 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             "application/x-www-form-urlencoded",
             forHTTPHeaderField: "Content-Type"
         )
+        
+        // Use Basic Authentication as per Spotify documentation
+        let credentials = "\(config.clientID):\(clientSecret)"
+        if let credentialsData = credentials.data(using: .utf8) {
+            let base64Credentials = credentialsData.base64EncodedString()
+            request.setValue(
+                "Basic \(base64Credentials)",
+                forHTTPHeaderField: "Authorization"
+            )
+        }
 
         let items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "refresh_token"),
             URLQueryItem(name: "refresh_token", value: refreshToken),
-            URLQueryItem(name: "client_id", value: config.clientID),
-            URLQueryItem(name: "client_secret", value: clientSecret),
         ]
 
         request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
@@ -143,6 +151,16 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             "application/x-www-form-urlencoded",
             forHTTPHeaderField: "Content-Type"
         )
+        
+        // Use Basic Authentication as per Spotify documentation
+        let credentials = "\(config.clientID):\(clientSecret)"
+        if let credentialsData = credentials.data(using: .utf8) {
+            let base64Credentials = credentialsData.base64EncodedString()
+            request.setValue(
+                "Basic \(base64Credentials)",
+                forHTTPHeaderField: "Authorization"
+            )
+        }
 
         let items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "authorization_code"),
@@ -151,8 +169,6 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
                 name: "redirect_uri",
                 value: config.redirectURI.absoluteString
             ),
-            URLQueryItem(name: "client_id", value: config.clientID),
-            URLQueryItem(name: "client_secret", value: clientSecret),
         ]
 
         request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)

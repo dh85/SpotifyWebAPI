@@ -207,5 +207,3 @@ import Testing
         #expect(offString == "\"off\"")
     }
 }
-
-extension RepeatMode: Encodable {}
