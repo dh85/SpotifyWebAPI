@@ -21,6 +21,15 @@ extension SpotifyClient {
         _ request: URLRequest,
         retryCount: Int? = nil
     ) async throws -> (Data, URLResponse) {
+        return try await networkRecovery.executeWithRecovery {
+            try await self.performSingleRequest(request, retryCount: retryCount)
+        }
+    }
+    
+    private func performSingleRequest(
+        _ request: URLRequest,
+        retryCount: Int? = nil
+    ) async throws -> (Data, URLResponse) {
         var mutableRequest = request
 
         // Apply timeout
@@ -37,11 +46,16 @@ extension SpotifyClient {
         }
 
         let (data, response) = try await httpClient.data(for: mutableRequest)
-
-        // Check for 429
+        
+        // Check for retryable HTTP errors
         if let http = response as? HTTPURLResponse,
-            http.statusCode == 429
-        {
+           configuration.networkRecovery.retryableStatusCodes.contains(http.statusCode) {
+            let bodyString = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw SpotifyClientError.httpError(statusCode: http.statusCode, body: bodyString)
+        }
+        
+        // Check for 429 (rate limiting) - handle separately from network recovery
+        if let http = response as? HTTPURLResponse, http.statusCode == 429 {
             let remainingRetries = retryCount ?? configuration.maxRateLimitRetries
             guard remainingRetries > 0 else {
                 return (data, response)
