@@ -3,25 +3,70 @@ import Foundation
 public actor SpotifyClient<Capability: Sendable> {
     let httpClient: HTTPClient
     private let backend: TokenGrantAuthenticator
+    let configuration: SpotifyClientConfiguration
+    var interceptors: [RequestInterceptor] = []
+    private var tokenExpirationCallback: TokenExpirationCallback?
 
     init(
         backend: TokenGrantAuthenticator,
-        httpClient: HTTPClient = URLSessionHTTPClient()
+        httpClient: HTTPClient = URLSessionHTTPClient(),
+        configuration: SpotifyClientConfiguration = .default
     ) {
         self.backend = backend
         self.httpClient = httpClient
+        self.configuration = configuration
+    }
+
+    /// Add a request interceptor.
+    ///
+    /// Interceptors are called in the order they were added.
+    ///
+    /// ```swift
+    /// client.addInterceptor { request in
+    ///     print("📤 \(request.httpMethod ?? "GET") \(request.url?.path ?? "")")
+    ///     return request
+    /// }
+    /// ```
+    public func addInterceptor(_ interceptor: @escaping RequestInterceptor) {
+        interceptors.append(interceptor)
+    }
+
+    /// Remove all interceptors.
+    public func removeAllInterceptors() {
+        interceptors.removeAll()
+    }
+    
+    /// Set a callback to be notified of token expiration.
+    ///
+    /// The callback receives the number of seconds until expiration.
+    ///
+    /// ```swift
+    /// client.onTokenExpiring { expiresIn in
+    ///     if expiresIn < 300 {
+    ///         print("⚠️ Token expires in \(expiresIn) seconds")
+    ///     }
+    /// }
+    /// ```
+    public func onTokenExpiring(_ callback: @escaping TokenExpirationCallback) {
+        tokenExpirationCallback = callback
     }
 
     // MARK: - Internal auth helper
 
     /// Helper to get the string token from the backend.
     /// - Parameter invalidatingPrevious: If true, force a refresh/invalidate cache.
-    func accessToken(invalidatingPrevious: Bool = false) async throws -> String
-    {
+    func accessToken(invalidatingPrevious: Bool = false) async throws -> String {
         // Pass the flag through to the backend
         let tokens = try await backend.accessToken(
             invalidatingPrevious: invalidatingPrevious
         )
+        
+        // Notify callback of expiration
+        if let callback = tokenExpirationCallback {
+            let expiresIn = tokens.expiresAt.timeIntervalSinceNow
+            callback(expiresIn)
+        }
+        
         return tokens.accessToken
     }
 }
@@ -40,7 +85,8 @@ extension SpotifyClient where Capability == UserAuthCapability {
         showDialog: Bool = false,
         tokenStore: TokenStore = FileTokenStore(),
         httpClient: HTTPClient = URLSessionHTTPClient(),
-        pkceProvider: PKCEProvider = DefaultPKCEProvider()
+        pkceProvider: PKCEProvider = DefaultPKCEProvider(),
+        configuration: SpotifyClientConfiguration = .default
     ) -> SpotifyClient {
         let config = SpotifyAuthConfig.pkce(
             clientID: clientID,
@@ -56,7 +102,7 @@ extension SpotifyClient where Capability == UserAuthCapability {
             tokenStore: tokenStore
         )
 
-        return SpotifyClient(backend: backend, httpClient: httpClient)
+        return SpotifyClient(backend: backend, httpClient: httpClient, configuration: configuration)
     }
 
     /// Authorization Code + client secret for confidential apps.
@@ -67,7 +113,8 @@ extension SpotifyClient where Capability == UserAuthCapability {
         scopes: Set<SpotifyScope>,
         showDialog: Bool = false,
         tokenStore: TokenStore = FileTokenStore(),
-        httpClient: HTTPClient = URLSessionHTTPClient()
+        httpClient: HTTPClient = URLSessionHTTPClient(),
+        configuration: SpotifyClientConfiguration = .default
     ) -> SpotifyClient {
         let config = SpotifyAuthConfig.authorizationCode(
             clientID: clientID,
@@ -83,7 +130,7 @@ extension SpotifyClient where Capability == UserAuthCapability {
             tokenStore: tokenStore
         )
 
-        return SpotifyClient(backend: backend, httpClient: httpClient)
+        return SpotifyClient(backend: backend, httpClient: httpClient, configuration: configuration)
     }
 }
 
@@ -95,7 +142,8 @@ extension SpotifyClient where Capability == AppOnlyAuthCapability {
         clientSecret: String,
         scopes: Set<SpotifyScope> = [],
         httpClient: HTTPClient = URLSessionHTTPClient(),
-        tokenStore: TokenStore? = nil
+        tokenStore: TokenStore? = nil,
+        configuration: SpotifyClientConfiguration = .default
     ) -> SpotifyClient {
         let config = SpotifyAuthConfig.clientCredentials(
             clientID: clientID,
@@ -109,6 +157,6 @@ extension SpotifyClient where Capability == AppOnlyAuthCapability {
             tokenStore: tokenStore
         )
 
-        return SpotifyClient(backend: backend, httpClient: httpClient)
+        return SpotifyClient(backend: backend, httpClient: httpClient, configuration: configuration)
     }
 }

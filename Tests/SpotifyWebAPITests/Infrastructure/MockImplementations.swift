@@ -94,6 +94,6 @@ actor MockTokenAuthenticator: TokenGrantAuthenticator {
 }
 
 /// A custom test error
-enum TestError: Error {
+enum TestError: Error, Equatable {
     case general(String)
 }

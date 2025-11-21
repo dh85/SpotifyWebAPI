@@ -93,7 +93,9 @@ func extractIDs(from url: URL?) -> Set<String> {
 
 /// Helper to create a user-auth client with mocks.
 @MainActor
-func makeUserAuthClient() -> (
+func makeUserAuthClient(
+    configuration: SpotifyClientConfiguration = .default
+) -> (
     client: SpotifyClient<UserAuthCapability>,
     http: MockHTTPClient
 ) {
@@ -101,7 +103,8 @@ func makeUserAuthClient() -> (
     let auth = MockTokenAuthenticator(token: .mockValid)
     let client = SpotifyClient<UserAuthCapability>(
         backend: auth,
-        httpClient: http
+        httpClient: http,
+        configuration: configuration
     )
     return (client, http)
 }
