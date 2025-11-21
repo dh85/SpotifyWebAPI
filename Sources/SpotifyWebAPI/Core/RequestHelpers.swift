@@ -25,7 +25,7 @@ extension SpotifyClient {
             try await self.performSingleRequest(request, retryCount: retryCount)
         }
     }
-    
+
     private func performSingleRequest(
         _ request: URLRequest,
         retryCount: Int? = nil
@@ -46,14 +46,15 @@ extension SpotifyClient {
         }
 
         let (data, response) = try await httpClient.data(for: mutableRequest)
-        
+
         // Check for retryable HTTP errors
         if let http = response as? HTTPURLResponse,
-           configuration.networkRecovery.retryableStatusCodes.contains(http.statusCode) {
+            configuration.networkRecovery.retryableStatusCodes.contains(http.statusCode)
+        {
             let bodyString = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
             throw SpotifyClientError.httpError(statusCode: http.statusCode, body: bodyString)
         }
-        
+
         // Check for 429 (rate limiting) - handle separately from network recovery
         if let http = response as? HTTPURLResponse, http.statusCode == 429 {
             let remainingRetries = retryCount ?? configuration.maxRateLimitRetries
@@ -136,7 +137,39 @@ extension SpotifyClient {
     /// Executes a request and decodes the response into the specified type.
     /// This method replaces requestJSON, requestVoid, and requestOptionalJSON.
     @discardableResult
-    func perform<T: Decodable>(_ request: SpotifyRequest<T>) async throws -> T {
+    func perform<T: Decodable & Sendable>(_ request: SpotifyRequest<T>) async throws -> T {
+        let requestKey = generateRequestKey(request)
+        
+        // Check for ongoing request
+        if let ongoingTask = ongoingRequests[requestKey] {
+            return try await ongoingTask.value as! T
+        }
+        
+        // Create new task
+        let task = Task<(any Sendable), Error> {
+            try await self.performInternal(request)
+        }
+        
+        ongoingRequests[requestKey] = task
+        
+        do {
+            let result = try await task.value as! T
+            ongoingRequests.removeValue(forKey: requestKey)
+            return result
+        } catch {
+            ongoingRequests.removeValue(forKey: requestKey)
+            throw error
+        }
+    }
+    
+    private func performInternal<T: Decodable>(_ request: SpotifyRequest<T>) async throws -> T {
+        #if DEBUG
+        let logger = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ? DebugLogger.testInstance : DebugLogger.shared
+        #else
+        let logger = DebugLogger.shared
+        #endif
+        
+        let measurement = PerformanceMeasurement("\(request.method) \(request.path)", logger: logger)
 
         let httpBody: Data?
         if let body = request.body {
@@ -147,6 +180,15 @@ extension SpotifyClient {
 
         let url = self.apiURL(path: request.path, queryItems: request.query)
 
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = request.method
+        urlRequest.httpBody = httpBody
+        if httpBody != nil {
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+
+        await logger.logRequest(urlRequest)
+
         let (data, response) = try await self.authorizedRequest(
             url: url,
             method: request.method,
@@ -154,9 +196,12 @@ extension SpotifyClient {
             contentType: httpBody != nil ? "application/json" : nil
         )
 
+        await logger.logResponse(response, data: data, error: nil)
+
         // Handle 204 No Content
         if response.statusCode == 204 {
             if T.self == EmptyResponse.self {
+                await measurement.finish()
                 return EmptyResponse() as! T  // Success for Void (EmptyResponse)
             }
             // If T is optional (e.g., PlaybackState?), requestOptionalJSON should be used.
@@ -178,12 +223,33 @@ extension SpotifyClient {
         // If we expect an EmptyResponse and data is empty (e.g., 200 OK w/ no body),
         // return a new instance immediately without decoding.
         if T.self == EmptyResponse.self && data.isEmpty {
+            await measurement.finish()
             return EmptyResponse() as! T
         }
         // --- END FIX ---
 
         // Decode the data into the expected type T
-        return try self.decodeJSON(T.self, from: data)
+        let result = try self.decodeJSON(T.self, from: data)
+        await measurement.finish()
+        return result
+    }
+    
+    private func generateRequestKey<T: Decodable>(_ request: SpotifyRequest<T>) -> String {
+        var components = [request.method, request.path]
+        
+        if !request.query.isEmpty {
+            let queryString = request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(separator: "&")
+            components.append(queryString)
+        }
+        
+        if let body = request.body {
+            if let bodyData = try? JSONEncoder().encode(body),
+               let bodyString = String(data: bodyData, encoding: .utf8) {
+                components.append(bodyString)
+            }
+        }
+        
+        return components.joined(separator: "|")
     }
 
     /// Helper for requests that might return 204 No Content (returning nil)

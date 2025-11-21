@@ -51,10 +51,8 @@ struct ConcurrencyTests {
 
         let albumData = try TestDataLoader.load("album_full")
         
-        // Add enough responses for all concurrent calls
-        for _ in 0..<10 {
-            await http.addMockResponse(data: albumData, statusCode: 200)
-        }
+        // Only need one response due to request deduplication
+        await http.addMockResponse(data: albumData, statusCode: 200)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<10 {
@@ -66,7 +64,8 @@ struct ConcurrencyTests {
         }
         
         let requests = await http.requests
-        #expect(requests.count == 10)
+        // With request deduplication, identical concurrent requests share one HTTP call
+        #expect(requests.count == 1)
     }
 
     @Test
