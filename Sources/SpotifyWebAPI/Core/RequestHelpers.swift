@@ -19,16 +19,34 @@ extension SpotifyClient {
 
     private func executeRequest(
         _ request: URLRequest,
-        retryCount: Int = 1
+        retryCount: Int? = nil
     ) async throws -> (Data, URLResponse) {
+        var mutableRequest = request
 
-        let (data, response) = try await httpClient.data(for: request)
+        // Apply timeout
+        mutableRequest.timeoutInterval = configuration.requestTimeout
+
+        // Apply custom headers
+        for (key, value) in configuration.customHeaders {
+            mutableRequest.setValue(value, forHTTPHeaderField: key)
+        }
+
+        // Apply interceptors
+        for interceptor in interceptors {
+            mutableRequest = try await interceptor(mutableRequest)
+        }
+
+        let (data, response) = try await httpClient.data(for: mutableRequest)
 
         // Check for 429
         if let http = response as? HTTPURLResponse,
-            http.statusCode == 429,
-            retryCount > 0
+            http.statusCode == 429
         {
+            let remainingRetries = retryCount ?? configuration.maxRateLimitRetries
+            guard remainingRetries > 0 else {
+                return (data, response)
+            }
+
             // Get the 'Retry-After' header (in seconds)
             let retryAfter: UInt64 =
                 http.value(forHTTPHeaderField: "Retry-After")
@@ -37,8 +55,8 @@ extension SpotifyClient {
             // Sleep for the required duration
             try await Task.sleep(for: .seconds(retryAfter))
 
-            // Retry the request (and pass 0 so it doesn't retry again)
-            return try await executeRequest(request, retryCount: 0)
+            // Retry the request
+            return try await executeRequest(request, retryCount: remainingRetries - 1)
         }
 
         return (data, response)
