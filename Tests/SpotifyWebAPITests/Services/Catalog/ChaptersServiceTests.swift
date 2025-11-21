@@ -80,32 +80,10 @@ struct ChaptersServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             _ = try await client.chapters.several(ids: makeIDs(count: 51).map { $0 })
         }
     }
 
-    // MARK: - Helper Methods
 
-    private func expectRequest(
-        _ request: URLRequest?, path: String, method: String, queryContains: String...
-    ) {
-        #expect(request?.url?.path() == path)
-        #expect(request?.httpMethod == method)
-        for query in queryContains {
-            #expect(request?.url?.query()?.contains(query) == true)
-        }
-    }
-
-    private func expectMarketParameter(_ request: URLRequest?, market: String?) {
-        if let market {
-            #expect(request?.url?.query()?.contains("market=\(market)") == true)
-        } else {
-            #expect(request?.url?.query()?.contains("market=") == false)
-        }
-    }
-
-    private func expectIDLimitError(operation: @escaping () async throws -> Void) async {
-        await expectInvalidRequest(reasonContains: "Maximum of 50", operation: operation)
-    }
 }

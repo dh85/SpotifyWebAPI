@@ -57,9 +57,7 @@ public struct PlaybackState: Decodable, Sendable, Equatable {
 
         // Convert timestamp (Int64 milliseconds) to Date
         let timestampMs = try container.decode(Int64.self, forKey: .timestamp)
-        self.timestamp = Date(
-            timeIntervalSince1970: TimeInterval(timestampMs) / 1000.0
-        )
+        self.timestamp = dateFromUnixMilliseconds(timestampMs)
 
         // Handle the polymorphic 'item' based on 'currentlyPlayingType'
         switch self.currentlyPlayingType {

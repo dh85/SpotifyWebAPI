@@ -80,7 +80,7 @@ struct EpisodesServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             _ = try await client.episodes.several(ids: makeIDs(count: 51))
         }
     }
@@ -135,7 +135,7 @@ struct EpisodesServiceTests {
     @Test
     func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             _ = try await client.episodes.save(makeIDs(count: 51))
         }
     }
@@ -155,7 +155,7 @@ struct EpisodesServiceTests {
     @Test
     func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             _ = try await client.episodes.remove(makeIDs(count: 51))
         }
     }
@@ -179,14 +179,10 @@ struct EpisodesServiceTests {
     @Test
     func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             _ = try await client.episodes.checkSaved(makeIDs(count: 51))
         }
     }
 
-    // MARK: - Helper Methods
 
-    private func expectIDLimitError(operation: @escaping () async throws -> Void) async {
-        await expectInvalidRequest(reasonContains: "Maximum of 50", operation: operation)
-    }
 }

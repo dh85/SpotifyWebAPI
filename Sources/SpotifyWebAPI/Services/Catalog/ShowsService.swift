@@ -1,6 +1,6 @@
 import Foundation
 
-private struct SeveralShowsWrapper: Decodable { let shows: [SimplifiedShow] }
+private typealias SeveralShowsWrapper = ArrayWrapper<SimplifiedShow>
 
 private let MAXIMUM_SHOW_ID_BATCH_SIZE = 50
 
@@ -49,7 +49,7 @@ extension ShowsService where Capability: PublicSpotifyCapability {
         let query = [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralShowsWrapper>.get("/shows", query: query)
-        return try await client.perform(request).shows
+        return try await client.perform(request).items
     }
 
     /// Get Spotify catalog information about a show's episodes.
@@ -70,7 +70,7 @@ extension ShowsService where Capability: PublicSpotifyCapability {
         market: String? = nil
     ) async throws -> Page<SimplifiedEpisode> {
         try validateLimit(limit)
-        let query = makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let query = makePagedMarketQuery(limit: limit, offset: offset, market: market)
         let request = SpotifyRequest<Page<SimplifiedEpisode>>.get("/shows/\(id)/episodes", query: query)
         return try await client.perform(request)
     }

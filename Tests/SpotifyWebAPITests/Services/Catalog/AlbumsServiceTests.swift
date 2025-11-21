@@ -84,7 +84,7 @@ struct AlbumsServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 21) {
+        await expectInvalidRequest(reasonContains: "Maximum of 20") {
             _ = try await client.albums.several(ids: makeIDs(count: 21))
         }
     }
@@ -180,7 +180,7 @@ struct AlbumsServiceTests {
     @Test
     func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 21) {
+        await expectInvalidRequest(reasonContains: "Maximum of 20") {
             _ = try await client.albums.save(makeIDs(count: 21))
         }
     }
@@ -200,7 +200,7 @@ struct AlbumsServiceTests {
     @Test
     func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 21) {
+        await expectInvalidRequest(reasonContains: "Maximum of 20") {
             _ = try await client.albums.remove(makeIDs(count: 21))
         }
     }
@@ -228,52 +228,10 @@ struct AlbumsServiceTests {
     @Test
     func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 21) {
+        await expectInvalidRequest(reasonContains: "Maximum of 20") {
             _ = try await client.albums.checkSaved(makeIDs(count: 21))
         }
     }
 
-    // MARK: - Helper Methods
 
-    private func expectRequest(
-        _ request: URLRequest?, path: String, method: String, queryContains: String...
-    ) {
-        #expect(request?.url?.path() == path)
-        #expect(request?.httpMethod == method)
-        for query in queryContains {
-            #expect(request?.url?.query()?.contains(query) == true)
-        }
-    }
-
-    private func expectMarketParameter(_ request: URLRequest?, market: String?) {
-        if let market {
-            #expect(request?.url?.query()?.contains("market=\(market)") == true)
-        } else {
-            #expect(request?.url?.query()?.contains("market=") == false)
-        }
-    }
-
-    private func expectPaginationDefaults(_ request: URLRequest?) {
-        #expect(request?.url?.query()?.contains("limit=20") == true)
-        #expect(request?.url?.query()?.contains("offset=0") == true)
-    }
-
-    private func expectIDsInBody(
-        _ request: URLRequest?, path: String, method: String, expectedIDs: Set<String>
-    ) {
-        expectRequest(request, path: path, method: method)
-
-        guard let bodyData = request?.httpBody,
-            let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
-        else {
-            Issue.record("Failed to decode HTTP body or body was nil")
-            return
-        }
-        #expect(body.ids == expectedIDs)
-    }
-
-    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async
-    {
-        await expectInvalidRequest(reasonContains: "Maximum of 20", operation: operation)
-    }
 }

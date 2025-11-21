@@ -1,7 +1,7 @@
 import Foundation
 
 /// The repeat mode for playback.
-public enum RepeatMode: String, Sendable, Equatable, CaseIterable {
+public enum RepeatMode: String, Codable, Sendable, Equatable, CaseIterable {
     /// Repeat the current track.
     case track
 

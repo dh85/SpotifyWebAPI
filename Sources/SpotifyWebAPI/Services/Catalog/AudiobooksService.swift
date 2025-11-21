@@ -1,8 +1,6 @@
 import Foundation
 
-private struct SeveralAudiobooksWrapper: Decodable {
-    let audiobooks: [Audiobook?]
-}
+private typealias SeveralAudiobooksWrapper = ArrayWrapper<Audiobook?>
 
 private let MAXIMUM_AUDIOBOOK_ID_BATCH_SIZE = 50
 
@@ -52,7 +50,7 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
             [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralAudiobooksWrapper>.get("/audiobooks", query: query)
-        return try await client.perform(request).audiobooks
+        return try await client.perform(request).items
     }
 
     /// Get Spotify catalog information about an audiobook's chapters.
@@ -73,8 +71,7 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
         market: String? = nil
     ) async throws -> Page<SimplifiedChapter> {
         try validateLimit(limit)
-        let query =
-            makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let query = makePagedMarketQuery(limit: limit, offset: offset, market: market)
         let request = SpotifyRequest<Page<SimplifiedChapter>>.get(
             "/audiobooks/\(id)/chapters", query: query)
         return try await client.perform(request)

@@ -1,7 +1,7 @@
 import Foundation
 
-private struct SeveralArtistsWrapper: Decodable { let artists: [Artist] }
-private struct TopTracksWrapper: Decodable { let tracks: [Track] }
+private typealias SeveralArtistsWrapper = ArrayWrapper<Artist>
+private typealias TopTracksWrapper = ArrayWrapper<Track>
 
 private let MAXIMUM_ARTIST_ID_BATCH_SIZE = 50
 
@@ -41,7 +41,7 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
 
         let query = [makeIDsQueryItem(from: ids)]
         let request = SpotifyRequest<SeveralArtistsWrapper>.get("/artists", query: query)
-        return try await client.perform(request).artists
+        return try await client.perform(request).items
     }
 
     /// Get Spotify catalog information about an artist's albums.
@@ -91,7 +91,7 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
         let query = [URLQueryItem(name: "market", value: market)]
         let request = SpotifyRequest<TopTracksWrapper>.get(
             "/artists/\(id)/top-tracks", query: query)
-        return try await client.perform(request).tracks
+        return try await client.perform(request).items
     }
 }
 
