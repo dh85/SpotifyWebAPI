@@ -11,6 +11,21 @@ func makeMarketQueryItems(from market: String?) -> [URLQueryItem] {
     return [.init(name: "market", value: market)]
 }
 
+/// Build query items with pagination and optional market.
+func makePagedMarketQuery(limit: Int, offset: Int, market: String?) -> [URLQueryItem] {
+    makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+}
+
+/// Convert Date to Unix timestamp in milliseconds.
+func dateToUnixMilliseconds(_ date: Date) -> Int64 {
+    Int64(date.timeIntervalSince1970 * 1000)
+}
+
+/// Convert Unix timestamp in milliseconds to Date.
+func dateFromUnixMilliseconds(_ milliseconds: Int64) -> Date {
+    Date(timeIntervalSince1970: TimeInterval(milliseconds) / 1000.0)
+}
+
 /// Perform a library operation (save/remove) for a given endpoint.
 func performLibraryOperation<Capability: Sendable>(
     _ method: HTTPMethod,

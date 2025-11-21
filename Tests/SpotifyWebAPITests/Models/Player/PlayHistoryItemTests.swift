@@ -79,4 +79,60 @@ import Testing
         #expect(item.context == nil)
         #expect(item.track.name == "Track")
     }
+    
+    @Test
+    func decodesPlayedAtFromISO8601() throws {
+        let json = """
+        {
+            "track": {
+                "id": "t",
+                "name": "T",
+                "duration_ms": 0,
+                "explicit": false,
+                "uri": "u",
+                "href": "h",
+                "type": "track",
+                "disc_number": 1,
+                "track_number": 1,
+                "popularity": 50,
+                "is_local": false,
+                "external_ids": {"isrc": "US"},
+                "external_urls": {},
+                "artists": [],
+                "album": {
+                    "id": "a",
+                    "name": "A",
+                    "images": [],
+                    "uri": "u",
+                    "href": "h",
+                    "external_urls": {},
+                    "album_type": "album",
+                    "total_tracks": 1,
+                    "available_markets": [],
+                    "release_date": "2024-01-01",
+                    "release_date_precision": "day",
+                    "type": "album",
+                    "album_group": "album",
+                    "artists": []
+                }
+            },
+            "played_at": "2024-01-15T14:30:00Z"
+        }
+        """.data(using: .utf8)!
+        
+        let item: PlayHistoryItem = try decodeModel(from: json)
+        
+        // 2024-01-15T14:30:00Z = 1705329000 seconds since epoch
+        #expect(item.playedAt.timeIntervalSince1970 == 1_705_329_000)
+    }
+    
+    @Test
+    func equatableWorksCorrectly() throws {
+        let testData = try TestDataLoader.load("play_history_item.json")
+        
+        let item1: PlayHistoryItem = try decodeModel(from: testData)
+        let item2: PlayHistoryItem = try decodeModel(from: testData)
+        
+        #expect(item1 == item2)
+    }
 }

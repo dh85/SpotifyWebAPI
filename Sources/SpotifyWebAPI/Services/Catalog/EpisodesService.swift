@@ -1,6 +1,6 @@
 import Foundation
 
-private struct SeveralEpisodesWrapper: Decodable { let episodes: [Episode] }
+private typealias SeveralEpisodesWrapper = ArrayWrapper<Episode>
 
 private let MAXIMUM_EPISODE_ID_BATCH_SIZE = 50
 
@@ -50,7 +50,7 @@ extension EpisodesService where Capability: PublicSpotifyCapability {
             [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralEpisodesWrapper>.get("/episodes", query: query)
-        return try await client.perform(request).episodes
+        return try await client.perform(request).items
     }
 }
 
@@ -71,8 +71,7 @@ extension EpisodesService where Capability == UserAuthCapability {
         SavedEpisode
     > {
         try validateLimit(limit)
-        let query =
-            makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let query = makePagedMarketQuery(limit: limit, offset: offset, market: market)
         let request = SpotifyRequest<Page<SavedEpisode>>.get("/me/episodes", query: query)
         return try await client.perform(request)
     }

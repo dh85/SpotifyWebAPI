@@ -1,6 +1,6 @@
 import Foundation
 
-private struct SeveralChaptersWrapper: Decodable { let chapters: [Chapter] }
+private typealias SeveralChaptersWrapper = ArrayWrapper<Chapter>
 
 private let MAXIMUM_CHAPTER_ID_BATCH_SIZE = 50
 
@@ -52,6 +52,6 @@ extension ChaptersService where Capability: PublicSpotifyCapability {
             [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralChaptersWrapper>.get("/chapters", query: query)
-        return try await client.perform(request).chapters
+        return try await client.perform(request).items
     }
 }

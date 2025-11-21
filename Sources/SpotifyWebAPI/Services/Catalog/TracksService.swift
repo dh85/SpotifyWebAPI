@@ -1,6 +1,6 @@
 import Foundation
 
-private struct SeveralTracksWrapper: Decodable { let tracks: [Track?] }
+private typealias SeveralTracksWrapper = ArrayWrapper<Track?>
 
 /// A service for fetching and managing Spotify Track resources.
 ///
@@ -50,7 +50,7 @@ extension TracksService where Capability: PublicSpotifyCapability {
             [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralTracksWrapper>.get("/tracks", query: query)
-        return try await client.perform(request).tracks.compactMap { $0 }
+        return try await client.perform(request).items.compactMap { $0 }
     }
 }
 
@@ -71,8 +71,7 @@ extension TracksService where Capability == UserAuthCapability {
         SavedTrack
     > {
         try validateLimit(limit)
-        let query =
-            makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let query = makePagedMarketQuery(limit: limit, offset: offset, market: market)
         let request = SpotifyRequest<Page<SavedTrack>>.get("/me/tracks", query: query)
         return try await client.perform(request)
     }

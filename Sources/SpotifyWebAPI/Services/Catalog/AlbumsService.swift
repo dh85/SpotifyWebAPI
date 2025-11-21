@@ -1,8 +1,6 @@
 import Foundation
 
-private struct SeveralAlbumsWrapper: Decodable {
-    let albums: [Album]
-}
+private typealias SeveralAlbumsWrapper = ArrayWrapper<Album>
 
 private let MAXIMUM_ALBUM_ID_BATCH_SIZE = 20
 
@@ -52,8 +50,7 @@ extension AlbumsService where Capability: PublicSpotifyCapability {
 
         let query = [makeIDsQueryItem(from: ids)] + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralAlbumsWrapper>.get("/albums", query: query)
-        let response = try await client.perform(request)
-        return response.albums
+        return try await client.perform(request).items
     }
 
     /// Get Spotify catalog information about an album's tracks.
@@ -75,8 +72,7 @@ extension AlbumsService where Capability: PublicSpotifyCapability {
     ) async throws -> Page<SimplifiedTrack> {
         try validateLimit(limit)
 
-        let query =
-            makePaginationQuery(limit: limit, offset: offset) + makeMarketQueryItems(from: market)
+        let query = makePagedMarketQuery(limit: limit, offset: offset, market: market)
         let request = SpotifyRequest<Page<SimplifiedTrack>>.get(
             "/albums/\(id)/tracks", query: query)
         return try await client.perform(request)

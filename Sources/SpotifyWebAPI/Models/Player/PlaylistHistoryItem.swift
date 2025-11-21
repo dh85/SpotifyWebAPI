@@ -1,16 +1,18 @@
 import Foundation
 
-/// A Play History Object (from user's recently played).
+/// A play history item from the user's recently played tracks.
 ///
-/// Source: `GET /v1/me/player/recently-played`
+/// Represents a single track that was played, including when it was played
+/// and the context it was played from.
+///
+/// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-recently-played)
 public struct PlayHistoryItem: Codable, Sendable, Equatable {
-    /// The track the user listened to.
+    /// The track that was played.
     public let track: Track
 
-    /// The date and time the track was played.
+    /// The date and time the track was played (ISO 8601 format).
     public let playedAt: Date
 
-    /// The context the track was played from.
+    /// The context from which the track was played (e.g., playlist, album).
     public let context: PlaybackContext?
-
 }

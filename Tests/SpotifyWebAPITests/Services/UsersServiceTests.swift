@@ -183,7 +183,7 @@ struct UsersServiceTests {
     @Test
     func followArtistsThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 51) {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             try await client.users.follow(artists: makeIDs(count: 51))
         }
     }
@@ -217,7 +217,7 @@ struct UsersServiceTests {
     @Test
     func unfollowArtistsThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 51) {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             try await client.users.unfollow(artists: makeIDs(count: 51))
         }
     }
@@ -253,7 +253,7 @@ struct UsersServiceTests {
     @Test
     func checkFollowingArtistsThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectIDLimitError(count: 51) {
+        await expectInvalidRequest(reasonContains: "Maximum of 50") {
             _ = try await client.users.checkFollowing(artists: makeIDs(count: 51))
         }
     }
@@ -273,9 +273,5 @@ struct UsersServiceTests {
         #expect(extractIDs(from: request?.url) == userIDs)
     }
     
-    // MARK: - Helper Methods
-    
-    private func expectIDLimitError(count: Int, operation: @escaping () async throws -> Void) async {
-        await expectInvalidRequest(reasonContains: "Maximum of 50", operation: operation)
-    }
+
 }
