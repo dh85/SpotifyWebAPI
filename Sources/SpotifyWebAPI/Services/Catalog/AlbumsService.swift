@@ -5,6 +5,54 @@ private typealias SeveralAlbumsWrapper = ArrayWrapper<Album>
 private let MAXIMUM_ALBUM_ID_BATCH_SIZE = 20
 
 /// A service for fetching and managing Spotify Album resources.
+///
+/// ## Overview
+///
+/// AlbumsService provides access to:
+/// - Album catalog information
+/// - Album tracks
+/// - User's saved albums ("Your Music" library)
+/// - Batch operations for saving/removing albums
+///
+/// ## Examples
+///
+/// ### Get Album Details
+/// ```swift
+/// let album = try await client.albums.get("4aawyAB9vmqN3uQ7FjRGTy")
+/// print("\(album.name) by \(album.artistNames)")
+/// print("Released: \(album.releaseDate)")
+/// print("Tracks: \(album.tracks.total)")
+/// ```
+///
+/// ### Get Multiple Albums
+/// ```swift
+/// let albumIDs: Set<String> = ["album1", "album2", "album3"]
+/// let albums = try await client.albums.several(ids: albumIDs)
+/// for album in albums {
+///     print(album.name)
+/// }
+/// ```
+///
+/// ### Save Albums to Library
+/// ```swift
+/// // Save single album
+/// try await client.albums.save(["4aawyAB9vmqN3uQ7FjRGTy"])
+///
+/// // Save many albums (automatically chunked into batches of 20)
+/// let manyAlbums = ["album1", "album2", ...] // 100 albums
+/// try await client.albums.saveAll(manyAlbums)
+/// ```
+///
+/// ### Check if Albums are Saved
+/// ```swift
+/// let albumIDs: Set<String> = ["album1", "album2", "album3"]
+/// let saved = try await client.albums.checkSaved(albumIDs)
+/// for (id, isSaved) in zip(albumIDs, saved) {
+///     print("\(id): \(isSaved ? "✓" : "✗")")
+/// }
+/// ```
+///
+/// - SeeAlso: ``LibraryServiceExtensions`` for batch operations
 public struct AlbumsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 

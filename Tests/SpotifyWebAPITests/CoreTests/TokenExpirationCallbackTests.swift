@@ -4,6 +4,7 @@ import Testing
 @testable import SpotifyWebAPI
 
 @Suite("Token Expiration Callback Tests")
+@MainActor
 struct TokenExpirationCallbackTests {
 
     actor CallbackTracker {
@@ -25,7 +26,6 @@ struct TokenExpirationCallbackTests {
     }
 
     @Test("Callback is called on token access")
-    @MainActor
     func callbackCalledOnAccess() async throws {
         let (client, http) = makeUserAuthClient()
         let tracker = CallbackTracker()
@@ -49,7 +49,6 @@ struct TokenExpirationCallbackTests {
     }
 
     @Test("Callback receives correct expiration time")
-    @MainActor
     func callbackReceivesExpirationTime() async throws {
         let (client, http) = makeUserAuthClient()
         let tracker = CallbackTracker()
@@ -74,7 +73,6 @@ struct TokenExpirationCallbackTests {
     }
 
     @Test("Callback not called when not set")
-    @MainActor
     func callbackNotCalledWhenNotSet() async throws {
         let (client, http) = makeUserAuthClient()
         
@@ -86,11 +84,10 @@ struct TokenExpirationCallbackTests {
         _ = try await client.users.me()
         
         // Test passes if no crash occurs
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Callback called on multiple requests")
-    @MainActor
     func callbackCalledMultipleTimes() async throws {
         let (client, http) = makeUserAuthClient()
         let tracker = CallbackTracker()

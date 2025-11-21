@@ -75,6 +75,59 @@ private struct RemovePlaylistItemsBody: Encodable, Sendable {
 private struct TrackURIObject: Encodable, Sendable { let uri: String }
 
 /// A service for interacting with Spotify Playlists, managing items, and updating details.
+///
+/// ## Overview
+///
+/// PlaylistsService provides comprehensive playlist management including:
+/// - Fetching playlist details and tracks
+/// - Creating and modifying playlists
+/// - Adding, removing, and reordering tracks
+/// - Following and unfollowing playlists
+/// - Managing playlist cover images
+///
+/// ## Examples
+///
+/// ### Get a Playlist
+/// ```swift
+/// let playlist = try await client.playlists.get("37i9dQZF1DXcBWIGoYBM5M")
+/// print("\(playlist.name) has \(playlist.totalTracks) tracks")
+/// ```
+///
+/// ### Create and Populate a Playlist
+/// ```swift
+/// // Create playlist
+/// let playlist = try await client.playlists.create(
+///     for: "user_id",
+///     name: "My Awesome Playlist",
+///     description: "Created with SpotifyWebAPI",
+///     isPublic: true
+/// )
+///
+/// // Add tracks
+/// let trackURIs = [
+///     "spotify:track:6rqhFgbbKwnb9MLmUQDhG6",
+///     "spotify:track:4cOdK2wGLETKBW3PvgPWqT"
+/// ]
+/// _ = try await client.playlists.add(to: playlist.id, uris: trackURIs)
+/// ```
+///
+/// ### Stream All Tracks from a Large Playlist
+/// ```swift
+/// for try await item in client.playlists.streamItems("playlist_id") {
+///     if let track = item.track as? Track {
+///         print("\(track.name) by \(track.artistNames)")
+///     }
+/// }
+/// ```
+///
+/// ### Batch Operations
+/// ```swift
+/// // Add many tracks (automatically chunked into batches of 100)
+/// let manyTracks = Array(repeating: "spotify:track:...", count: 500)
+/// try await client.playlists.addTracks(manyTracks, to: "playlist_id")
+/// ```
+///
+/// - SeeAlso: ``PlaylistsServiceExtensions`` for batch operations
 public struct PlaylistsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 

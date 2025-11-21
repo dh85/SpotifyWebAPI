@@ -4,6 +4,53 @@ private typealias SeveralTracksWrapper = ArrayWrapper<Track?>
 
 /// A service for fetching and managing Spotify Track resources.
 ///
+/// ## Overview
+///
+/// TracksService provides access to:
+/// - Track catalog information
+/// - User's saved tracks ("Liked Songs")
+/// - Batch operations for saving/removing tracks
+///
+/// ## Examples
+///
+/// ### Get Track Details
+/// ```swift
+/// let track = try await client.tracks.get("11dFghVXANMlKmJXsNCbNl")
+/// print("\(track.name) by \(track.artistNames)")
+/// print("Duration: \(track.durationFormatted)")
+/// print("Album: \(track.album.name)")
+/// ```
+///
+/// ### Get Multiple Tracks
+/// ```swift
+/// let trackIDs: Set<String> = ["track1", "track2", "track3"]
+/// let tracks = try await client.tracks.several(ids: trackIDs)
+/// for track in tracks {
+///     print("\(track.name) - \(track.durationFormatted)")
+/// }
+/// ```
+///
+/// ### Save Tracks to Liked Songs
+/// ```swift
+/// // Save single track
+/// try await client.tracks.save(["11dFghVXANMlKmJXsNCbNl"])
+///
+/// // Save many tracks (automatically chunked into batches of 50)
+/// let manyTracks = ["track1", "track2", ...] // 200 tracks
+/// try await client.tracks.saveAll(manyTracks)
+/// ```
+///
+/// ### Get Saved Tracks
+/// ```swift
+/// let savedTracks = try await client.tracks.saved(limit: 50)
+/// for item in savedTracks.items {
+///     let track = item.track
+///     print("\(track.name) - saved on \(item.addedAt)")
+/// }
+/// ```
+///
+/// - SeeAlso: ``LibraryServiceExtensions`` for batch operations
+///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
 public struct TracksService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>

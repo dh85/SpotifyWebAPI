@@ -4,6 +4,33 @@ import Foundation
     import FoundationNetworking
 #endif
 
+/// Authenticator for the OAuth 2.0 Authorization Code flow.
+///
+/// Authorization Code flow is for confidential apps (server-side) that can securely
+/// store a client secret. It provides access to user-specific data and supports
+/// token refresh.
+///
+/// ## Usage
+///
+/// ```swift
+/// let authenticator = SpotifyAuthorizationCodeAuthenticator(
+///     config: .authorizationCode(
+///         clientID: "your-client-id",
+///         clientSecret: "your-client-secret",
+///         redirectURI: URL(string: "https://myapp.com/callback")!,
+///         scopes: [.userReadPrivate, .playlistModifyPublic]
+///     )
+/// )
+///
+/// // Generate authorization URL
+/// let authURL = try authenticator.makeAuthorizationURL()
+/// // Open authURL in browser
+///
+/// // Handle callback
+/// let tokens = try await authenticator.handleCallback(callbackURL)
+/// ```
+///
+/// - SeeAlso: ``SpotifyAuthConfig/authorizationCode(clientID:clientSecret:redirectURI:scopes:showDialog:authorizationEndpoint:tokenEndpoint:)``
 public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
     private let config: SpotifyAuthConfig
     private let httpClient: HTTPClient
@@ -29,6 +56,12 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
 
     // MARK: - Authorization URL
 
+    /// Generate the authorization URL to present to the user.
+    ///
+    /// This URL should be opened in a browser. After the user authorizes,
+    /// Spotify will redirect to your redirect URI with an authorization code.
+    ///
+    /// - Returns: The authorization URL.
     public func makeAuthorizationURL() throws -> URL {
         let state = Self.generateState()
         currentState = state
@@ -67,6 +100,13 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
 
     // MARK: - Callback handling
 
+    /// Handle the authorization callback and exchange the code for tokens.
+    ///
+    /// Call this method when your server receives the redirect from Spotify.
+    ///
+    /// - Parameter url: The callback URL containing the authorization code.
+    /// - Returns: The access and refresh tokens.
+    /// - Throws: ``SpotifyAuthError`` if the callback is invalid or token exchange fails.
     public func handleCallback(_ url: URL) async throws -> SpotifyTokens {
         guard let components = componentsBuilder(url) else {
             throw SpotifyAuthError.missingCode
@@ -97,6 +137,11 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
 
     // MARK: - Refresh
 
+    /// Refresh an expired access token using a refresh token.
+    ///
+    /// - Parameter refreshToken: The refresh token from a previous authorization.
+    /// - Returns: New access and refresh tokens.
+    /// - Throws: ``SpotifyAuthError`` if the refresh fails.
     public func refreshAccessToken(refreshToken: String) async throws
         -> SpotifyTokens
     {

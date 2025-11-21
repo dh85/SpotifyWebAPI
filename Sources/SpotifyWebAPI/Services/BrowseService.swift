@@ -13,6 +13,65 @@ private struct SeveralCategoriesResponse: Decodable {
 }
 
 /// A service for accessing Spotify's public browsing features, such as New Releases, Categories, and Market availability.
+///
+/// ## Overview
+///
+/// BrowseService provides access to:
+/// - New album releases
+/// - Browse categories
+/// - Available markets (countries)
+///
+/// ## Examples
+///
+/// ### Get New Releases
+/// ```swift
+/// let newReleases = try await client.browse.newReleases(
+///     country: "US",
+///     limit: 20
+/// )
+///
+/// print("New releases:")
+/// for album in newReleases.items {
+///     print("\(album.name) by \(album.artistNames)")
+/// }
+/// ```
+///
+/// ### Browse Categories
+/// ```swift
+/// // Get all categories
+/// let categories = try await client.browse.categories(
+///     country: "US",
+///     limit: 50
+/// )
+///
+/// for category in categories.items {
+///     print("\(category.name): \(category.id)")
+/// }
+///
+/// // Get specific category
+/// let category = try await client.browse.category(
+///     id: "toplists",
+///     country: "US"
+/// )
+/// print("\(category.name): \(category.description ?? "No description")")
+/// ```
+///
+/// ### Get Available Markets
+/// ```swift
+/// let markets = try await client.browse.availableMarkets()
+/// print("Spotify is available in \(markets.count) markets")
+/// print("Markets: \(markets.joined(separator: ", "))")
+/// ```
+///
+/// ### Localized Content
+/// ```swift
+/// // Get categories in Spanish (Mexico)
+/// let categories = try await client.browse.categories(
+///     country: "MX",
+///     locale: "es_MX",
+///     limit: 20
+/// )
+/// ```
 public struct BrowseService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
     init(client: SpotifyClient<Capability>) { self.client = client }

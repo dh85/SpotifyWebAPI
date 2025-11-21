@@ -11,6 +11,92 @@ private enum FollowType: String {
 
 /// A service for accessing Spotify user profiles, following status, and affinity data.
 ///
+/// ## Overview
+///
+/// UsersService provides access to:
+/// - User profile information
+/// - Top artists and tracks (listening affinity)
+/// - Following/unfollowing artists and users
+/// - Followed artists
+///
+/// ## Examples
+///
+/// ### Get Current User Profile
+/// ```swift
+/// let profile = try await client.users.me()
+/// print("User: \(profile.displayName ?? "Unknown")")
+/// print("Email: \(profile.email ?? "N/A")")
+/// print("Country: \(profile.country ?? "N/A")")
+/// print("Followers: \(profile.followers.total)")
+/// ```
+///
+/// ### Get Top Artists and Tracks
+/// ```swift
+/// // Get top artists from the last 6 months
+/// let topArtists = try await client.users.topArtists(
+///     range: .mediumTerm,
+///     limit: 20
+/// )
+/// print("Your top artists:")
+/// for (index, artist) in topArtists.items.enumerated() {
+///     print("\(index + 1). \(artist.name)")
+/// }
+///
+/// // Get top tracks from all time
+/// let topTracks = try await client.users.topTracks(
+///     range: .longTerm,
+///     limit: 50
+/// )
+/// for track in topTracks.items {
+///     print("\(track.name) by \(track.artistNames)")
+/// }
+/// ```
+///
+/// ### Follow Artists
+/// ```swift
+/// // Follow artists
+/// let artistIDs: Set<String> = ["artist1", "artist2", "artist3"]
+/// try await client.users.follow(artists: artistIDs)
+///
+/// // Check if following
+/// let following = try await client.users.checkFollowing(artists: artistIDs)
+/// for (id, isFollowing) in zip(artistIDs, following) {
+///     print("\(id): \(isFollowing ? "Following" : "Not following")")
+/// }
+///
+/// // Unfollow artists
+/// try await client.users.unfollow(artists: artistIDs)
+/// ```
+///
+/// ### Get Followed Artists
+/// ```swift
+/// var allFollowedArtists: [Artist] = []
+/// var page = try await client.users.followedArtists(limit: 50)
+///
+/// allFollowedArtists.append(contentsOf: page.items)
+///
+/// // Paginate through all followed artists
+/// while let cursor = page.cursors?.after {
+///     page = try await client.users.followedArtists(limit: 50, after: cursor)
+///     allFollowedArtists.append(contentsOf: page.items)
+/// }
+///
+/// print("You follow \(allFollowedArtists.count) artists")
+/// ```
+///
+/// ### Get Public User Profile
+/// ```swift
+/// let publicProfile = try await client.users.get("spotify")
+/// print("\(publicProfile.displayName ?? "Unknown") has \(publicProfile.followers.total) followers")
+/// ```
+///
+/// ## Time Ranges
+///
+/// When fetching top artists/tracks, you can specify:
+/// - `.shortTerm` - Last 4 weeks
+/// - `.mediumTerm` - Last 6 months (default)
+/// - `.longTerm` - All time
+///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile)
 public struct UsersService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
