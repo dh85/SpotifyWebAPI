@@ -6,6 +6,78 @@ private typealias TopTracksWrapper = ArrayWrapper<Track>
 private let MAXIMUM_ARTIST_ID_BATCH_SIZE = 50
 
 /// A service for fetching and managing Spotify Artist resources.
+///
+/// ## Overview
+///
+/// ArtistsService provides access to:
+/// - Artist catalog information
+/// - Artist albums and discography
+/// - Artist top tracks by market
+/// - Related artists
+///
+/// ## Examples
+///
+/// ### Get Artist Details
+/// ```swift
+/// let artist = try await client.artists.get("0OdUWJ0sBjDrqHygGUXeCF")
+/// print("\(artist.name)")
+/// print("Genres: \(artist.genres.joined(separator: ", "))")
+/// print("Popularity: \(artist.popularity)/100")
+/// print("Followers: \(artist.followers.total)")
+/// ```
+///
+/// ### Get Multiple Artists
+/// ```swift
+/// let artistIDs: Set<String> = ["artist1", "artist2", "artist3"]
+/// let artists = try await client.artists.several(ids: artistIDs)
+/// for artist in artists {
+///     print("\(artist.name) - \(artist.genres.joined(separator: ", "))")
+/// }
+/// ```
+///
+/// ### Get Artist's Albums
+/// ```swift
+/// // Get all album types
+/// let albums = try await client.artists.albums(
+///     for: "0OdUWJ0sBjDrqHygGUXeCF",
+///     limit: 50
+/// )
+///
+/// // Filter by album type
+/// let albumsOnly = try await client.artists.albums(
+///     for: "0OdUWJ0sBjDrqHygGUXeCF",
+///     includeGroups: [.album],
+///     limit: 20
+/// )
+///
+/// // Get singles and compilations
+/// let singlesAndCompilations = try await client.artists.albums(
+///     for: "0OdUWJ0sBjDrqHygGUXeCF",
+///     includeGroups: [.single, .compilation]
+/// )
+/// ```
+///
+/// ### Get Artist's Top Tracks
+/// ```swift
+/// // Get top tracks for US market
+/// let topTracks = try await client.artists.topTracks(
+///     for: "0OdUWJ0sBjDrqHygGUXeCF",
+///     market: "US"
+/// )
+///
+/// print("Top tracks:")
+/// for (index, track) in topTracks.enumerated() {
+///     print("\(index + 1). \(track.name) - \(track.durationFormatted)")
+/// }
+/// ```
+///
+/// ## Album Groups
+///
+/// When fetching artist albums, you can filter by:
+/// - `.album` - Studio albums
+/// - `.single` - Singles and EPs
+/// - `.compilation` - Compilation albums
+/// - `.appearsOn` - Albums the artist appears on
 public struct ArtistsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 

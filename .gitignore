@@ -6,6 +6,6 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+*.xcodeproj
+.vscode/
 .devcontainer/zscaler
-.vscode
-.swiftpm

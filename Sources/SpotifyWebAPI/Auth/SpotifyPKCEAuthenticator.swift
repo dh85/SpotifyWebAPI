@@ -4,6 +4,32 @@ import Foundation
     import FoundationNetworking
 #endif
 
+/// Authenticator for the OAuth 2.0 PKCE (Proof Key for Code Exchange) flow.
+///
+/// PKCE is the recommended authorization flow for mobile and public apps that cannot
+/// securely store a client secret. It uses a dynamically generated code verifier and
+/// challenge to prevent authorization code interception attacks.
+///
+/// ## Usage
+///
+/// ```swift
+/// let authenticator = SpotifyPKCEAuthenticator(
+///     config: .pkce(
+///         clientID: "your-client-id",
+///         redirectURI: URL(string: "myapp://callback")!,
+///         scopes: [.userReadPrivate, .playlistModifyPublic]
+///     )
+/// )
+///
+/// // Generate authorization URL
+/// let authURL = try authenticator.makeAuthorizationURL()
+/// // Open authURL in browser/web view
+///
+/// // Handle callback
+/// let tokens = try await authenticator.handleCallback(callbackURL)
+/// ```
+///
+/// - SeeAlso: ``SpotifyAuthConfig/pkce(clientID:redirectURI:scopes:showDialog:authorizationEndpoint:tokenEndpoint:)``
 public actor SpotifyPKCEAuthenticator: TokenRefreshing {
     private let config: SpotifyAuthConfig
     private let pkceProvider: PKCEProvider
@@ -32,6 +58,13 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
 
     // MARK: - Authorization URL
 
+    /// Generate the authorization URL to present to the user.
+    ///
+    /// This URL should be opened in a browser or web view. After the user authorizes,
+    /// Spotify will redirect to your redirect URI with an authorization code.
+    ///
+    /// - Returns: The authorization URL.
+    /// - Throws: An error if PKCE generation fails.
     public func makeAuthorizationURL() throws -> URL {
         let pkce = try pkceProvider.generatePKCE()
         currentPKCE = pkce
@@ -71,6 +104,13 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
 
     // MARK: - Callback handling
 
+    /// Handle the authorization callback and exchange the code for tokens.
+    ///
+    /// Call this method when your app receives the redirect from Spotify.
+    ///
+    /// - Parameter url: The callback URL containing the authorization code.
+    /// - Returns: The access and refresh tokens.
+    /// - Throws: ``SpotifyAuthError`` if the callback is invalid or token exchange fails.
     public func handleCallback(_ url: URL) async throws -> SpotifyTokens {
         guard let components = componentsBuilder(url) else {
             throw SpotifyAuthError.missingCode
@@ -104,6 +144,11 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
 
     // MARK: - Refresh
 
+    /// Refresh an expired access token using a refresh token.
+    ///
+    /// - Parameter refreshToken: The refresh token from a previous authorization.
+    /// - Returns: New access and refresh tokens.
+    /// - Throws: ``SpotifyAuthError`` if the refresh fails.
     public func refreshAccessToken(refreshToken: String) async throws
         -> SpotifyTokens
     {

@@ -16,8 +16,8 @@ public struct Album: Codable, Sendable, Equatable {
     public let href: URL
     /// The Spotify ID.
     public let id: String
-    /// Cover art images in various sizes.
-    public let images: [SpotifyImage]
+    /// Cover art images in various sizes. Can be null.
+    public let images: [SpotifyImage]?
     /// Album name.
     public let name: String
     /// Release date (e.g., "1981-12-15").

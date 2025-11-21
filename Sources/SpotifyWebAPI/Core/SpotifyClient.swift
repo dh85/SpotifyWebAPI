@@ -1,5 +1,67 @@
 import Foundation
 
+/// The main client for interacting with the Spotify Web API.
+///
+/// SpotifyClient is an actor that provides thread-safe access to all Spotify API endpoints.
+/// It handles authentication, token management, and request execution.
+///
+/// ## Creating a Client
+///
+/// Use one of the factory methods to create a client:
+///
+/// ```swift
+/// // PKCE for mobile/public apps
+/// let client = SpotifyClient.pkce(
+///     clientID: "your-client-id",
+///     redirectURI: URL(string: "myapp://callback")!,
+///     scopes: [.userReadPrivate, .playlistModifyPublic]
+/// )
+///
+/// // Authorization Code for confidential apps
+/// let client = SpotifyClient.authorizationCode(
+///     clientID: "your-client-id",
+///     clientSecret: "your-client-secret",
+///     redirectURI: URL(string: "https://myapp.com/callback")!,
+///     scopes: [.userReadPrivate]
+/// )
+///
+/// // Client Credentials for app-only access
+/// let client = SpotifyClient.clientCredentials(
+///     clientID: "your-client-id",
+///     clientSecret: "your-client-secret"
+/// )
+/// ```
+///
+/// ## Accessing API Endpoints
+///
+/// The client provides access to all Spotify API services:
+///
+/// ```swift
+/// let profile = try await client.me()
+/// let album = try await client.albums.get("album-id")
+/// let playlists = try await client.playlists.myPlaylists()
+/// ```
+///
+/// ## Configuration
+///
+/// Customize client behavior with ``SpotifyClientConfiguration``:
+///
+/// ```swift
+/// let config = SpotifyClientConfiguration(
+///     requestTimeout: 60,
+///     maxRateLimitRetries: 3
+/// )
+/// let client = SpotifyClient.pkce(..., configuration: config)
+/// ```
+///
+/// ## Advanced Features
+///
+/// - Request interceptors for logging and analytics
+/// - Token expiration callbacks for proactive refresh
+/// - Automatic rate limit handling
+/// - Thread-safe token management
+///
+/// - SeeAlso: ``SpotifyClientConfiguration``, ``RequestInterceptor``, ``TokenExpirationCallback``
 public actor SpotifyClient<Capability: Sendable> {
     let httpClient: HTTPClient
     private let backend: TokenGrantAuthenticator
@@ -77,7 +139,21 @@ public typealias AppSpotifyClient = SpotifyClient<AppOnlyAuthCapability>
 
 extension SpotifyClient where Capability == UserAuthCapability {
 
-    /// PKCE client for public/mobile apps.
+    /// Create a PKCE client for public/mobile apps.
+    ///
+    /// PKCE (Proof Key for Code Exchange) is the recommended flow for mobile and public apps
+    /// that cannot securely store a client secret.
+    ///
+    /// - Parameters:
+    ///   - clientID: Your Spotify application's client ID.
+    ///   - redirectURI: The redirect URI registered in your Spotify app settings.
+    ///   - scopes: The authorization scopes your app needs.
+    ///   - showDialog: Whether to force the user to approve the app again.
+    ///   - tokenStore: Storage for persisting tokens (default: file-based).
+    ///   - httpClient: HTTP client for making requests.
+    ///   - pkceProvider: Provider for generating PKCE challenge/verifier pairs.
+    ///   - configuration: Client configuration options.
+    /// - Returns: A configured SpotifyClient instance.
     public static func pkce(
         clientID: String,
         redirectURI: URL,
@@ -105,7 +181,20 @@ extension SpotifyClient where Capability == UserAuthCapability {
         return SpotifyClient(backend: backend, httpClient: httpClient, configuration: configuration)
     }
 
-    /// Authorization Code + client secret for confidential apps.
+    /// Create an Authorization Code client for confidential apps.
+    ///
+    /// Authorization Code flow is for server-side apps that can securely store a client secret.
+    ///
+    /// - Parameters:
+    ///   - clientID: Your Spotify application's client ID.
+    ///   - clientSecret: Your Spotify application's client secret.
+    ///   - redirectURI: The redirect URI registered in your Spotify app settings.
+    ///   - scopes: The authorization scopes your app needs.
+    ///   - showDialog: Whether to force the user to approve the app again.
+    ///   - tokenStore: Storage for persisting tokens (default: file-based).
+    ///   - httpClient: HTTP client for making requests.
+    ///   - configuration: Client configuration options.
+    /// - Returns: A configured SpotifyClient instance.
     public static func authorizationCode(
         clientID: String,
         clientSecret: String,
@@ -136,7 +225,19 @@ extension SpotifyClient where Capability == UserAuthCapability {
 
 extension SpotifyClient where Capability == AppOnlyAuthCapability {
 
-    /// Client Credentials for app-only access to public data.
+    /// Create a Client Credentials client for app-only access.
+    ///
+    /// Client Credentials flow is for server-to-server authentication without user context.
+    /// It provides access to public data only (no user-specific endpoints).
+    ///
+    /// - Parameters:
+    ///   - clientID: Your Spotify application's client ID.
+    ///   - clientSecret: Your Spotify application's client secret.
+    ///   - scopes: The authorization scopes (usually empty for this flow).
+    ///   - httpClient: HTTP client for making requests.
+    ///   - tokenStore: Optional storage for persisting tokens.
+    ///   - configuration: Client configuration options.
+    /// - Returns: A configured SpotifyClient instance.
     public static func clientCredentials(
         clientID: String,
         clientSecret: String,

@@ -2,7 +2,99 @@ import Foundation
 
 /// Service for controlling and retrieving information about Spotify playback.
 ///
-/// Provides methods to control playback, manage devices, and retrieve playback state.
+/// ## Overview
+///
+/// PlayerService provides comprehensive playback control including:
+/// - Playback state and currently playing track
+/// - Play, pause, skip, seek controls
+/// - Volume, shuffle, and repeat settings
+/// - Queue management
+/// - Device management and transfer
+/// - Recently played tracks
+///
+/// ## Examples
+///
+/// ### Get Current Playback State
+/// ```swift
+/// if let state = try await client.player.state() {
+///     print("Playing: \(state.item?.name ?? "Unknown")")
+///     print("Progress: \(state.progressMs ?? 0)ms")
+///     print("Device: \(state.device.name)")
+///     print("Shuffle: \(state.shuffleState), Repeat: \(state.repeatState)")
+/// } else {
+///     print("Nothing playing")
+/// }
+/// ```
+///
+/// ### Control Playback
+/// ```swift
+/// // Play a playlist
+/// try await client.player.play(
+///     contextURI: "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"
+/// )
+///
+/// // Play specific tracks
+/// try await client.player.play(uris: [
+///     "spotify:track:6rqhFgbbKwnb9MLmUQDhG6",
+///     "spotify:track:4cOdK2wGLETKBW3PvgPWqT"
+/// ])
+///
+/// // Pause
+/// try await client.player.pause()
+///
+/// // Skip to next
+/// try await client.player.skipToNext()
+///
+/// // Seek to 1 minute
+/// try await client.player.seek(to: 60000)
+/// ```
+///
+/// ### Manage Queue
+/// ```swift
+/// // Add track to queue
+/// try await client.player.addToQueue(
+///     uri: "spotify:track:6rqhFgbbKwnb9MLmUQDhG6"
+/// )
+///
+/// // Get queue
+/// let queue = try await client.player.getQueue()
+/// print("Currently playing: \(queue.currentlyPlaying?.name ?? "Unknown")")
+/// print("Up next: \(queue.queue.count) tracks")
+/// ```
+///
+/// ### Manage Devices
+/// ```swift
+/// // Get available devices
+/// let devices = try await client.player.devices()
+/// for device in devices {
+///     print("\(device.name) (\(device.type)) - \(device.isActive ? "Active" : "Inactive")")
+/// }
+///
+/// // Transfer playback to another device
+/// if let device = devices.first {
+///     try await client.player.transfer(to: device.id, play: true)
+/// }
+/// ```
+///
+/// ### Adjust Settings
+/// ```swift
+/// // Set volume to 50%
+/// try await client.player.setVolume(50)
+///
+/// // Enable shuffle
+/// try await client.player.setShuffle(true)
+///
+/// // Set repeat mode
+/// try await client.player.setRepeatMode(.context)
+/// ```
+///
+/// ### Get Recently Played
+/// ```swift
+/// let recent = try await client.player.recentlyPlayed(limit: 20)
+/// for item in recent.items {
+///     print("\(item.track.name) - played at \(item.playedAt)")
+/// }
+/// ```
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-information-about-the-users-current-playback)
 public struct PlayerService<Capability: Sendable>: Sendable {
