@@ -6,19 +6,6 @@ import Testing
 @Suite struct ReleaseDatePrecisionTests {
 
     @Test
-    func hasCorrectRawValues() {
-        #expect(ReleaseDatePrecision.year.rawValue == "year")
-        #expect(ReleaseDatePrecision.month.rawValue == "month")
-        #expect(ReleaseDatePrecision.day.rawValue == "day")
-    }
-
-    @Test
-    func equatableWorksCorrectly() {
-        #expect(ReleaseDatePrecision.year == ReleaseDatePrecision.year)
-        #expect(ReleaseDatePrecision.year != ReleaseDatePrecision.month)
-    }
-
-    @Test
     func decodesFromRawValue() {
         #expect(ReleaseDatePrecision(rawValue: "year") == .year)
         #expect(ReleaseDatePrecision(rawValue: "month") == .month)

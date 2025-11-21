@@ -6,25 +6,6 @@ import Testing
 @Suite struct SpotifyObjectTypeTests {
 
     @Test
-    func hasCorrectRawValues() {
-        #expect(SpotifyObjectType.album.rawValue == "album")
-        #expect(SpotifyObjectType.artist.rawValue == "artist")
-        #expect(SpotifyObjectType.audiobook.rawValue == "audiobook")
-        #expect(SpotifyObjectType.chapter.rawValue == "chapter")
-        #expect(SpotifyObjectType.episode.rawValue == "episode")
-        #expect(SpotifyObjectType.playlist.rawValue == "playlist")
-        #expect(SpotifyObjectType.show.rawValue == "show")
-        #expect(SpotifyObjectType.track.rawValue == "track")
-        #expect(SpotifyObjectType.user.rawValue == "user")
-    }
-
-    @Test
-    func equatableWorksCorrectly() {
-        #expect(SpotifyObjectType.album == SpotifyObjectType.album)
-        #expect(SpotifyObjectType.album != SpotifyObjectType.artist)
-    }
-
-    @Test
     func decodesFromRawValue() {
         #expect(SpotifyObjectType(rawValue: "album") == .album)
         #expect(SpotifyObjectType(rawValue: "artist") == .artist)

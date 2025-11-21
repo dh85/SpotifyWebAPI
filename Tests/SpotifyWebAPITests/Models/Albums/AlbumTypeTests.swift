@@ -6,19 +6,6 @@ import Testing
 @Suite struct AlbumTypeTests {
 
     @Test
-    func hasCorrectRawValues() {
-        #expect(AlbumType.album.rawValue == "album")
-        #expect(AlbumType.single.rawValue == "single")
-        #expect(AlbumType.compilation.rawValue == "compilation")
-    }
-
-    @Test
-    func equatableWorksCorrectly() {
-        #expect(AlbumType.album == AlbumType.album)
-        #expect(AlbumType.album != AlbumType.single)
-    }
-
-    @Test
     func decodesFromRawValue() {
         #expect(AlbumType(rawValue: "album") == .album)
         #expect(AlbumType(rawValue: "single") == .single)

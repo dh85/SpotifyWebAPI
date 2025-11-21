@@ -21,7 +21,7 @@ public struct CursorBasedPage<Item: Codable & Sendable & Equatable>: Codable,
     /// The cursors used to navigate.
     public let cursors: Cursors
 
-    public struct Cursors: Codable, Sendable, Equatable {
+    public struct Cursors: Codable, Sendable, Equatable, Hashable {
         /// The cursor to use as 'after' to get the next page.
         public let after: String?
 
