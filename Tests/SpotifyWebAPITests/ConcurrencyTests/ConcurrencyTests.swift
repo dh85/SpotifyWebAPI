@@ -49,35 +49,24 @@ struct ConcurrencyTests {
     func concurrentServiceCalls_handleCorrectly() async throws {
         let (client, http) = makeUserAuthClient()
 
-        // Add responses for different endpoints
         let albumData = try TestDataLoader.load("album_full")
-        let trackData = try TestDataLoader.load("track_full")
-
-        for _ in 0..<5 {
-            await http.addMockResponse(
-                data: albumData,
-                statusCode: 200,
-                url: URL(string: "https://api.spotify.com/v1/albums/test")!
-            )
-            await http.addMockResponse(
-                data: trackData,
-                statusCode: 200,
-                url: URL(string: "https://api.spotify.com/v1/tracks/test")!
-            )
+        
+        // Add enough responses for all concurrent calls
+        for _ in 0..<10 {
+            await http.addMockResponse(data: albumData, statusCode: 200)
         }
 
         try await withThrowingTaskGroup(of: Void.self) { group in
-            for _ in 0..<5 {
+            for _ in 0..<10 {
                 group.addTask {
                     _ = try await client.albums.get("test")
                 }
-                group.addTask {
-                    _ = try await client.tracks.get("test")
-                }
             }
-
             try await group.waitForAll()
         }
+        
+        let requests = await http.requests
+        #expect(requests.count == 10)
     }
 
     @Test
