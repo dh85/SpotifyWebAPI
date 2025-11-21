@@ -22,6 +22,20 @@ struct LibraryServiceExtensionsTests {
         #expect(requests.allSatisfy { $0.url?.path == "/v1/me/albums" })
     }
 
+    @Test("Albums removeAll chunks into batches of 20")
+    func albumsRemoveAllChunking() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(data: Data(), statusCode: 200)
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        let ids = (1...35).map { "album\($0)" }
+        try await client.albums.removeAll(ids)
+
+        let requests = await http.requests
+        #expect(requests.count == 2)
+        #expect(requests.allSatisfy { $0.url?.path == "/v1/me/albums" })
+    }
+
     @Test("Tracks saveAll chunks into batches of 50")
     func tracksSaveAllChunking() async throws {
         let (client, http) = makeUserAuthClient()
@@ -35,6 +49,34 @@ struct LibraryServiceExtensionsTests {
         let requests = await http.requests
         #expect(requests.count == 3)
         #expect(requests.allSatisfy { $0.url?.path == "/v1/me/tracks" })
+    }
+
+    @Test("Tracks removeAll chunks into batches of 50")
+    func tracksRemoveAllChunking() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(data: Data(), statusCode: 200)
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        let ids = (1...80).map { "track\($0)" }
+        try await client.tracks.removeAll(ids)
+
+        let requests = await http.requests
+        #expect(requests.count == 2)
+        #expect(requests.allSatisfy { $0.url?.path == "/v1/me/tracks" })
+    }
+
+    @Test("Shows saveAll chunks into batches of 50")
+    func showsSaveAllChunking() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(data: Data(), statusCode: 200)
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        let ids = (1...90).map { "show\($0)" }
+        try await client.shows.saveAll(ids)
+
+        let requests = await http.requests
+        #expect(requests.count == 2)
+        #expect(requests.allSatisfy { $0.url?.path == "/v1/me/shows" })
     }
 
     @Test("Shows removeAll chunks into batches of 50")
@@ -61,6 +103,20 @@ struct LibraryServiceExtensionsTests {
 
         let requests = await http.requests
         #expect(requests.count == 1)
+    }
+
+    @Test("Episodes removeAll chunks into batches of 50")
+    func episodesRemoveAllChunking() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(data: Data(), statusCode: 200)
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        let ids = (1...60).map { "episode\($0)" }
+        try await client.episodes.removeAll(ids)
+
+        let requests = await http.requests
+        #expect(requests.count == 2)
+        #expect(requests.allSatisfy { $0.url?.path == "/v1/me/episodes" })
     }
 
     @Test("Set chunked helper")
