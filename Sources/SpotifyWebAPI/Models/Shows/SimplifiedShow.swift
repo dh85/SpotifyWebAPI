@@ -12,34 +12,34 @@ public struct SimplifiedShow: Codable, Sendable, Equatable {
     /// Copyright statements for the show.
     public let copyrights: [SpotifyCopyright]?
     /// A description of the show (plain text).
-    public let description: String
+    public let description: String?
     /// A description of the show (HTML format).
     public let htmlDescription: String?
     /// Whether the show has explicit content.
     public let explicit: Bool
     /// External URLs for this show.
-    public let externalUrls: SpotifyExternalUrls
+    public let externalUrls: SpotifyExternalUrls?
     /// API endpoint URL for full show details.
-    public let href: URL
+    public let href: URL?
     /// The Spotify ID.
-    public let id: String
+    public let id: String?
     /// Cover art images in various sizes.
-    public let images: [SpotifyImage]
+    public let images: [SpotifyImage]?
     /// Whether the show is hosted outside of Spotify's CDN.
-    public let isExternallyHosted: Bool
+    public let isExternallyHosted: Bool?
     /// Languages used in the show (ISO 639 codes).
-    public let languages: [String]
+    public let languages: [String]?
     /// The media type of the show (e.g., "audio").
-    public let mediaType: String
+    public let mediaType: String?
     /// The show name.
-    public let name: String
+    public let name: String?
     /// The publisher of the show.
-    public let publisher: String
+    public let publisher: String?
     /// Object type (always "show").
     public let type: SpotifyObjectType
     /// The Spotify URI.
-    public let uri: String
+    public let uri: String?
     /// The total number of episodes in the show.
-    public let totalEpisodes: Int
+    public let totalEpisodes: Int?
 
 }

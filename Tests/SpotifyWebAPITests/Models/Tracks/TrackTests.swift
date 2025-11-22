@@ -38,9 +38,9 @@ import Testing
         #expect(actual.isPlayable == expected.isPlayable)
         #expect(actual.trackNumber == expected.trackNumber)
         #expect(actual.discNumber == expected.discNumber)
-        #expect(actual.album.name == expected.album.name)
-        #expect(actual.artists.first?.name == expected.artists.first?.name)
-        #expect(actual.externalIds.isrc == expected.externalIds.isrc)
+        #expect(actual.album?.name == expected.album?.name)
+        #expect(actual.artists?.first?.name == expected.artists?.first?.name)
+        #expect(actual.externalIds?.isrc == expected.externalIds?.isrc)
         #expect(actual.linkedFrom?.id == expected.linkedFrom?.id)
         #expect(actual.restrictions?.reason == expected.restrictions?.reason)
         #expect(
@@ -104,8 +104,7 @@ extension Track {
         trackNumber: 5,
         type: .track,
         uri: "spotify:track:track_id",
-        isLocal: false,
-        previewUrl: nil
+        isLocal: false
     )
 
     fileprivate static let minimalExample = Track(
@@ -144,7 +143,6 @@ extension Track {
         trackNumber: 1,
         type: .track,
         uri: "spotify:track:track_id",
-        isLocal: false,
-        previewUrl: nil
+        isLocal: false
     )
 }

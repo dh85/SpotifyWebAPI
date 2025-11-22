@@ -6,7 +6,7 @@ import Foundation
 extension Playlist {
     /// Total number of tracks/episodes in the playlist.
     public var totalTracks: Int { tracks.total }
-    
+
     /// Whether the playlist is empty (has no tracks).
     public var isEmpty: Bool { tracks.total == 0 }
 }
@@ -15,7 +15,7 @@ extension Playlist {
 extension SimplifiedPlaylist {
     /// Total number of tracks/episodes in the playlist.
     public var totalTracks: Int { tracks?.total ?? 0 }
-    
+
     /// Whether the playlist is empty (has no tracks).
     public var isEmpty: Bool { tracks?.total == 0 }
 }
@@ -25,16 +25,17 @@ extension SimplifiedPlaylist {
 /// Convenience properties for albums.
 extension Album {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
-    public var artistNames: String {
-        artists.map(\.name).joined(separator: ", ")
+    /// Returns nil if there are no artists.
+    public var artistNames: String? {
+        artists?.map(\.name).joined(separator: ", ")
     }
 }
 
 /// Convenience properties for simplified albums.
 extension SimplifiedAlbum {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
-    public var artistNames: String {
-        artists.map(\.name).joined(separator: ", ")
+    public var artistNames: String? {
+        artists?.map(\.name).joined(separator: ", ")
     }
 }
 
@@ -43,12 +44,13 @@ extension SimplifiedAlbum {
 /// Convenience properties for tracks.
 extension Track {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
-    public var artistNames: String {
-        artists.map(\.name).joined(separator: ", ")
+    public var artistNames: String? {
+        artists?.map(\.name).joined(separator: ", ")
     }
-    
+
     /// Duration formatted as minutes:seconds (e.g., "3:45").
-    public var durationFormatted: String {
+    public var durationFormatted: String? {
+        guard let durationMs else { return nil }
         let minutes = durationMs / 60000
         let seconds = (durationMs % 60000) / 1000
         return String(format: "%d:%02d", minutes, seconds)
@@ -58,12 +60,13 @@ extension Track {
 /// Convenience properties for simplified tracks.
 extension SimplifiedTrack {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
-    public var artistNames: String {
-        artists.map(\.name).joined(separator: ", ")
+    public var artistNames: String? {
+        artists?.map(\.name).joined(separator: ", ")
     }
-    
+
     /// Duration formatted as minutes:seconds (e.g., "3:45").
-    public var durationFormatted: String {
+    public var durationFormatted: String? {
+        guard let durationMs else { return nil }
         let minutes = durationMs / 60000
         let seconds = (durationMs % 60000) / 1000
         return String(format: "%d:%02d", minutes, seconds)
@@ -75,7 +78,8 @@ extension SimplifiedTrack {
 /// Convenience properties for episodes.
 extension Episode {
     /// Duration formatted as minutes:seconds (e.g., "45:30").
-    public var durationFormatted: String {
+    public var durationFormatted: String? {
+        guard let durationMs else { return nil }
         let minutes = durationMs / 60000
         let seconds = (durationMs % 60000) / 1000
         return String(format: "%d:%02d", minutes, seconds)
@@ -85,7 +89,8 @@ extension Episode {
 /// Convenience properties for simplified episodes.
 extension SimplifiedEpisode {
     /// Duration formatted as minutes:seconds (e.g., "45:30").
-    public var durationFormatted: String {
+    public var durationFormatted: String? {
+        guard let durationMs else { return nil }
         let minutes = durationMs / 60000
         let seconds = (durationMs % 60000) / 1000
         return String(format: "%d:%02d", minutes, seconds)
@@ -101,7 +106,7 @@ extension SpotifyImage {
         guard let width else { return false }
         return width >= 640
     }
-    
+
     /// Whether this is a thumbnail image (width < 200px).
     public var isThumbnail: Bool {
         guard let width else { return false }
@@ -121,7 +126,7 @@ extension Array where Element == SpotifyImage {
     public var largest: SpotifyImage? {
         self.max { ($0.width ?? 0) < ($1.width ?? 0) }
     }
-    
+
     /// The smallest image by width.
     ///
     /// ```swift

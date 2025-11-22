@@ -36,8 +36,7 @@ extension SavedAlbum {
             copyrights: [],
             externalIds: SpotifyExternalIds(isrc: nil, ean: nil, upc: nil),
             label: "Test Label",
-            popularity: 50,
-            genres: []
+            popularity: 50
         )
     )
 }
