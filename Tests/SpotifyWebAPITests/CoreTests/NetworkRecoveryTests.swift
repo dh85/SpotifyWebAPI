@@ -206,19 +206,14 @@ struct NetworkRecoveryTests {
 extension MockHTTPClient {
     func addMockResponse(statusCode: Int, headers: [String: String] = [:]) async {
         if statusCode == 0 {
-            // Add a special marker for network errors that will be thrown in data(for:)
-            let url = URL(string: "https://api.spotify.com")!
-            let response = URLResponse(
-                url: url, mimeType: nil, expectedContentLength: 0, textEncodingName: nil)
-            responseQueue.append((Data("NETWORK_ERROR".utf8), response))
+            addNetworkError(.timedOut)
         } else {
-            let response = HTTPURLResponse(
-                url: URL(string: "https://api.spotify.com")!,
+            addMockResponse(
+                data: Data(),
                 statusCode: statusCode,
-                httpVersion: "HTTP/1.1",
-                headerFields: headers
-            )!
-            responseQueue.append((Data(), response))
+                url: URL(string: "https://api.spotify.com")!,
+                headers: headers
+            )
         }
     }
 }

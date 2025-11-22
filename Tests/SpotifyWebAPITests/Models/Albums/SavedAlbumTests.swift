@@ -4,6 +4,17 @@ import Testing
 @testable import SpotifyWebAPI
 
 @Suite struct SavedAlbumTests {
+
+    @Test
+    func decodesSavedAlbumsPage() throws {
+        let data = try TestDataLoader.load("albums_saved")
+        let page: Page<SavedAlbum> = try decodeModel(from: data)
+
+        #expect(page.total == 1)
+        let saved = try #require(page.items.first)
+        #expect(saved.album.id == "album123")
+        #expect(saved.album.name == "Test Album")
+    }
 }
 
 extension SavedAlbum {

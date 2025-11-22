@@ -61,6 +61,28 @@ import Foundation
 /// - Automatic rate limit handling
 /// - Thread-safe token management
 ///
+/// ## Token Storage
+///
+/// Provide a custom ``TokenStore`` to integrate with Keychain, databases, or any
+/// persistence layer suitable for your platform:
+///
+/// ```swift
+/// actor MemoryStore: TokenStore {
+///     private var tokens: SpotifyTokens?
+///
+///     func load() async throws -> SpotifyTokens? { tokens }
+///     func save(_ tokens: SpotifyTokens) async throws { self.tokens = tokens }
+///     func clear() async throws { self.tokens = nil }
+/// }
+///
+/// let client = SpotifyClient.pkce(
+///     clientID: "...",
+///     redirectURI: URL(string: "myapp://callback")!,
+///     scopes: [.userReadPrivate],
+///     tokenStore: MemoryStore()
+/// )
+/// ```
+///
 /// - SeeAlso: ``SpotifyClientConfiguration``, ``RequestInterceptor``, ``TokenExpirationCallback``
 public actor SpotifyClient<Capability: Sendable> {
     let httpClient: HTTPClient

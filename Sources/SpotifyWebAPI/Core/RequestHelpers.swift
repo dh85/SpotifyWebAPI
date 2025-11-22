@@ -139,19 +139,19 @@ extension SpotifyClient {
     @discardableResult
     func perform<T: Decodable & Sendable>(_ request: SpotifyRequest<T>) async throws -> T {
         let requestKey = generateRequestKey(request)
-        
+
         // Check for ongoing request
         if let ongoingTask = ongoingRequests[requestKey] {
             return try await ongoingTask.value as! T
         }
-        
+
         // Create new task
         let task = Task<(any Sendable), Error> {
             try await self.performInternal(request)
         }
-        
+
         ongoingRequests[requestKey] = task
-        
+
         do {
             let result = try await task.value as! T
             ongoingRequests.removeValue(forKey: requestKey)
@@ -161,15 +161,18 @@ extension SpotifyClient {
             throw error
         }
     }
-    
+
     private func performInternal<T: Decodable>(_ request: SpotifyRequest<T>) async throws -> T {
         #if DEBUG
-        let logger = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ? DebugLogger.testInstance : DebugLogger.shared
+            let logger =
+                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+                ? DebugLogger.testInstance : DebugLogger.shared
         #else
-        let logger = DebugLogger.shared
+            let logger = DebugLogger.shared
         #endif
-        
-        let measurement = PerformanceMeasurement("\(request.method) \(request.path)", logger: logger)
+
+        let measurement = PerformanceMeasurement(
+            "\(request.method) \(request.path)", logger: logger)
 
         let httpBody: Data?
         if let body = request.body {
@@ -219,7 +222,6 @@ extension SpotifyClient {
             )
         }
 
-        // --- THIS IS THE FIX ---
         // If we expect an EmptyResponse and data is empty (e.g., 200 OK w/ no body),
         // return a new instance immediately without decoding.
         if T.self == EmptyResponse.self && data.isEmpty {
@@ -233,22 +235,24 @@ extension SpotifyClient {
         await measurement.finish()
         return result
     }
-    
+
     private func generateRequestKey<T: Decodable>(_ request: SpotifyRequest<T>) -> String {
         var components = [request.method, request.path]
-        
+
         if !request.query.isEmpty {
-            let queryString = request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(separator: "&")
+            let queryString = request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(
+                separator: "&")
             components.append(queryString)
         }
-        
+
         if let body = request.body {
             if let bodyData = try? JSONEncoder().encode(body),
-               let bodyString = String(data: bodyData, encoding: .utf8) {
+                let bodyString = String(data: bodyData, encoding: .utf8)
+            {
                 components.append(bodyString)
             }
         }
-        
+
         return components.joined(separator: "|")
     }
 

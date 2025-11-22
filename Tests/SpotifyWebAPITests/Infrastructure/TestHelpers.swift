@@ -73,7 +73,28 @@ func decodeModel<T: Decodable>(from data: Data) throws
 func encodeModel<T: Encodable>(_ model: T) throws -> Data {
     let encoder = JSONEncoder()
     encoder.keyEncodingStrategy = .convertToSnakeCase
+    encoder.dateEncodingStrategy = .iso8601
     return try encoder.encode(model)
+}
+
+func expectCodableRoundTrip<T: Codable & Equatable>(
+    _ value: T,
+    fileID: StaticString = #fileID,
+    filePath: StaticString = #filePath,
+    line: UInt = #line,
+    column: UInt = #column
+) throws {
+    let data = try encodeModel(value)
+    let decoded: T = try decodeModel(from: data)
+    #expect(
+        decoded == value,
+        sourceLocation: makeSourceLocation(
+            fileID: fileID,
+            filePath: filePath,
+            line: line,
+            column: column
+        )
+    )
 }
 
 // MARK: - Test Client Factories

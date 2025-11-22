@@ -117,4 +117,57 @@ import Testing
         
         #expect(result.first == 50)  // Clamped to max
     }
+
+    @Test
+    func collectAllPagesHonorsCancellationBetweenPages() async throws {
+        let (client, _) = await makeUserAuthClient()
+        let recorder = FetchRecorder()
+
+        let collectingTask = Task {
+            try await client.collectAllPages(
+                pageSize: 2,
+                maxItems: nil
+            ) { limit, offset -> Page<String> in
+                await recorder.record(offset: offset)
+
+                return Page(
+                    href: URL(string: "https://api.spotify.com/v1/test")!,
+                    items: ["item-\(offset)"],
+                    limit: limit,
+                    next: URL(string: "https://api.spotify.com/v1/test?offset=\(offset + limit)"),
+                    offset: offset,
+                    previous: nil,
+                    total: 10
+                )
+            }
+        }
+
+        // Wait until the first fetch occurs
+        while await recorder.count == 0 {
+            await Task.yield()
+        }
+
+        collectingTask.cancel()
+
+        do {
+            _ = try await collectingTask.value
+            Issue.record("Expected collectAllPages to be cancelled")
+        } catch is CancellationError {
+            // Expected
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
+
+        let fetchCount = await recorder.count
+        #expect(fetchCount == 1)
+    }
+}
+
+private actor FetchRecorder {
+    private(set) var count: Int = 0
+
+    func record(offset: Int) {
+        _ = offset
+        count += 1
+    }
 }
