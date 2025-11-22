@@ -164,6 +164,31 @@ struct AudiobooksServiceTests {
     }
 
     @Test
+    func allSavedAudiobooksFetchesAllPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        let first = try makePaginatedResponse(
+            fixture: "audiobooks_saved.json",
+            of: SavedAudiobook.self,
+            offset: 0,
+            total: 2,
+            hasNext: true
+        )
+        let second = try makePaginatedResponse(
+            fixture: "audiobooks_saved.json",
+            of: SavedAudiobook.self,
+            offset: 50,
+            total: 2,
+            hasNext: false
+        )
+        await http.addMockResponse(data: first, statusCode: 200)
+        await http.addMockResponse(data: second, statusCode: 200)
+
+        let audiobooks = try await client.audiobooks.allSavedAudiobooks()
+
+        #expect(audiobooks.count == 2)
+    }
+
+    @Test
     func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)

@@ -46,7 +46,7 @@ final class SimpleMockHTTPClient: HTTPClient, @unchecked Sendable {
         self.response = response
     }
 
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+    func data(for request: URLRequest) async throws -> HTTPResponse {
         recordedRequests.append(request)
 
         let url = request.url ?? URL(string: "https://accounts.spotify.com")!
@@ -59,7 +59,7 @@ final class SimpleMockHTTPClient: HTTPClient, @unchecked Sendable {
                 httpVersion: nil,
                 headerFields: nil
             )!
-            return (data, http)
+            return HTTPResponse(data: data, response: http)
 
         case .failure(let statusCode, let body):
             let http = HTTPURLResponse(
@@ -68,14 +68,14 @@ final class SimpleMockHTTPClient: HTTPClient, @unchecked Sendable {
                 httpVersion: nil,
                 headerFields: nil
             )!
-            return (Data(body.utf8), http)
+            return HTTPResponse(data: Data(body.utf8), response: http)
         }
     }
 }
 
 /// HTTP client that returns a non-HTTPURLResponse, to hit the `unexpectedResponse` branch.
 final class NonHTTPResponseMockHTTPClient: HTTPClient, @unchecked Sendable {
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+    func data(for request: URLRequest) async throws -> HTTPResponse {
         let url = request.url ?? URL(string: "https://accounts.spotify.com")!
         let response = URLResponse(
             url: url,
@@ -83,7 +83,7 @@ final class NonHTTPResponseMockHTTPClient: HTTPClient, @unchecked Sendable {
             expectedContentLength: 0,
             textEncodingName: nil
         )
-        return (Data(), response)
+        return HTTPResponse(data: Data(), response: response)
     }
 }
 
@@ -97,7 +97,7 @@ final class StatusMockHTTPClient: HTTPClient, @unchecked Sendable {
         self.body = body
     }
 
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+    func data(for request: URLRequest) async throws -> HTTPResponse {
         let url = request.url ?? URL(string: "https://accounts.spotify.com")!
         let response = HTTPURLResponse(
             url: url,
@@ -105,7 +105,7 @@ final class StatusMockHTTPClient: HTTPClient, @unchecked Sendable {
             httpVersion: nil,
             headerFields: nil
         )!
-        return (Data(body.utf8), response)
+        return HTTPResponse(data: Data(body.utf8), response: response)
     }
 }
 
@@ -119,7 +119,7 @@ final class BinaryBodyMockHTTPClient: HTTPClient, @unchecked Sendable {
         self.data = data
     }
 
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+    func data(for request: URLRequest) async throws -> HTTPResponse {
         let url = request.url ?? URL(string: "https://accounts.spotify.com")!
         let response = HTTPURLResponse(
             url: url,
@@ -127,7 +127,7 @@ final class BinaryBodyMockHTTPClient: HTTPClient, @unchecked Sendable {
             httpVersion: nil,
             headerFields: nil
         )!
-        return (data, response)
+        return HTTPResponse(data: data, response: response)
     }
 }
 
@@ -147,7 +147,7 @@ final class SequencedMockHTTPClient: HTTPClient, @unchecked Sendable {
         self.responses = responses
     }
 
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+    func data(for request: URLRequest) async throws -> HTTPResponse {
         requests.append(request)
 
         guard !responses.isEmpty else {
@@ -163,7 +163,7 @@ final class SequencedMockHTTPClient: HTTPClient, @unchecked Sendable {
             headerFields: nil
         )!
 
-        return (stub.data, http)
+        return HTTPResponse(data: stub.data, response: http)
     }
 }
 

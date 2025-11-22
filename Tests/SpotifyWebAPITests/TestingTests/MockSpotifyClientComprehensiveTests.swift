@@ -14,7 +14,7 @@ struct MockSpotifyClientComprehensiveTests {
         let album: Album = try decodeModel(from: data)
         mock.mockAlbum = album
         
-        let result = try await mock.getAlbum("test-id")
+        let result = try await mock.albums.get("test-id")
         
         #expect(result.id == album.id)
         #expect(mock.getAlbumCalled == true)
@@ -25,7 +25,7 @@ struct MockSpotifyClientComprehensiveTests {
         let mock = MockSpotifyClient()
         
         await #expect(throws: MockError.noMockData("mockAlbum")) {
-            _ = try await mock.getAlbum("test-id")
+            _ = try await mock.albums.get("test-id")
         }
         #expect(mock.getAlbumCalled == true)
     }
@@ -36,7 +36,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            _ = try await mock.getAlbum("test-id")
+            _ = try await mock.albums.get("test-id")
         }
         #expect(mock.getAlbumCalled == true)
     }
@@ -50,7 +50,7 @@ struct MockSpotifyClientComprehensiveTests {
         let track: Track = try decodeModel(from: data)
         mock.mockTrack = track
         
-        let result = try await mock.getTrack("test-id")
+        let result = try await mock.tracks.get("test-id")
         
         #expect(result.id == track.id)
         #expect(mock.getTrackCalled == true)
@@ -61,7 +61,7 @@ struct MockSpotifyClientComprehensiveTests {
         let mock = MockSpotifyClient()
         
         await #expect(throws: MockError.noMockData("mockTrack")) {
-            _ = try await mock.getTrack("test-id")
+            _ = try await mock.tracks.get("test-id")
         }
         #expect(mock.getTrackCalled == true)
     }
@@ -72,7 +72,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            _ = try await mock.getTrack("test-id")
+            _ = try await mock.tracks.get("test-id")
         }
         #expect(mock.getTrackCalled == true)
     }
@@ -86,7 +86,7 @@ struct MockSpotifyClientComprehensiveTests {
         let playlist: Playlist = try decodeModel(from: data)
         mock.mockPlaylist = playlist
         
-        let result = try await mock.getPlaylist("test-id")
+        let result = try await mock.playlists.get("test-id")
         
         #expect(result.id == playlist.id)
         #expect(mock.getPlaylistCalled == true)
@@ -97,7 +97,7 @@ struct MockSpotifyClientComprehensiveTests {
         let mock = MockSpotifyClient()
         
         await #expect(throws: MockError.noMockData("mockPlaylist")) {
-            _ = try await mock.getPlaylist("test-id")
+            _ = try await mock.playlists.get("test-id")
         }
         #expect(mock.getPlaylistCalled == true)
     }
@@ -108,7 +108,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            _ = try await mock.getPlaylist("test-id")
+            _ = try await mock.playlists.get("test-id")
         }
         #expect(mock.getPlaylistCalled == true)
     }
@@ -119,11 +119,17 @@ struct MockSpotifyClientComprehensiveTests {
         let data = try TestDataLoader.load("playlists_user")
         let playlistsPage: Page<SimplifiedPlaylist> = try decodeModel(from: data)
         mock.mockPlaylists = playlistsPage.items
+        mock.mockPlaylistsTotal = playlistsPage.total
+        mock.mockPlaylistsHref = playlistsPage.href
         
-        let result = try await mock.myPlaylists()
+        let result = try await mock.playlists.myPlaylists(
+            limit: playlistsPage.limit,
+            offset: playlistsPage.offset
+        )
         
-        #expect(result.count == playlistsPage.items.count)
-        #expect(result.first?.id == playlistsPage.items.first?.id)
+        #expect(result.items == playlistsPage.items)
+        #expect(result.total == playlistsPage.total)
+        #expect(mock.myPlaylistsCalled == true)
     }
     
     @Test("myPlaylists throws custom error")
@@ -132,7 +138,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            _ = try await mock.myPlaylists()
+            _ = try await mock.playlists.myPlaylists(limit: 20, offset: 0)
         }
     }
     
@@ -145,7 +151,7 @@ struct MockSpotifyClientComprehensiveTests {
         let state: PlaybackState = try decodeModel(from: data)
         mock.mockPlaybackState = state
         
-        let result = try await mock.playbackState()
+        let result = try await mock.player.state()
         
         #expect(result?.isPlaying == state.isPlaying)
     }
@@ -154,7 +160,7 @@ struct MockSpotifyClientComprehensiveTests {
     func playbackStateReturnsNilWhenNoData() async throws {
         let mock = MockSpotifyClient()
         
-        let result = try await mock.playbackState()
+        let result = try await mock.player.state()
         
         #expect(result == nil)
     }
@@ -165,7 +171,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            _ = try await mock.playbackState()
+            _ = try await mock.player.state()
         }
     }
     
@@ -175,7 +181,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            try await mock.pause()
+            try await mock.player.pause()
         }
         #expect(mock.pauseCalled == true)
     }
@@ -186,7 +192,7 @@ struct MockSpotifyClientComprehensiveTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            try await mock.play()
+            try await mock.player.resume()
         }
         #expect(mock.playCalled == true)
     }
@@ -196,6 +202,7 @@ struct MockSpotifyClientComprehensiveTests {
     @Test("reset clears all mock data and call tracking")
     func resetClearsAllData() async throws {
         let mock = MockSpotifyClient()
+        let defaultHref = mock.mockPlaylistsHref
         
         // Set up all mock data
         let profileData = try TestDataLoader.load("current_user_profile")
@@ -217,18 +224,20 @@ struct MockSpotifyClientComprehensiveTests {
         let playlistsData = try TestDataLoader.load("playlists_user")
         let playlistsPage: Page<SimplifiedPlaylist> = try decodeModel(from: playlistsData)
         mock.mockPlaylists = playlistsPage.items
+        mock.mockPlaylistsHref = URL(string: "https://example.com/custom")!
+        _ = try await mock.playlists.myPlaylists()
         
         let stateData = try TestDataLoader.load("playback_state")
         let state: PlaybackState = try decodeModel(from: stateData)
         mock.mockPlaybackState = state
         
         // Make calls to set tracking flags
-        _ = try await mock.me()
-        _ = try await mock.getAlbum("test")
-        _ = try await mock.getTrack("test")
-        _ = try await mock.getPlaylist("test")
-        try await mock.pause()
-        try await mock.play()
+        _ = try await mock.users.me()
+        _ = try await mock.albums.get("test")
+        _ = try await mock.tracks.get("test")
+        _ = try await mock.playlists.get("test")
+        try await mock.player.pause()
+        try await mock.player.resume()
         
         // Set error after calls
         mock.mockError = SpotifyAuthError.unexpectedResponse
@@ -244,6 +253,8 @@ struct MockSpotifyClientComprehensiveTests {
         #expect(mock.getAlbumCalled == true)
         #expect(mock.getTrackCalled == true)
         #expect(mock.getPlaylistCalled == true)
+        #expect(mock.myPlaylistsCalled == true)
+        #expect(!mock.myPlaylistsParameters.isEmpty)
         #expect(mock.pauseCalled == true)
         #expect(mock.playCalled == true)
         
@@ -256,11 +267,15 @@ struct MockSpotifyClientComprehensiveTests {
         #expect(mock.mockTrack == nil)
         #expect(mock.mockPlaylist == nil)
         #expect(mock.mockPlaylists.isEmpty)
+        #expect(mock.mockPlaylistsTotal == nil)
+        #expect(mock.mockPlaylistsHref == defaultHref)
         #expect(mock.mockPlaybackState == nil)
         #expect(mock.getUsersCalled == false)
         #expect(mock.getAlbumCalled == false)
         #expect(mock.getTrackCalled == false)
         #expect(mock.getPlaylistCalled == false)
+        #expect(mock.myPlaylistsCalled == false)
+        #expect(mock.myPlaylistsParameters.isEmpty)
         #expect(mock.pauseCalled == false)
         #expect(mock.playCalled == false)
     }

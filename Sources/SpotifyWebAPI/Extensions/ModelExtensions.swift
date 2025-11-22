@@ -27,7 +27,7 @@ extension Album {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
     /// Returns nil if there are no artists.
     public var artistNames: String? {
-        artists?.map(\.name).joined(separator: ", ")
+        joinedArtistNames(artists)
     }
 }
 
@@ -35,7 +35,7 @@ extension Album {
 extension SimplifiedAlbum {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
     public var artistNames: String? {
-        artists?.map(\.name).joined(separator: ", ")
+        joinedArtistNames(artists)
     }
 }
 
@@ -45,15 +45,12 @@ extension SimplifiedAlbum {
 extension Track {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
     public var artistNames: String? {
-        artists?.map(\.name).joined(separator: ", ")
+        joinedArtistNames(artists)
     }
 
     /// Duration formatted as minutes:seconds (e.g., "3:45").
     public var durationFormatted: String? {
-        guard let durationMs else { return nil }
-        let minutes = durationMs / 60000
-        let seconds = (durationMs % 60000) / 1000
-        return String(format: "%d:%02d", minutes, seconds)
+        formattedDuration(durationMs)
     }
 }
 
@@ -61,15 +58,12 @@ extension Track {
 extension SimplifiedTrack {
     /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
     public var artistNames: String? {
-        artists?.map(\.name).joined(separator: ", ")
+        joinedArtistNames(artists)
     }
 
     /// Duration formatted as minutes:seconds (e.g., "3:45").
     public var durationFormatted: String? {
-        guard let durationMs else { return nil }
-        let minutes = durationMs / 60000
-        let seconds = (durationMs % 60000) / 1000
-        return String(format: "%d:%02d", minutes, seconds)
+        formattedDuration(durationMs)
     }
 }
 
@@ -79,10 +73,7 @@ extension SimplifiedTrack {
 extension Episode {
     /// Duration formatted as minutes:seconds (e.g., "45:30").
     public var durationFormatted: String? {
-        guard let durationMs else { return nil }
-        let minutes = durationMs / 60000
-        let seconds = (durationMs % 60000) / 1000
-        return String(format: "%d:%02d", minutes, seconds)
+        formattedDuration(durationMs)
     }
 }
 
@@ -90,10 +81,7 @@ extension Episode {
 extension SimplifiedEpisode {
     /// Duration formatted as minutes:seconds (e.g., "45:30").
     public var durationFormatted: String? {
-        guard let durationMs else { return nil }
-        let minutes = durationMs / 60000
-        let seconds = (durationMs % 60000) / 1000
-        return String(format: "%d:%02d", minutes, seconds)
+        formattedDuration(durationMs)
     }
 }
 
@@ -137,4 +125,18 @@ extension Array where Element == SpotifyImage {
     public var smallest: SpotifyImage? {
         self.min { ($0.width ?? 0) < ($1.width ?? 0) }
     }
+}
+
+// MARK: - Private Helpers
+
+private func joinedArtistNames(_ artists: [SimplifiedArtist]?) -> String? {
+    guard let artists, !artists.isEmpty else { return nil }
+    return artists.map(\.name).joined(separator: ", ")
+}
+
+private func formattedDuration(_ durationMs: Int?) -> String? {
+    guard let durationMs else { return nil }
+    let minutes = durationMs / 60000
+    let seconds = (durationMs % 60000) / 1000
+    return String(format: "%d:%02d", minutes, seconds)
 }

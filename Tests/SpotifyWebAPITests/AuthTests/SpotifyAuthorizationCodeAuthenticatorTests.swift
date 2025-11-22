@@ -233,6 +233,38 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         }
     }
 
+    @Test
+    func handleCallback_throwsWhenClientSecretMissing() async {
+        let pkceConfig = SpotifyAuthConfig.pkce(
+            clientID: "PKCE_CLIENT",
+            redirectURI: URL(string: "pkce://callback")!
+        )
+
+        let http = SimpleMockHTTPClient(
+            response: .success(data: makeTokenJSON(accessToken: "TOKEN"), statusCode: 200)
+        )
+        let store = InMemoryTokenStore()
+
+        let auth = SpotifyAuthorizationCodeAuthenticator(
+            config: pkceConfig,
+            httpClient: http,
+            tokenStore: store
+        )
+
+        let authURL = try! await auth.makeAuthorizationURL()
+        let state =
+            URLComponents(url: authURL, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == "state" })?
+            .value ?? ""
+
+        let callback = URL(string: "pkce://callback?code=AUTH&state=\(state)")!
+
+        await #expect(throws: SpotifyAuthError.unexpectedResponse) {
+            _ = try await auth.handleCallback(callback)
+        }
+    }
+
     // MARK: - formURLEncodedBody via debug helper
 
     @Test
@@ -279,6 +311,28 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
         #expect(first?.accessToken == "ACCESS")
         #expect(second?.accessToken == "ACCESS")
+    }
+
+    // MARK: - Missing client secret safeguards
+
+    @Test
+    func refreshAccessToken_throwsWhenClientSecretMissing() async {
+        let pkceConfig = SpotifyAuthConfig.pkce(
+            clientID: "PKCE_CLIENT",
+            redirectURI: URL(string: "pkce://callback")!
+        )
+
+        let auth = SpotifyAuthorizationCodeAuthenticator(
+            config: pkceConfig,
+            httpClient: SimpleMockHTTPClient(
+                response: .success(data: Data(), statusCode: 200)
+            ),
+            tokenStore: InMemoryTokenStore()
+        )
+
+        await #expect(throws: SpotifyAuthError.unexpectedResponse) {
+            _ = try await auth.refreshAccessToken(refreshToken: "REFRESH")
+        }
     }
 
     // MARK: - refreshAccessTokenIfNeeded branches

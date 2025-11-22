@@ -23,9 +23,9 @@ struct MockSpotifyClientDeduplicationTests {
         )
         
         // Make multiple concurrent calls
-        async let profile1 = mock.me()
-        async let profile2 = mock.me()
-        async let profile3 = mock.me()
+        async let profile1 = mock.users.me()
+        async let profile2 = mock.users.me()
+        async let profile3 = mock.users.me()
         
         let results = try await [profile1, profile2, profile3]
         
@@ -65,9 +65,9 @@ struct MockSpotifyClientDeduplicationTests {
         )
         
         // Make calls
-        _ = try await mock.me()
-        try await mock.pause()
-        try await mock.play()
+        _ = try await mock.users.me()
+        try await mock.player.pause()
+        try await mock.player.resume()
         
         // Verify tracking
         #expect(mock.getUsersCalled == true)
@@ -95,7 +95,7 @@ struct MockSpotifyClientDeduplicationTests {
             uri: "spotify:user:test-user"
         )
         
-        _ = try await mock.me()
+        _ = try await mock.users.me()
         #expect(mock.getUsersCalled == true)
         
         // Reset

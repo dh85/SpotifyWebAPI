@@ -60,10 +60,10 @@ struct URLSessionHTTPClientTests {
             return (response, data)
         }
         
-        let (data, response) = try await client.data(for: request)
+        let response = try await client.data(for: request)
         
-        #expect(String(data: data, encoding: .utf8) == "test data")
-        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+        #expect(String(data: response.data, encoding: .utf8) == "test data")
+        #expect(response.statusCode == 200)
     }
 }
 
