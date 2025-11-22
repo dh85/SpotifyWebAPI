@@ -9,8 +9,13 @@ import Testing
 
 actor MockHTTPClient: HTTPClient {
 
-    /// A queue of (Data, URLResponse) tuples to be returned by `data(for:)`.
-    var responseQueue: [(Data, URLResponse)] = []
+    private enum ResponseBehavior {
+        case success(Data, URLResponse)
+        case failure(Error)
+    }
+
+    /// A queue of responses or errors to be returned by `data(for:)`.
+    private var responseQueue: [ResponseBehavior] = []
 
     /// A log of all requests that were sent to this client.
     var requests: [URLRequest] = []
@@ -28,7 +33,17 @@ actor MockHTTPClient: HTTPClient {
             httpVersion: "HTTP/1.1",
             headerFields: headers
         )!
-        responseQueue.append((data, response))
+        responseQueue.append(.success(data, response))
+    }
+
+    /// Adds a network error that will be thrown when the next request is made.
+    func addNetworkError(_ code: URLError.Code) {
+        responseQueue.append(.failure(URLError(code)))
+    }
+
+    /// Adds a generic error to be thrown when the next request is made.
+    func addError(_ error: Error) {
+        responseQueue.append(.failure(error))
     }
 
     /// Conforms to `HTTPClient`. Records the request and returns the next
@@ -43,14 +58,14 @@ actor MockHTTPClient: HTTPClient {
             throw URLError(.cannotConnectToHost)
         }
 
-        let (data, response) = responseQueue.removeFirst()
-        
-        // Check for network error simulation
-        if String(data: data, encoding: .utf8) == "NETWORK_ERROR" {
-            throw URLError(.timedOut)
-        }
+        let behavior = responseQueue.removeFirst()
 
-        return (data, response)
+        switch behavior {
+        case let .success(data, response):
+            return (data, response)
+        case let .failure(error):
+            throw error
+        }
     }
 }
 
@@ -77,8 +92,6 @@ actor MockTokenAuthenticator: TokenGrantAuthenticator {
     /// Conforms to `TokenGrantAuthenticator`.
     func accessToken(invalidatingPrevious: Bool) async throws -> SpotifyTokens {
         self.didInvalidatePrevious = invalidatingPrevious
-
-        // --- THIS IS THE FIX ---
 
         // 1. If the client is telling us the last token was bad (401),
         //    then we must return a fresh one.

@@ -47,6 +47,8 @@ extension SpotifyClient {
         var offset = 0
 
         while true {
+            try Task.checkCancellation()
+
             let page = try await fetchPage(clampedPageSize, offset)
             all.append(contentsOf: page.items)
 
@@ -59,6 +61,7 @@ extension SpotifyClient {
             }
 
             offset += page.limit
+            await Task.yield()
         }
 
         return all

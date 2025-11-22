@@ -6,11 +6,11 @@ import Foundation
 func makePaginationQuery(limit: Int, offset: Int) -> [URLQueryItem] {
     [
         .init(name: "limit", value: String(limit)),
-        .init(name: "offset", value: String(offset))
+        .init(name: "offset", value: String(offset)),
     ]
 }
 
-/// Build a single `ids` query item from a set of IDs, sorted for determinism.
+/// Build a single `ids` query item from a set of IDs.
 func makeIDsQueryItem(from ids: Set<String>) -> URLQueryItem {
     return .init(name: "ids", value: ids.joined(separator: ","))
 }

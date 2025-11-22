@@ -5,6 +5,18 @@ import Testing
 
 @Suite struct SimplifiedAlbumTests {
 
+    @Test
+    func decodesSimplifiedAlbumFixture() throws {
+        let data = try TestDataLoader.load("simplified_album_full")
+        let album: SimplifiedAlbum = try decodeModel(from: data)
+        expectAlbumMatches(album, .testExample)
+    }
+
+    @Test
+    func supportsCodableRoundTrip() throws {
+        try expectCodableRoundTrip(SimplifiedAlbum.testExample)
+    }
+
     private func expectAlbumMatches(_ actual: SimplifiedAlbum, _ expected: SimplifiedAlbum) {
         #expect(actual.id == expected.id)
         #expect(actual.name == expected.name)
@@ -48,12 +60,12 @@ extension SimplifiedAlbum {
         artists: [
             SimplifiedArtist(
                 externalUrls: SpotifyExternalUrls(
-                    spotify: URL(string: "https://open.spotify.com/artist/pitbull_id")),
-                href: URL(string: "https://api.spotify.com/v1/artists/pitbull_id")!,
-                id: "pitbull_id",
+                    spotify: URL(string: "https://open.spotify.com/artist/0TnOYISbd1XYRBk9myaseg")),
+                href: URL(string: "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg")!,
+                id: "0TnOYISbd1XYRBk9myaseg",
                 name: "Pitbull",
                 type: .artist,
-                uri: "spotify:artist:pitbull_id"
+                uri: "spotify:artist:0TnOYISbd1XYRBk9myaseg"
             )
         ],
         albumGroup: .appearsOn

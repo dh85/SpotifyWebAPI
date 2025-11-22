@@ -1,11 +1,6 @@
 import Foundation
 
 extension SpotifyClient {
-    /// Access Player controls (Play, Pause, Queue, etc).
-    public var player: PlayerService<Capability> {
-        PlayerService(client: self)
-    }
-
     /// Access Playlist operations (Create, Follow, Add Tracks).
     public var playlists: PlaylistsService<Capability> {
         PlaylistsService(client: self)
@@ -54,5 +49,19 @@ extension SpotifyClient {
     
     public var chapters: ChaptersService<Capability> {
         ChaptersService(client: self)
+    }
+}
+
+extension SpotifyClient where Capability: UserSpotifyCapability {
+    /// Access Player controls (Play, Pause, Queue, etc).
+    public var player: PlayerService<Capability> {
+        PlayerService(client: self)
+    }
+}
+
+extension SpotifyClient where Capability == AppOnlyAuthCapability {
+    @available(*, unavailable, message: "Player endpoints require a user-authenticated client.")
+    public var player: PlayerService<Capability> {
+        fatalError("Player service is unavailable for app-only clients.")
     }
 }
