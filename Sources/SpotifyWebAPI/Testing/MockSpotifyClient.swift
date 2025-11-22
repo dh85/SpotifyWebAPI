@@ -2,19 +2,44 @@ import Foundation
 
 /// A mock Spotify client for testing consumer code.
 ///
-/// Use this in your tests to avoid making real API calls:
+/// Adopt ``SpotifyClientProtocol`` in the code under test and supply this mock
+/// to avoid making real API calls. ``SpotifyTestFixtures`` provides handy model
+/// builders so you can configure responses in a single line.
 ///
 /// ```swift
-/// let mock = MockSpotifyClient()
-/// mock.mockProfile = CurrentUserProfile(id: "test", displayName: "Test User", ...)
+/// import Testing
+/// import SpotifyWebAPI
 ///
-/// // Your code under test
-/// let viewModel = MyViewModel(client: mock)
-/// await viewModel.loadProfile()
+/// struct MyViewModel {
+///     private let client: any SpotifyClientProtocol
 ///
-/// XCTAssertEqual(viewModel.userName, "Test User")
+///     init(client: any SpotifyClientProtocol) {
+///         self.client = client
+///     }
+///
+///     func loadProfile() async throws -> String {
+///         let profile = try await client.users.me()
+///         return profile.displayName ?? "Unknown"
+///     }
+/// }
+///
+/// struct MyViewModelTests {
+///     @Test
+///     func loadProfileUpdatesName() async throws {
+///         let mock = MockSpotifyClient()
+///         mock.mockProfile = SpotifyTestFixtures.currentUserProfile(
+///             id: "test",
+///             displayName: "Test User"
+///         )
+///
+///         let viewModel = MyViewModel(client: mock)
+///         let name = try await viewModel.loadProfile()
+///
+///         #expect(name == "Test User")
+///     }
+/// }
 /// ```
-public final class MockSpotifyClient: @unchecked Sendable {
+public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable {
     
     // MARK: - Mock Data
     
@@ -22,10 +47,20 @@ public final class MockSpotifyClient: @unchecked Sendable {
     public var mockAlbum: Album?
     public var mockTrack: Track?
     public var mockPlaylist: Playlist?
-    public var mockPlaylists: [SimplifiedPlaylist] = []
+    public var mockPlaylists: [SimplifiedPlaylist]
+    public var mockPlaylistsTotal: Int?
+    public var mockPlaylistsHref: URL
     public var mockArtist: Artist?
     public var mockPlaybackState: PlaybackState?
     public var mockError: Error?
+
+    // MARK: - Protocol Surfaces
+
+    public var usersAPI: any SpotifyUsersAPI { usersService }
+    public var albumsAPI: any SpotifyAlbumsAPI { albumsService }
+    public var tracksAPI: any SpotifyTracksAPI { tracksService }
+    public var playlistsAPI: any SpotifyPlaylistsAPI { playlistsService }
+    public var playerAPI: any SpotifyPlayerAPI { playerService }
     
     // MARK: - Call Tracking
     
@@ -33,10 +68,24 @@ public final class MockSpotifyClient: @unchecked Sendable {
     public private(set) var getAlbumCalled = false
     public private(set) var getTrackCalled = false
     public private(set) var getPlaylistCalled = false
+    public private(set) var myPlaylistsCalled = false
+    public private(set) var myPlaylistsParameters: [(limit: Int, offset: Int)] = []
     public private(set) var pauseCalled = false
     public private(set) var playCalled = false
+
+    private lazy var usersService = UsersAPI(client: self)
+    private lazy var albumsService = AlbumsAPI(client: self)
+    private lazy var tracksService = TracksAPI(client: self)
+    private lazy var playlistsService = PlaylistsAPI(client: self)
+    private lazy var playerService = PlayerAPI(client: self)
     
-    public init() {}
+    private let defaultPlaylistsHref: URL
+    
+    public init(playlistsHref: URL = URL(string: "https://api.spotify.com/v1/me/playlists")!) {
+        self.mockPlaylists = []
+        self.mockPlaylistsHref = playlistsHref
+        self.defaultPlaylistsHref = playlistsHref
+    }
     
     // MARK: - Reset
     
@@ -47,6 +96,8 @@ public final class MockSpotifyClient: @unchecked Sendable {
         mockTrack = nil
         mockPlaylist = nil
         mockPlaylists = []
+        mockPlaylistsTotal = nil
+        mockPlaylistsHref = defaultPlaylistsHref
         mockArtist = nil
         mockPlaybackState = nil
         mockError = nil
@@ -55,66 +106,140 @@ public final class MockSpotifyClient: @unchecked Sendable {
         getAlbumCalled = false
         getTrackCalled = false
         getPlaylistCalled = false
+        myPlaylistsCalled = false
+        myPlaylistsParameters = []
         pauseCalled = false
         playCalled = false
     }
     
-    // MARK: - Mock Methods
-    
-    public func me() async throws -> CurrentUserProfile {
-        getUsersCalled = true
-        if let error = mockError { throw error }
-        guard let profile = mockProfile else {
-            throw MockError.noMockData("mockProfile")
+    // MARK: - Helpers
+
+    fileprivate func resolve<T>(_ value: T?, label: String) throws -> T {
+        guard let value else {
+            throw MockError.noMockData(label)
         }
-        return profile
+        return value
     }
-    
-    public func getAlbum(_ id: String) async throws -> Album {
-        getAlbumCalled = true
-        if let error = mockError { throw error }
-        guard let album = mockAlbum else {
-            throw MockError.noMockData("mockAlbum")
+
+    fileprivate func makePlaylistsPage(limit: Int, offset: Int) -> Page<SimplifiedPlaylist> {
+        let total = mockPlaylistsTotal ?? mockPlaylists.count
+        let items = Array(
+            mockPlaylists
+                .dropFirst(min(offset, mockPlaylists.count))
+                .prefix(max(limit, 0))
+        )
+        let nextOffset = offset + limit
+        let nextURL = nextOffset < total ? makePageURL(limit: limit, offset: nextOffset) : nil
+        let previousOffset = max(offset - limit, 0)
+        let previousURL = offset > 0 ? makePageURL(limit: limit, offset: previousOffset) : nil
+        
+        return Page(
+            href: mockPlaylistsHref,
+            items: items,
+            limit: limit,
+            next: nextURL,
+            offset: offset,
+            previous: previousURL,
+            total: total
+        )
+    }
+
+    private func makePageURL(limit: Int, offset: Int) -> URL? {
+        guard limit > 0 else { return nil }
+        var components = URLComponents(url: mockPlaylistsHref, resolvingAgainstBaseURL: false)
+        var queryItems = components?.queryItems?.filter { $0.name != "limit" && $0.name != "offset" } ?? []
+        queryItems.append(URLQueryItem(name: "limit", value: String(limit)))
+        queryItems.append(URLQueryItem(name: "offset", value: String(offset)))
+        components?.queryItems = queryItems
+        return components?.url
+    }
+    private final class UsersAPI: SpotifyUsersAPI, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
         }
-        return album
-    }
-    
-    public func getTrack(_ id: String) async throws -> Track {
-        getTrackCalled = true
-        if let error = mockError { throw error }
-        guard let track = mockTrack else {
-            throw MockError.noMockData("mockTrack")
+
+        func me() async throws -> CurrentUserProfile {
+            client.getUsersCalled = true
+            if let error = client.mockError { throw error }
+            return try client.resolve(client.mockProfile, label: "mockProfile")
         }
-        return track
     }
-    
-    public func getPlaylist(_ id: String) async throws -> Playlist {
-        getPlaylistCalled = true
-        if let error = mockError { throw error }
-        guard let playlist = mockPlaylist else {
-            throw MockError.noMockData("mockPlaylist")
+
+    private final class AlbumsAPI: SpotifyAlbumsAPI, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
         }
-        return playlist
+
+        func get(_ id: String) async throws -> Album {
+            client.getAlbumCalled = true
+            if let error = client.mockError { throw error }
+            return try client.resolve(client.mockAlbum, label: "mockAlbum")
+        }
     }
-    
-    public func myPlaylists() async throws -> [SimplifiedPlaylist] {
-        if let error = mockError { throw error }
-        return mockPlaylists
+
+    private final class TracksAPI: SpotifyTracksAPI, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
+        }
+
+        func get(_ id: String) async throws -> Track {
+            client.getTrackCalled = true
+            if let error = client.mockError { throw error }
+            return try client.resolve(client.mockTrack, label: "mockTrack")
+        }
     }
-    
-    public func pause() async throws {
-        pauseCalled = true
-        if let error = mockError { throw error }
+
+    private final class PlaylistsAPI: SpotifyPlaylistsAPI, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
+        }
+
+        func get(_ id: String) async throws -> Playlist {
+            client.getPlaylistCalled = true
+            if let error = client.mockError { throw error }
+            return try client.resolve(client.mockPlaylist, label: "mockPlaylist")
+        }
+
+        func myPlaylists(limit: Int, offset: Int) async throws -> Page<SimplifiedPlaylist> {
+            client.myPlaylistsCalled = true
+            client.myPlaylistsParameters.append((limit: limit, offset: offset))
+            if let error = client.mockError { throw error }
+            return client.makePlaylistsPage(limit: max(0, limit), offset: max(0, offset))
+        }
     }
-    
-    public func play() async throws {
-        playCalled = true
-        if let error = mockError { throw error }
-    }
-    
-    public func playbackState() async throws -> PlaybackState? {
-        if let error = mockError { throw error }
-        return mockPlaybackState
+
+    private final class PlayerAPI: SpotifyPlayerAPI, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
+        }
+
+        func pause(deviceID: String?) async throws {
+            client.pauseCalled = true
+            if let error = client.mockError { throw error }
+        }
+
+        func resume(deviceID: String?) async throws {
+            client.playCalled = true
+            if let error = client.mockError { throw error }
+        }
+
+        func state(
+            market: String?,
+            additionalTypes: Set<AdditionalItemType>?
+        ) async throws -> PlaybackState? {
+            if let error = client.mockError { throw error }
+            return client.mockPlaybackState
+        }
     }
 }
 

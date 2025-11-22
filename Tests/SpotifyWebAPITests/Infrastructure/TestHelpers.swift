@@ -135,6 +135,30 @@ func makeIDs(prefix: String = "id_", count: Int) -> Set<String> {
     Set((1...count).map { "\(prefix)\($0)" })
 }
 
+// MARK: - Paginated Response Builders
+
+/// Builds mock `Page` JSON using items from an existing fixture.
+func makePaginatedResponse<Item: Codable & Sendable & Equatable>(
+    fixture: String,
+    of type: Item.Type,
+    offset: Int,
+    limit: Int = 50,
+    total: Int,
+    hasNext: Bool
+) throws -> Data {
+    let base: Page<Item> = try decodeModel(from: TestDataLoader.load(fixture))
+    let page = Page<Item>(
+        href: base.href,
+        items: base.items,
+        limit: limit,
+        next: hasNext ? base.href : nil,
+        offset: offset,
+        previous: nil,
+        total: total
+    )
+    return try encodeModel(page)
+}
+
 // MARK: - Testing Framework Helpers
 
 func makeSourceLocation(

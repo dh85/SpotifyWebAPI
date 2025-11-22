@@ -19,17 +19,18 @@ public actor FileTokenStore: TokenStore {
     ///                Documents directory, or `NSTemporaryDirectory()` as a fallback.
     public init(
         filename: String = "spotify_tokens.json",
-        directory: URL? = nil
+        directory: URL? = nil,
+        documentsDirectory: () -> URL? = {
+            FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        }
     ) {
         if let directory {
             self.fileURL = directory.appendingPathComponent(filename)
         } else {
             let base: URL
-            if let documentsURL = FileManager.default.urls(
-                for: .documentDirectory,
-                in: .userDomainMask
-            ).first,
-               FileManager.default.fileExists(atPath: documentsURL.path) {
+            if let documentsURL = documentsDirectory(),
+                FileManager.default.fileExists(atPath: documentsURL.path)
+            {
                 base = documentsURL
             } else {
                 base = URL(fileURLWithPath: NSTemporaryDirectory())

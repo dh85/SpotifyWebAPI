@@ -9,13 +9,12 @@ struct MockSpotifyClientTests {
     @Test("Mock returns profile")
     func mockReturnsProfile() async throws {
         let mock = MockSpotifyClient()
-        let data = try TestDataLoader.load("current_user_profile")
-        let profile: CurrentUserProfile = try decodeModel(from: data)
+        let profile = SpotifyTestFixtures.currentUserProfile(id: "mockuser")
         mock.mockProfile = profile
         
-        let result = try await mock.me()
+        let result = try await mock.users.me()
         
-        #expect(result.id == "mockuser")
+        #expect(result == profile)
         #expect(mock.getUsersCalled == true)
     }
 
@@ -24,7 +23,7 @@ struct MockSpotifyClientTests {
         let mock = MockSpotifyClient()
         
         await #expect(throws: MockError.noMockData("mockProfile")) {
-            _ = try await mock.me()
+            _ = try await mock.users.me()
         }
     }
 
@@ -34,7 +33,7 @@ struct MockSpotifyClientTests {
         mock.mockError = SpotifyAuthError.unexpectedResponse
         
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
-            _ = try await mock.me()
+            _ = try await mock.users.me()
         }
     }
 
@@ -42,8 +41,8 @@ struct MockSpotifyClientTests {
     func mockTracksCalls() async throws {
         let mock = MockSpotifyClient()
         
-        try await mock.pause()
-        try await mock.play()
+        try await mock.player.pause()
+        try await mock.player.resume()
         
         #expect(mock.pauseCalled == true)
         #expect(mock.playCalled == true)
@@ -52,10 +51,8 @@ struct MockSpotifyClientTests {
     @Test("Mock reset works")
     func mockReset() async throws {
         let mock = MockSpotifyClient()
-        let data = try TestDataLoader.load("current_user_profile")
-        let profile: CurrentUserProfile = try decodeModel(from: data)
-        mock.mockProfile = profile
-        _ = try await mock.me()
+        mock.mockProfile = SpotifyTestFixtures.currentUserProfile()
+        _ = try await mock.users.me()
         
         mock.reset()
         
@@ -67,8 +64,29 @@ struct MockSpotifyClientTests {
     func mockReturnsEmptyPlaylists() async throws {
         let mock = MockSpotifyClient()
         
-        let playlists = try await mock.myPlaylists()
+        let playlists = try await mock.playlists.myPlaylists()
         
-        #expect(playlists.isEmpty)
+        #expect(playlists.items.isEmpty)
+        #expect(playlists.limit == 20)
+        #expect(mock.myPlaylistsCalled == true)
+    }
+
+    @Test("myPlaylists respects limit and offset")
+    func myPlaylistsRespectsPagination() async throws {
+        let mock = MockSpotifyClient()
+        mock.mockPlaylists = [
+            SpotifyTestFixtures.simplifiedPlaylist(id: "one", name: "One"),
+            SpotifyTestFixtures.simplifiedPlaylist(id: "two", name: "Two"),
+            SpotifyTestFixtures.simplifiedPlaylist(id: "three", name: "Three")
+        ]
+        mock.mockPlaylistsTotal = 10
+        
+        let page = try await mock.playlists.myPlaylists(limit: 2, offset: 1)
+        
+        #expect(page.items.map(\.id) == ["two", "three"])
+        #expect(page.next?.absoluteString.contains("offset=3") == true)
+        #expect(page.previous?.absoluteString.contains("offset=0") == true)
+        #expect(mock.myPlaylistsParameters.first?.limit == 2)
+        #expect(mock.myPlaylistsParameters.first?.offset == 1)
     }
 }

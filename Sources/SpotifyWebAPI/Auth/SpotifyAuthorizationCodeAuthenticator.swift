@@ -70,31 +70,7 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             url: config.authorizationEndpoint,
             resolvingAgainstBaseURL: false
         )!
-
-        var query: [URLQueryItem] = [
-            URLQueryItem(name: "client_id", value: config.clientID),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(
-                name: "redirect_uri",
-                value: config.redirectURI.absoluteString
-            ),
-            URLQueryItem(name: "state", value: state),
-        ]
-
-        if !config.scopes.isEmpty {
-            query.append(
-                URLQueryItem(
-                    name: "scope",
-                    value: config.scopes.spotifyQueryValue
-                )
-            )
-        }
-
-        if config.showDialog {
-            query.append(URLQueryItem(name: "show_dialog", value: "true"))
-        }
-
-        components.queryItems = query
+        components.queryItems = buildAuthorizationQueryItems(config: config, state: state)
         return components.url!
     }
 
@@ -108,22 +84,7 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
     /// - Returns: The access and refresh tokens.
     /// - Throws: ``SpotifyAuthError`` if the callback is invalid or token exchange fails.
     public func handleCallback(_ url: URL) async throws -> SpotifyTokens {
-        guard let components = componentsBuilder(url) else {
-            throw SpotifyAuthError.missingCode
-        }
-
-        let items = components.queryItems ?? []
-
-        func value(_ name: String) -> String? {
-            items.first(where: { $0.name == name })?.value
-        }
-
-        guard let code = value("code") else {
-            throw SpotifyAuthError.missingCode
-        }
-        guard let state = value("state") else {
-            throw SpotifyAuthError.missingState
-        }
+        let (code, state) = try parseAuthorizationCallback(url, componentsBuilder: componentsBuilder)
         guard let expected = currentState, expected == state else {
             throw SpotifyAuthError.stateMismatch
         }
@@ -149,34 +110,20 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             throw SpotifyAuthError.unexpectedResponse
         }
 
-        var request = URLRequest(url: config.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
-        )
-        
-        // Use Basic Authentication as per Spotify documentation
-        let credentials = "\(config.clientID):\(clientSecret)"
-        if let credentialsData = credentials.data(using: .utf8) {
-            let base64Credentials = credentialsData.base64EncodedString()
-            request.setValue(
-                "Basic \(base64Credentials)",
-                forHTTPHeaderField: "Authorization"
-            )
-        }
-
         let items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "refresh_token"),
             URLQueryItem(name: "refresh_token", value: refreshToken),
         ]
 
-        request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
-
-        let (data, response) = try await httpClient.data(for: request)
+        let request = makeTokenRequest(
+            endpoint: config.tokenEndpoint,
+            bodyItems: items,
+            basicAuthCredentials: (clientID: config.clientID, clientSecret: clientSecret)
+        )
+        let response = try await httpClient.data(for: request)
         return try SpotifyAuthHTTP.decodeTokens(
-            from: data,
-            response: response,
+            from: response.data,
+            response: response.urlResponse,
             existingRefreshToken: refreshToken
         )
     }
@@ -190,23 +137,6 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             throw SpotifyAuthError.unexpectedResponse
         }
 
-        var request = URLRequest(url: config.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
-        )
-        
-        // Use Basic Authentication as per Spotify documentation
-        let credentials = "\(config.clientID):\(clientSecret)"
-        if let credentialsData = credentials.data(using: .utf8) {
-            let base64Credentials = credentialsData.base64EncodedString()
-            request.setValue(
-                "Basic \(base64Credentials)",
-                forHTTPHeaderField: "Authorization"
-            )
-        }
-
         let items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "authorization_code"),
             URLQueryItem(name: "code", value: code),
@@ -216,12 +146,15 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             ),
         ]
 
-        request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
-
-        let (data, response) = try await httpClient.data(for: request)
+        let request = makeTokenRequest(
+            endpoint: config.tokenEndpoint,
+            bodyItems: items,
+            basicAuthCredentials: (clientID: config.clientID, clientSecret: clientSecret)
+        )
+        let response = try await httpClient.data(for: request)
         return try SpotifyAuthHTTP.decodeTokens(
-            from: data,
-            response: response,
+            from: response.data,
+            response: response.urlResponse,
             existingRefreshToken: nil
         )
     }

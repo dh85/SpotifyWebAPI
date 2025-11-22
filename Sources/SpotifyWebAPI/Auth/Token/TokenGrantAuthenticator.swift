@@ -27,17 +27,15 @@ extension TokenGrantAuthenticator {
     }
 }
 
-extension SpotifyPKCEAuthenticator: TokenGrantAuthenticator {
+extension TokenGrantAuthenticator where Self: TokenRefreshing {
     func accessToken(invalidatingPrevious: Bool) async throws -> SpotifyTokens {
         try await refreshAccessTokenIfNeeded(invalidatingPrevious: invalidatingPrevious)
     }
 }
 
-extension SpotifyAuthorizationCodeAuthenticator: TokenGrantAuthenticator {
-    func accessToken(invalidatingPrevious: Bool) async throws -> SpotifyTokens {
-        try await refreshAccessTokenIfNeeded(invalidatingPrevious: invalidatingPrevious)
-    }
-}
+extension SpotifyPKCEAuthenticator: TokenGrantAuthenticator {}
+
+extension SpotifyAuthorizationCodeAuthenticator: TokenGrantAuthenticator {}
 
 extension SpotifyClientCredentialsAuthenticator: TokenGrantAuthenticator {
     func accessToken(invalidatingPrevious: Bool) async throws -> SpotifyTokens {

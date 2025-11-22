@@ -4,6 +4,12 @@ import Foundation
     import FoundationNetworking
 #endif
 
+private struct PreparedRequest<Response: Decodable>: @unchecked Sendable {
+    let request: SpotifyRequest<Response>
+    let urlRequest: URLRequest
+    let bodyData: Data?
+}
+
 extension SpotifyClient {
 
     // MARK: - URL building
@@ -17,10 +23,31 @@ extension SpotifyClient {
         return components.url!
     }
 
+    private func prepare<RequestType: Decodable>(
+        _ request: SpotifyRequest<RequestType>
+    ) throws -> PreparedRequest<RequestType> {
+        let bodyData: Data?
+        if let body = request.body {
+            bodyData = try JSONEncoder().encode(body)
+        } else {
+            bodyData = nil
+        }
+
+        let url = apiURL(path: request.path, queryItems: request.query)
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = request.method
+        urlRequest.httpBody = bodyData
+        if bodyData != nil {
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+
+        return PreparedRequest(request: request, urlRequest: urlRequest, bodyData: bodyData)
+    }
+
     private func executeRequest(
         _ request: URLRequest,
         retryCount: Int? = nil
-    ) async throws -> (Data, URLResponse) {
+    ) async throws -> HTTPResponse {
         return try await networkRecovery.executeWithRecovery {
             try await self.performSingleRequest(request, retryCount: retryCount)
         }
@@ -29,7 +56,7 @@ extension SpotifyClient {
     private func performSingleRequest(
         _ request: URLRequest,
         retryCount: Int? = nil
-    ) async throws -> (Data, URLResponse) {
+    ) async throws -> HTTPResponse {
         var mutableRequest = request
 
         // Apply timeout
@@ -45,10 +72,11 @@ extension SpotifyClient {
             mutableRequest = try await interceptor(mutableRequest)
         }
 
-        let (data, response) = try await httpClient.data(for: mutableRequest)
+        let response = try await httpClient.data(for: mutableRequest)
+        let data = response.data
 
         // Check for retryable HTTP errors
-        if let http = response as? HTTPURLResponse,
+        if let http = response.httpURLResponse,
             configuration.networkRecovery.retryableStatusCodes.contains(http.statusCode)
         {
             let bodyString = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
@@ -56,10 +84,10 @@ extension SpotifyClient {
         }
 
         // Check for 429 (rate limiting) - handle separately from network recovery
-        if let http = response as? HTTPURLResponse, http.statusCode == 429 {
+        if let http = response.httpURLResponse, http.statusCode == 429 {
             let remainingRetries = retryCount ?? configuration.maxRateLimitRetries
             guard remainingRetries > 0 else {
-                return (data, response)
+                return response
             }
 
             // Get the 'Retry-After' header (in seconds)
@@ -74,55 +102,34 @@ extension SpotifyClient {
             return try await executeRequest(request, retryCount: remainingRetries - 1)
         }
 
-        return (data, response)
+        return response
     }
 
     // MARK: - Low-level authorized request
 
-    func authorizedRequest(
-        url: URL,
-        method: String = "GET",
-        body: Data? = nil,
-        contentType: String? = nil
-    ) async throws -> (Data, HTTPURLResponse) {
-        // 1. Get a token using the active auth backend.
+    func authorizedRequest(_ baseRequest: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        var request = baseRequest
         var token = try await accessToken()
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.httpBody = body
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        if let contentType {
-            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        }
-
-        // --- MODIFICATION ---
-        // Call our new helper instead of httpClient.data
-        let (data, response) = try await executeRequest(request)
-        // --- END MODIFICATION ---
-
-        guard let http = response as? HTTPURLResponse else {
+        let response = try await executeRequest(request)
+        guard let http = response.httpURLResponse else {
             throw SpotifyAuthError.unexpectedResponse
         }
 
-        // 2. If we got a 401, try once more with a fresh token.
         guard http.statusCode == 401 else {
-            return (data, http)
+            return (response.data, http)
         }
 
         token = try await accessToken(invalidatingPrevious: true)
-        var retry = request
-        retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        // --- MODIFICATION ---
-        // Also call our new helper here
-        let (data2, response2) = try await executeRequest(retry)
-        // --- END MODIFICATION ---
-
-        guard let http2 = response2 as? HTTPURLResponse else {
+        let retryResponse = try await executeRequest(request)
+        guard let retryHTTP = retryResponse.httpURLResponse else {
             throw SpotifyAuthError.unexpectedResponse
         }
-        return (data2, http2)
+
+        return (retryResponse.data, retryHTTP)
     }
 
     // MARK: - JSON decoding
@@ -138,7 +145,8 @@ extension SpotifyClient {
     /// This method replaces requestJSON, requestVoid, and requestOptionalJSON.
     @discardableResult
     func perform<T: Decodable & Sendable>(_ request: SpotifyRequest<T>) async throws -> T {
-        let requestKey = generateRequestKey(request)
+        let prepared = try prepare(request)
+        let requestKey = generateRequestKey(prepared)
 
         // Check for ongoing request
         if let ongoingTask = ongoingRequests[requestKey] {
@@ -147,7 +155,7 @@ extension SpotifyClient {
 
         // Create new task
         let task = Task<(any Sendable), Error> {
-            try await self.performInternal(request)
+            try await self.performInternal(prepared)
         }
 
         ongoingRequests[requestKey] = task
@@ -162,7 +170,7 @@ extension SpotifyClient {
         }
     }
 
-    private func performInternal<T: Decodable>(_ request: SpotifyRequest<T>) async throws -> T {
+    private func performInternal<T: Decodable>(_ prepared: PreparedRequest<T>) async throws -> T {
         #if DEBUG
             let logger =
                 ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -172,32 +180,11 @@ extension SpotifyClient {
         #endif
 
         let measurement = PerformanceMeasurement(
-            "\(request.method) \(request.path)", logger: logger)
+            "\(prepared.request.method) \(prepared.request.path)", logger: logger)
 
-        let httpBody: Data?
-        if let body = request.body {
-            httpBody = try JSONEncoder().encode(body)
-        } else {
-            httpBody = nil
-        }
+        await logger.logRequest(prepared.urlRequest)
 
-        let url = self.apiURL(path: request.path, queryItems: request.query)
-
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = request.method
-        urlRequest.httpBody = httpBody
-        if httpBody != nil {
-            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-
-        await logger.logRequest(urlRequest)
-
-        let (data, response) = try await self.authorizedRequest(
-            url: url,
-            method: request.method,
-            body: httpBody,
-            contentType: httpBody != nil ? "application/json" : nil
-        )
+        let (data, response) = try await self.authorizedRequest(prepared.urlRequest)
 
         await logger.logResponse(response, data: data, error: nil)
 
@@ -236,21 +223,19 @@ extension SpotifyClient {
         return result
     }
 
-    private func generateRequestKey<T: Decodable>(_ request: SpotifyRequest<T>) -> String {
-        var components = [request.method, request.path]
+    private func generateRequestKey<T: Decodable>(_ prepared: PreparedRequest<T>) -> String {
+        var components = [prepared.request.method, prepared.request.path]
 
-        if !request.query.isEmpty {
-            let queryString = request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(
+        if !prepared.request.query.isEmpty {
+            let queryString = prepared.request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(
                 separator: "&")
             components.append(queryString)
         }
 
-        if let body = request.body {
-            if let bodyData = try? JSONEncoder().encode(body),
-                let bodyString = String(data: bodyData, encoding: .utf8)
-            {
-                components.append(bodyString)
-            }
+        if let bodyData = prepared.bodyData,
+            let bodyString = String(data: bodyData, encoding: .utf8)
+        {
+            components.append(bodyString)
         }
 
         return components.joined(separator: "|")
@@ -262,29 +247,30 @@ extension SpotifyClient {
         _ type: T.Type,
         request: SpotifyRequest<T>
     ) async throws -> T? {
+        let prepared = try prepare(request)
 
-        let httpBody: Data?
-        if let body = request.body {
-            httpBody = try JSONEncoder().encode(body)
-        } else {
-            httpBody = nil
-        }
+        #if DEBUG
+            let logger =
+                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+                ? DebugLogger.testInstance : DebugLogger.shared
+        #else
+            let logger = DebugLogger.shared
+        #endif
 
-        let url = self.apiURL(path: request.path, queryItems: request.query)
+        let measurement = PerformanceMeasurement(
+            "\(prepared.request.method) \(prepared.request.path)", logger: logger)
 
-        let (data, response) = try await self.authorizedRequest(
-            url: url,
-            method: request.method,
-            body: httpBody,
-            contentType: httpBody != nil ? "application/json" : nil
-        )
+        await logger.logRequest(prepared.urlRequest)
 
-        // 1. Handle "No Content" explicitly (returns nil)
-        if response.statusCode == 204 {
+        let (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+
+        await logger.logResponse(response, data: data, error: nil)
+
+        if response.statusCode == 204 || data.isEmpty {
+            await measurement.finish()
             return nil
         }
 
-        // 2. Handle Errors
         guard (200..<300).contains(response.statusCode) else {
             let bodyString =
                 String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
@@ -294,13 +280,8 @@ extension SpotifyClient {
             )
         }
 
-        // 3. Handle Empty Data (e.g. 200 OK w/ no body)
-        // If we get empty data but expected an optional type, return nil.
-        if data.isEmpty {
-            return nil
-        }
-
-        // 4. Decode
-        return try self.decodeJSON(T.self, from: data)
+        let decoded = try self.decodeJSON(T.self, from: data)
+        await measurement.finish()
+        return decoded
     }
 }

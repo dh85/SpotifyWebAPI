@@ -73,32 +73,15 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
             url: config.authorizationEndpoint,
             resolvingAgainstBaseURL: false
         )!
-        var query: [URLQueryItem] = [
-            URLQueryItem(name: "client_id", value: config.clientID),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(
-                name: "redirect_uri",
-                value: config.redirectURI.absoluteString
-            ),
+        let additionalItems = [
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "code_challenge", value: pkce.challenge),
-            URLQueryItem(name: "state", value: pkce.state),
         ]
-
-        if !config.scopes.isEmpty {
-            query.append(
-                URLQueryItem(
-                    name: "scope",
-                    value: config.scopes.spotifyQueryValue
-                )
-            )
-        }
-
-        if config.showDialog {
-            query.append(URLQueryItem(name: "show_dialog", value: "true"))
-        }
-
-        components.queryItems = query
+        components.queryItems = buildAuthorizationQueryItems(
+            config: config,
+            state: pkce.state,
+            additionalItems: additionalItems
+        )
         return components.url!
     }
 
@@ -112,22 +95,8 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
     /// - Returns: The access and refresh tokens.
     /// - Throws: ``SpotifyAuthError`` if the callback is invalid or token exchange fails.
     public func handleCallback(_ url: URL) async throws -> SpotifyTokens {
-        guard let components = componentsBuilder(url) else {
-            throw SpotifyAuthError.missingCode
-        }
-
-        let items = components.queryItems ?? []
-
-        func value(_ name: String) -> String? {
-            items.first(where: { $0.name == name })?.value
-        }
-
-        guard let code = value("code") else {
-            throw SpotifyAuthError.missingCode
-        }
-        guard let state = value("state") else {
-            throw SpotifyAuthError.missingState
-        }
+        let (code, state) = try parseAuthorizationCallback(
+            url, componentsBuilder: componentsBuilder)
         guard let pkce = currentPKCE, pkce.state == state else {
             throw SpotifyAuthError.stateMismatch
         }
@@ -152,25 +121,20 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
     public func refreshAccessToken(refreshToken: String) async throws
         -> SpotifyTokens
     {
-        var request = URLRequest(url: config.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
-        )
-
         let items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "refresh_token"),
             URLQueryItem(name: "refresh_token", value: refreshToken),
             URLQueryItem(name: "client_id", value: config.clientID),
         ]
 
-        request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
-
-        let (data, response) = try await httpClient.data(for: request)
+        let request = makeTokenRequest(
+            endpoint: config.tokenEndpoint,
+            bodyItems: items
+        )
+        let response = try await httpClient.data(for: request)
         return try SpotifyAuthHTTP.decodeTokens(
-            from: data,
-            response: response,
+            from: response.data,
+            response: response.urlResponse,
             existingRefreshToken: refreshToken
         )
     }
@@ -180,13 +144,6 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
     private func exchangeCodeForTokens(code: String, codeVerifier: String)
         async throws -> SpotifyTokens
     {
-        var request = URLRequest(url: config.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
-        )
-
         let items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "authorization_code"),
             URLQueryItem(name: "code", value: code),
@@ -198,12 +155,14 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
             URLQueryItem(name: "code_verifier", value: codeVerifier),
         ]
 
-        request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
-
-        let (data, response) = try await httpClient.data(for: request)
+        let request = makeTokenRequest(
+            endpoint: config.tokenEndpoint,
+            bodyItems: items
+        )
+        let response = try await httpClient.data(for: request)
         return try SpotifyAuthHTTP.decodeTokens(
-            from: data,
-            response: response,
+            from: response.data,
+            response: response.urlResponse,
             existingRefreshToken: nil
         )
     }

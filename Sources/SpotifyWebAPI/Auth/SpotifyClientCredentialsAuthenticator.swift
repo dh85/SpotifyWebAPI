@@ -97,23 +97,6 @@ public actor SpotifyClientCredentialsAuthenticator {
         guard let clientSecret = config.clientSecret else {
             throw SpotifyAuthError.unexpectedResponse
         }
-        var request = URLRequest(url: config.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
-        )
-        
-        // Use Basic Authentication as per Spotify documentation
-        let credentials = "\(config.clientID):\(clientSecret)"
-        if let credentialsData = credentials.data(using: .utf8) {
-            let base64Credentials = credentialsData.base64EncodedString()
-            request.setValue(
-                "Basic \(base64Credentials)",
-                forHTTPHeaderField: "Authorization"
-            )
-        }
-
         var items: [URLQueryItem] = [
             URLQueryItem(name: "grant_type", value: "client_credentials"),
         ]
@@ -126,11 +109,15 @@ public actor SpotifyClientCredentialsAuthenticator {
             )
         }
 
-        request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
-        let (data, response) = try await httpClient.data(for: request)
+        let request = makeTokenRequest(
+            endpoint: config.tokenEndpoint,
+            bodyItems: items,
+            basicAuthCredentials: (clientID: config.clientID, clientSecret: clientSecret)
+        )
+        let response = try await httpClient.data(for: request)
         let tokens = try SpotifyAuthHTTP.decodeTokens(
-            from: data,
-            response: response,
+            from: response.data,
+            response: response.urlResponse,
             existingRefreshToken: nil
         )
 
