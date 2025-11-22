@@ -19,11 +19,11 @@ public struct SimplifiedPlaylist: Codable, Sendable, Equatable {
     /// The name of the playlist.
     public let name: String
     /// The user who owns the playlist.
-    public let owner: SpotifyPublicUser
+    public let owner: SpotifyPublicUser?
     /// The playlist's public/private status. Can be null.
     public let isPublic: Bool?
     /// The version identifier for the current playlist.
-    public let snapshotId: String?
+    public let snapshotId: String
     /// A collection containing a link to the Web API endpoint where full details of the playlist's tracks can be retrieved, along with the total number of tracks in the playlist.
     public let tracks: PlaylistTracksRef?
     /// The object type ("playlist").

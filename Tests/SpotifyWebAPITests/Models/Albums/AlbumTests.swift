@@ -5,6 +5,12 @@ import Testing
 
 @Suite struct AlbumTests {
 
+    @Test func productionAlbumDecodes() throws {
+        let testData = try TestDataLoader.load("album_prod")
+        let album: Album = try decodeModel(from: testData)
+        #expect(album.name == "Through the Lens")
+    }
+
     @Test(
         "Album model tests",
         arguments: [
@@ -35,12 +41,12 @@ import Testing
         #expect(actual.type == expected.type)
         #expect(actual.uri == expected.uri)
         #expect(actual.artists == expected.artists)
-        #expect(actual.tracks.href == expected.tracks.href)
-        #expect(actual.tracks.limit == expected.tracks.limit)
-        #expect(actual.tracks.next == expected.tracks.next)
-        #expect(actual.tracks.offset == expected.tracks.offset)
-        #expect(actual.tracks.previous == expected.tracks.previous)
-        #expect(actual.tracks.total == expected.tracks.total)
+        #expect(actual.tracks?.href == expected.tracks?.href)
+        #expect(actual.tracks?.limit == expected.tracks?.limit)
+        #expect(actual.tracks?.next == expected.tracks?.next)
+        #expect(actual.tracks?.offset == expected.tracks?.offset)
+        #expect(actual.tracks?.previous == expected.tracks?.previous)
+        #expect(actual.tracks?.total == expected.tracks?.total)
         #expect(actual.copyrights == expected.copyrights)
         #expect(actual.externalIds == expected.externalIds)
         #expect(actual.label == expected.label)
@@ -84,8 +90,7 @@ extension Album {
         ],
         externalIds: SpotifyExternalIds(isrc: nil, ean: nil, upc: "886443671584"),
         label: "Mr.305/Polo Grounds Music/RCA Records",
-        popularity: 53,
-        genres: []
+        popularity: 53
     )
 
     fileprivate static let minimalExample = Album(
@@ -109,8 +114,7 @@ extension Album {
         copyrights: [],
         externalIds: SpotifyExternalIds(isrc: nil, ean: nil, upc: nil),
         label: "MegaCorp Records",
-        popularity: 0,
-        genres: []
+        popularity: 0
     )
 
     fileprivate static let euMarkets = [

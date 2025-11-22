@@ -19,11 +19,11 @@ public struct Playlist: Codable, Sendable, Equatable {
     /// The name of the playlist.
     public let name: String
     /// The user who owns the playlist.
-    public let owner: SpotifyPublicUser
+    public let owner: SpotifyPublicUser?
     /// The playlist's public/private status. Can be null.
     public let isPublic: Bool?
     /// The version identifier for the current playlist.
-    public let snapshotId: String?
+    public let snapshotId: String
     /// The tracks of the playlist.
     public let tracks: Page<PlaylistTrackItem>
     /// The object type ("playlist").

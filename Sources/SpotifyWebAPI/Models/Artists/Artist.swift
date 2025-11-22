@@ -9,19 +9,19 @@ public struct Artist: Codable, Sendable, Equatable {
     /// Follower information.
     public let followers: SpotifyFollowers?
     /// Genres associated with the artist.
-    public let genres: [String]
+    public let genres: [String]?
     /// API endpoint URL for full artist details.
-    public let href: URL
+    public let href: URL?
     /// The Spotify ID.
-    public let id: String
+    public let id: String?
     /// Artist images in various sizes.
     public let images: [SpotifyImage]?
     /// Artist name.
     public let name: String
     /// Popularity score (0-100).
-    public let popularity: Int
+    public let popularity: Int?
     /// Object type (always "artist").
     public let type: SpotifyObjectType
     /// The Spotify URI.
-    public let uri: String
+    public let uri: String?
 }

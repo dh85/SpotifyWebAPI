@@ -14,10 +14,10 @@ import Testing
         #expect(actual.albumType == expected.albumType)
         #expect(actual.type == expected.type)
         #expect(actual.availableMarkets == expected.availableMarkets)
-        #expect(actual.images.count == expected.images.count)
-        #expect(actual.artists.first?.name == expected.artists.first?.name)
+        #expect(actual.images?.count == expected.images?.count)
+        #expect(actual.artists?.first?.name == expected.artists?.first?.name)
         #expect(actual.restrictions?.reason == expected.restrictions?.reason)
-        #expect(actual.externalUrls.spotify == expected.externalUrls.spotify)
+        #expect(actual.externalUrls?.spotify == expected.externalUrls?.spotify)
         #expect(actual.href == expected.href)
     }
 }
@@ -47,7 +47,8 @@ extension SimplifiedAlbum {
         uri: "spotify:album:4xM578d28aF1zXy2jO835t",
         artists: [
             SimplifiedArtist(
-                externalUrls: SpotifyExternalUrls(spotify: URL(string: "https://open.spotify.com/artist/pitbull_id")),
+                externalUrls: SpotifyExternalUrls(
+                    spotify: URL(string: "https://open.spotify.com/artist/pitbull_id")),
                 href: URL(string: "https://api.spotify.com/v1/artists/pitbull_id")!,
                 id: "pitbull_id",
                 name: "Pitbull",

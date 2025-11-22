@@ -26,7 +26,7 @@ import Testing
             return
         }
         #expect(track.name == "Mock Track Title")
-        #expect(track.album.name == "Mock Album")
+        #expect(track.album?.name == "Mock Album")
     }
 
     @Test
@@ -52,7 +52,7 @@ import Testing
             return
         }
         #expect(episode.name == "Mock Episode Title")
-        #expect(episode.show.name == "Mock Show")
+        #expect(episode.show?.name == "Mock Show")
     }
 
     @Test

@@ -25,9 +25,9 @@ import Testing
         #expect(actual.description == expected.description)
         #expect(actual.htmlDescription == expected.htmlDescription)
         #expect(actual.explicit == expected.explicit)
-        #expect(actual.externalUrls.spotify == expected.externalUrls.spotify)
+        #expect(actual.externalUrls?.spotify == expected.externalUrls?.spotify)
         #expect(actual.href == expected.href)
-        #expect(actual.images.count == expected.images.count)
+        #expect(actual.images?.count == expected.images?.count)
         #expect(actual.isExternallyHosted == expected.isExternallyHosted)
         #expect(actual.languages == expected.languages)
         #expect(actual.mediaType == expected.mediaType)
@@ -35,9 +35,9 @@ import Testing
         #expect(actual.type == expected.type)
         #expect(actual.uri == expected.uri)
         #expect(actual.totalEpisodes == expected.totalEpisodes)
-        #expect(actual.copyrights.count == expected.copyrights.count)
-        #expect(actual.episodes.items.count == expected.episodes.items.count)
-        #expect(actual.episodes.total == expected.episodes.total)
+        #expect(actual.copyrights?.count == expected.copyrights?.count)
+        #expect(actual.episodes?.items.count == expected.episodes?.items.count)
+        #expect(actual.episodes?.total == expected.episodes?.total)
     }
 }
 

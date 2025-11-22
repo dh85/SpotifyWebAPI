@@ -13,7 +13,8 @@
         "uri": "spotify:user:user123"
       },
       "type": "playlist",
-      "uri": "spotify:playlist:playlist1"
+      "uri": "spotify:playlist:playlist1",
+      "snapshot_id": "snapshot123"
     }
   ],
   "limit": 20,
