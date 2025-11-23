@@ -79,16 +79,7 @@ struct ConcurrencyTests {
                 pageSize: 50,
                 fetchPage: { limit, offset in
                     try await Task.sleep(for: .milliseconds(100))
-                    return Page(
-                        href: URL(string: "https://api.spotify.com/v1/test")!,
-                        items: ["item"],
-                        limit: limit,
-                        next: URL(
-                            string: "https://api.spotify.com/v1/test?offset=\(offset + limit)")!,
-                        offset: offset,
-                        previous: nil,
-                        total: 10000
-                    )
+                    return makeStubPage(limit: limit, offset: offset)
                 })
             {
                 count += 1
@@ -107,6 +98,32 @@ struct ConcurrencyTests {
         case .failure:
             // Cancellation is acceptable
             break
+        }
+    }
+
+    @Test
+    @MainActor
+    func collectAllPagesCancellationStopsRequests() async {
+        let (client, _) = makeUserAuthClient()
+
+        let task = Task<[String], Error> {
+            try await client.collectAllPages(pageSize: 50, maxItems: nil) { limit, offset in
+                try await Task.sleep(for: .milliseconds(100))
+                return makeStubPage(limit: limit, offset: offset)
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+
+        let result = await task.result
+        switch result {
+        case .success:
+            Issue.record("Expected collectAllPages to be cancelled")
+        case .failure(let error):
+            if !(error is CancellationError) {
+                Issue.record("Expected cancellation, got \(error)")
+            }
         }
     }
 
@@ -133,5 +150,63 @@ struct ConcurrencyTests {
         // Should have one of the tokens saved
         let loaded = try await store.load()
         #expect(loaded != nil)
+    }
+
+    @Test
+    func tokenStore_concurrentFailureInjection() async {
+        let store = InMemoryTokenStore(tokens: nil)
+        await store.configureFailures([.saveFailed])
+
+        do {
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for i in 0..<5 {
+                    group.addTask {
+                        let token = SpotifyTokens(
+                            accessToken: "FAIL\(i)",
+                            refreshToken: "REFRESH\(i)",
+                            expiresAt: Date().addingTimeInterval(3600),
+                            scope: nil,
+                            tokenType: "Bearer"
+                        )
+                        try await store.save(token)
+                    }
+                }
+
+                try await group.waitForAll()
+            }
+            Issue.record("Expected save failures to be thrown")
+        } catch let error as InMemoryTokenStore.Failure {
+            #expect(error == .saveFailed)
+        } catch {
+            Issue.record("Unexpected error: \(error)")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func makeStubPage(
+        limit: Int,
+        offset: Int,
+        total: Int = 10_000
+    ) -> Page<String> {
+        let baseURL = URL(string: "https://api.spotify.com/v1/test")!
+        let nextOffset = offset + limit
+        let nextURL = nextOffset < total
+            ? URL(string: "\(baseURL.absoluteString)?offset=\(nextOffset)")!
+            : nil
+        let previousURL = offset == 0
+            ? nil
+            : URL(
+                string: "\(baseURL.absoluteString)?offset=\(max(offset - limit, 0))")!
+
+        return Page(
+            href: baseURL,
+            items: (0..<limit).map { "item-\(offset + $0)" },
+            limit: limit,
+            next: nextURL,
+            offset: offset,
+            previous: previousURL,
+            total: total
+        )
     }
 }
