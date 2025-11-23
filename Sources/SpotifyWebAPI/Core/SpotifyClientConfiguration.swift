@@ -16,7 +16,8 @@ public enum SpotifyClientConfigurationError: Error, CustomStringConvertible {
         case .invalidCustomHeader(let name):
             return "Custom header name is invalid: \(name)"
         case .insecureAPIBaseURL(let url):
-            return "apiBaseURL must use HTTPS unless targeting localhost (received \(url.absoluteString))"
+            return
+                "apiBaseURL must use HTTPS unless targeting localhost (received \(url.absoluteString))"
         case .networkRecovery(let error):
             return "NetworkRecoveryConfiguration invalid: \(error.description)"
         }
@@ -72,8 +73,8 @@ public struct SpotifyClientConfiguration: Sendable {
     public static let `default` = SpotifyClientConfiguration()
 }
 
-public extension SpotifyClientConfiguration {
-    func validate() throws {
+extension SpotifyClientConfiguration {
+    public func validate() throws {
         guard requestTimeout > 0 else {
             throw SpotifyClientConfigurationError.nonPositiveRequestTimeout(requestTimeout)
         }
@@ -103,7 +104,7 @@ public extension SpotifyClientConfiguration {
         }
     }
 
-    func validated() throws -> SpotifyClientConfiguration {
+    public func validated() throws -> SpotifyClientConfiguration {
         try validate()
         return self
     }
@@ -115,8 +116,8 @@ private func isValidHeaderName(_ name: String) -> Bool {
     return !trimmed.contains(where: { $0.isNewline })
 }
 
-private extension URL {
-    var isLocalhost: Bool {
+extension URL {
+    fileprivate var isLocalhost: Bool {
         guard let host else { return false }
         let normalized = host.lowercased()
         return normalized == "localhost" || normalized == "127.0.0.1" || normalized == "::1"
