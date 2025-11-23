@@ -31,14 +31,16 @@ let package = Package(
             name: "SpotifyWebAPITests",
             dependencies: ["SpotifyWebAPI"],
             path: "Tests",
-            exclude: [
-                "SpotifyWebAPITests/Mocks"
-            ],
+            // Sources will only look in these folders
             sources: [
                 "SpotifyWebAPITests",
-                "Support"
+                "Support",
             ],
-            resources: [.process("SpotifyWebAPITests/Mocks")]
+            // Resources now points to the sibling folder "Mocks"
+            // This path is relative to the target path "Tests"
+            resources: [
+                .process("Mocks")
+            ]
         ),
     ]
 )
