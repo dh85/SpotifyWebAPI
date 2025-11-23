@@ -30,7 +30,15 @@ let package = Package(
         .testTarget(
             name: "SpotifyWebAPITests",
             dependencies: ["SpotifyWebAPI"],
-            resources: [.process("Mocks")]
+            path: "Tests",
+            exclude: [
+                "SpotifyWebAPITests/Mocks"
+            ],
+            sources: [
+                "SpotifyWebAPITests",
+                "Support"
+            ],
+            resources: [.process("SpotifyWebAPITests/Mocks")]
         ),
     ]
 )
