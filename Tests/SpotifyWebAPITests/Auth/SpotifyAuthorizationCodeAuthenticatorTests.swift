@@ -8,53 +8,40 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     // MARK: - Shared helpers
 
-    private func makeConfig(
-        scopes: Set<SpotifyScope> = [.userReadEmail, .playlistReadPrivate],
-        showDialog: Bool = true
-    ) -> SpotifyAuthConfig {
-        .authorizationCode(
-            clientID: "TEST_CLIENT_ID",
-            clientSecret: "TEST_SECRET",
-            redirectURI: URL(string: "myapp://callback")!,
-            scopes: scopes,
-            showDialog: showDialog
-        )
+    private func makeHarness(
+        response: SimpleMockHTTPClient.Response = .success(
+            data: Data(),
+            statusCode: 200
+        ),
+        tokens: SpotifyTokens? = nil
+    ) -> AuthenticatorTestHarness {
+        AuthenticatorTestHarness(response: response, tokens: tokens)
     }
 
-    private func makeTokenJSON(
-        accessToken: String,
-        refreshToken: String? = nil,
-        expiresIn: Int = 3600,
-        scope: String = "user-read-email playlist-read-private",
-        tokenType: String = "Bearer"
-    ) -> Data {
-        var dict: [String: Any] = [
-            "access_token": accessToken,
-            "token_type": tokenType,
-            "expires_in": expiresIn,
-            "scope": scope,
-        ]
-        if let refreshToken {
-            dict["refresh_token"] = refreshToken
+    private func expectHandleCallback(
+        url: URL,
+        expectedError: SpotifyAuthError,
+        preloadAuthorization: Bool = true
+    ) async {
+
+        let harness = makeHarness()
+        let auth = harness.makeAuthorizationCodeAuthenticator()
+
+        if preloadAuthorization {
+            _ = try? await auth.makeAuthorizationURL()
         }
-        return try! JSONSerialization.data(withJSONObject: dict, options: [])
+
+        await #expect(throws: expectedError) {
+            _ = try await auth.handleCallback(url)
+        }
     }
 
     // MARK: - makeAuthorizationURL
 
     @Test
     func makeAuthorizationURL_buildsCorrectQuery() async throws {
-        let config = makeConfig()
-        let store = InMemoryTokenStore()
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: config,
-            httpClient: http,
-            tokenStore: store
-        )
+        let harness = makeHarness()
+        let auth = harness.makeAuthorizationCodeAuthenticator()
 
         let url = try await auth.makeAuthorizationURL()
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
@@ -83,21 +70,15 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     @Test
     func handleCallback_successExchangesCodeAndPersists() async throws {
-        let tokenJSON = makeTokenJSON(
+        let tokenJSON = AuthTestFixtures.tokenResponse(
             accessToken: "ACCESS123",
             refreshToken: "REFRESH123"
         )
 
-        let http = SimpleMockHTTPClient(
+        let harness = makeHarness(
             response: .success(data: tokenJSON, statusCode: 200)
         )
-
-        let store = InMemoryTokenStore()
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
+        let auth = harness.makeAuthorizationCodeAuthenticator()
 
         let url = try await auth.makeAuthorizationURL()
         let state =
@@ -117,22 +98,18 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         #expect(tokens.tokenType == "Bearer")
 
         // Persisted
-        let stored = try await store.load()
+        let stored = try await harness.tokenStore.load()
         #expect(stored?.accessToken == "ACCESS123")
     }
 
     @Test
     func handleCallback_componentsBuilderNilThrowsMissingCode() async {
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-        let store = InMemoryTokenStore()
-
+        let harness = makeHarness()
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store,
-            componentsBuilder: { _ in nil }  // forces guard-else
+            config: AuthTestFixtures.authCodeConfig(),
+            httpClient: harness.httpClient,
+            tokenStore: harness.tokenStore,
+            componentsBuilder: { _ in nil }
         )
 
         let callback = URL(string: "myapp://callback?code=AUTH&state=S")!
@@ -144,112 +121,57 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     @Test
     func handleCallback_noQueryItemsTriggersNilQueryItemsBranch() async {
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-        let store = InMemoryTokenStore()
-
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
-
-        _ = try! await auth.makeAuthorizationURL()
-
         // No `?` → queryItems == nil → [] and then missingCode
         let callback = URL(string: "myapp://callback")!
 
-        await #expect(throws: SpotifyAuthError.missingCode) {
-            _ = try await auth.handleCallback(callback)
-        }
+        await expectHandleCallback(
+            url: callback,
+            expectedError: .missingCode
+        )
     }
 
     @Test
     func handleCallback_missingCodeThrows() async {
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-        let store = InMemoryTokenStore()
-
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
-
-        _ = try! await auth.makeAuthorizationURL()
-
         let callback = URL(string: "myapp://callback?state=STATE123")!
 
-        await #expect(throws: SpotifyAuthError.missingCode) {
-            _ = try await auth.handleCallback(callback)
-        }
+        await expectHandleCallback(
+            url: callback,
+            expectedError: .missingCode
+        )
     }
 
     @Test
     func handleCallback_missingStateThrows() async {
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-        let store = InMemoryTokenStore()
-
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
-
-        _ = try! await auth.makeAuthorizationURL()
-
         let callback = URL(string: "myapp://callback?code=AUTH_CODE")!
 
-        await #expect(throws: SpotifyAuthError.missingState) {
-            _ = try await auth.handleCallback(callback)
-        }
+        await expectHandleCallback(
+            url: callback,
+            expectedError: .missingState
+        )
     }
 
     @Test
     func handleCallback_stateMismatchThrows() async {
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-        let store = InMemoryTokenStore()
-
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
-
-        _ = try! await auth.makeAuthorizationURL()
-
         let callback = URL(
             string: "myapp://callback?code=AUTH_CODE&state=OTHER"
         )!
 
-        await #expect(throws: SpotifyAuthError.stateMismatch) {
-            _ = try await auth.handleCallback(callback)
-        }
+        await expectHandleCallback(
+            url: callback,
+            expectedError: .stateMismatch
+        )
     }
 
     @Test
     func handleCallback_throwsWhenClientSecretMissing() async {
-        let pkceConfig = SpotifyAuthConfig.pkce(
-            clientID: "PKCE_CLIENT",
-            redirectURI: URL(string: "pkce://callback")!
+        let pkceConfig = AuthTestFixtures.pkceConfig()
+        let harness = makeHarness(
+            response: .success(
+                data: AuthTestFixtures.tokenResponse(accessToken: "TOKEN"),
+                statusCode: 200
+            )
         )
-
-        let http = SimpleMockHTTPClient(
-            response: .success(data: makeTokenJSON(accessToken: "TOKEN"), statusCode: 200)
-        )
-        let store = InMemoryTokenStore()
-
-        let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: pkceConfig,
-            httpClient: http,
-            tokenStore: store
-        )
+        let auth = harness.makeAuthorizationCodeAuthenticator(config: pkceConfig)
 
         let authURL = try! await auth.makeAuthorizationURL()
         let state =
@@ -270,7 +192,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
     @Test
     func formURLEncodedBody_nilPercentEncodedQueryWhenItemsEmpty() async throws {
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: SimpleMockHTTPClient(
                 response: .success(data: Data(), statusCode: 200)
             ),
@@ -299,7 +221,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let store = InMemoryTokenStore(tokens: tokens)
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: SimpleMockHTTPClient(
                 response: .success(data: Data(), statusCode: 200)
             ),
@@ -350,7 +272,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let store = InMemoryTokenStore(tokens: tokens)
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: SimpleMockHTTPClient(
                 response: .success(data: Data(), statusCode: 200)
             ),
@@ -374,7 +296,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let json = makeTokenJSON(
+        let json = AuthTestFixtures.tokenResponse(
             accessToken: "NEW_ACCESS",
             refreshToken: nil  // ensure existingRefreshToken is used
         )
@@ -386,7 +308,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let store = InMemoryTokenStore(tokens: expired)
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: http,
             tokenStore: store
         )
@@ -413,7 +335,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let store = InMemoryTokenStore(tokens: tokens)
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: SimpleMockHTTPClient(
                 response: .success(data: Data(), statusCode: 200)
             ),
@@ -436,7 +358,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let json = makeTokenJSON(
+        let json = AuthTestFixtures.tokenResponse(
             accessToken: "NEW_FROM_REFRESH",
             refreshToken: "REFRESH_NEW"
         )
@@ -448,7 +370,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let store = InMemoryTokenStore(tokens: expired)
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: http,
             tokenStore: store
         )
@@ -464,7 +386,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let store = InMemoryTokenStore(tokens: nil)
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: SimpleMockHTTPClient(
                 response: .success(data: Data(), statusCode: 200)
             ),
@@ -483,7 +405,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         refreshAccessToken_successUsesExistingRefreshTokenWhenMissingInResponse()
         async throws
     {
-        let json = makeTokenJSON(
+        let json = AuthTestFixtures.tokenResponse(
             accessToken: "NEW_ACCESS",
             refreshToken: nil
         )
@@ -493,7 +415,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         )
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: http,
             tokenStore: InMemoryTokenStore()
         )
@@ -507,7 +429,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
     @Test
     func refreshAccessToken_unexpectedResponseWhenNonHTTPURLResponse() async {
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: NonHTTPResponseMockHTTPClient(),
             tokenStore: InMemoryTokenStore()
         )
@@ -522,7 +444,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         let http = StatusMockHTTPClient(statusCode: 400, body: "bad request")
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: http,
             tokenStore: InMemoryTokenStore()
         )
@@ -548,7 +470,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         )
 
         let auth = SpotifyAuthorizationCodeAuthenticator(
-            config: makeConfig(),
+            config: AuthTestFixtures.authCodeConfig(),
             httpClient: http,
             tokenStore: InMemoryTokenStore()
         )

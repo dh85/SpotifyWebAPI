@@ -11,21 +11,50 @@ import Testing
 
 /// In-memory token store for tests.
 actor InMemoryTokenStore: TokenStore {
-    private var storedTokens: SpotifyTokens?
+    enum Failure: Error, Hashable, Sendable {
+        case loadFailed
+        case saveFailed
+        case clearFailed
+    }
 
-    init(tokens: SpotifyTokens? = nil) {
+    private var storedTokens: SpotifyTokens?
+    private var failureModes: Set<Failure>
+
+    init(tokens: SpotifyTokens? = nil, failures: Set<Failure> = []) {
         self.storedTokens = tokens
+        self.failureModes = failures
+    }
+
+    func configureFailures(_ failures: Set<Failure>) {
+        self.failureModes = failures
+    }
+
+    func setFailure(_ failure: Failure, isEnabled: Bool) {
+        if isEnabled {
+            failureModes.insert(failure)
+        } else {
+            failureModes.remove(failure)
+        }
     }
 
     func load() async throws -> SpotifyTokens? {
-        storedTokens
+        if failureModes.contains(.loadFailed) {
+            throw Failure.loadFailed
+        }
+        return storedTokens
     }
 
     func save(_ tokens: SpotifyTokens) async throws {
+        if failureModes.contains(.saveFailed) {
+            throw Failure.saveFailed
+        }
         storedTokens = tokens
     }
 
     func clear() async throws {
+        if failureModes.contains(.clearFailed) {
+            throw Failure.clearFailed
+        }
         storedTokens = nil
     }
 }
@@ -189,27 +218,6 @@ extension DummyPKCEProvider {
         let provider: PKCEProvider = DummyPKCEProvider(pair: expected)
         return (expected, provider)
     }
-}
-
-// MARK: - JSON Builders
-
-func makeTokenJSON(
-    accessToken: String,
-    refreshToken: String? = nil,
-    expiresIn: Int = 3600,
-    scope: String = "user-read-email playlist-read-private",
-    tokenType: String = "Bearer"
-) -> Data {
-    var dict: [String: Any] = [
-        "access_token": accessToken,
-        "token_type": tokenType,
-        "expires_in": expiresIn,
-        "scope": scope,
-    ]
-    if let refreshToken {
-        dict["refresh_token"] = refreshToken
-    }
-    return try! JSONSerialization.data(withJSONObject: dict, options: [])
 }
 
 /// Builds a fake playlists page JSON payload similar to /v1/me/playlists.

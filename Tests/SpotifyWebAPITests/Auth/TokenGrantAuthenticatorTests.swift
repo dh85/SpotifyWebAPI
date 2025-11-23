@@ -10,11 +10,7 @@ struct TokenGrantAuthenticatorTests {
     
     @Test("SpotifyPKCEAuthenticator conforms to TokenGrantAuthenticator")
     func pkceAuthenticatorConformsToProtocol() async throws {
-        let config = SpotifyAuthConfig.pkce(
-            clientID: "test",
-            redirectURI: URL(string: "test://callback")!,
-            scopes: []
-        )
+        let config = AuthTestFixtures.pkceConfig(scopes: [])
         let auth = SpotifyPKCEAuthenticator(
             config: config,
             tokenStore: InMemoryTokenStore(tokens: nil)
@@ -25,12 +21,7 @@ struct TokenGrantAuthenticatorTests {
     
     @Test("SpotifyAuthorizationCodeAuthenticator conforms to TokenGrantAuthenticator")
     func authCodeAuthenticatorConformsToProtocol() async throws {
-        let config = SpotifyAuthConfig.authorizationCode(
-            clientID: "test",
-            clientSecret: "secret",
-            redirectURI: URL(string: "test://callback")!,
-            scopes: []
-        )
+        let config = AuthTestFixtures.authCodeConfig(scopes: [])
         let auth = SpotifyAuthorizationCodeAuthenticator(
             config: config,
             tokenStore: InMemoryTokenStore(tokens: nil)
@@ -41,10 +32,7 @@ struct TokenGrantAuthenticatorTests {
     
     @Test("SpotifyClientCredentialsAuthenticator conforms to TokenGrantAuthenticator")
     func clientCredentialsAuthenticatorConformsToProtocol() async throws {
-        let config = SpotifyAuthConfig.clientCredentials(
-            clientID: "test",
-            clientSecret: "secret"
-        )
+        let config = AuthTestFixtures.clientCredentialsConfig()
         let auth = SpotifyClientCredentialsAuthenticator(
             config: config,
             tokenStore: nil
@@ -65,11 +53,7 @@ struct TokenGrantAuthenticatorTests {
             tokenType: "Bearer"
         )
         
-        let config = SpotifyAuthConfig.pkce(
-            clientID: "test",
-            redirectURI: URL(string: "test://callback")!,
-            scopes: []
-        )
+        let config = AuthTestFixtures.pkceConfig(scopes: [])
         let auth = SpotifyPKCEAuthenticator(
             config: config,
             tokenStore: InMemoryTokenStore(tokens: validToken)
@@ -89,12 +73,7 @@ struct TokenGrantAuthenticatorTests {
             tokenType: "Bearer"
         )
         
-        let config = SpotifyAuthConfig.authorizationCode(
-            clientID: "test",
-            clientSecret: "secret",
-            redirectURI: URL(string: "test://callback")!,
-            scopes: []
-        )
+        let config = AuthTestFixtures.authCodeConfig(scopes: [])
         let auth = SpotifyAuthorizationCodeAuthenticator(
             config: config,
             tokenStore: InMemoryTokenStore(tokens: validToken)
@@ -114,10 +93,7 @@ struct TokenGrantAuthenticatorTests {
             tokenType: "Bearer"
         )
         
-        let config = SpotifyAuthConfig.clientCredentials(
-            clientID: "test",
-            clientSecret: "secret"
-        )
+        let config = AuthTestFixtures.clientCredentialsConfig()
         let auth = SpotifyClientCredentialsAuthenticator(
             config: config,
             tokenStore: InMemoryTokenStore(tokens: validToken)
