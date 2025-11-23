@@ -5,25 +5,36 @@ import Testing
 
 @Suite struct AlbumTests {
 
-    @Test func productionAlbumDecodes() throws {
-        let testData = try TestDataLoader.load("album_prod")
-        let album: Album = try decodeModel(from: testData)
-        #expect(album.name == "Through the Lens")
+    @Test("Album fixtures decode")
+    func albumFixturesDecode() throws {
+        let full: Album = try decodeFixture("album_full")
+        expectAlbumsEqual(full, .fullExample)
+
+        let minimal: Album = try decodeFixture("album_minimal")
+        expectAlbumsEqual(minimal, .minimalExample)
     }
 
-    @Test(
-        "Album model tests",
-        arguments: [
-            ("album_full.json", Album.fullExample),
-            ("album_minimal.json", .minimalExample),
-        ]
-    )
-    func album_decodesAllRequiredAndOptionalFields(
-        test: (file: String, example: Album)
-    ) throws {
-        let testData = try TestDataLoader.load(test.file)
-        let album: Album = try decodeModel(from: testData)
-        expectAlbumsEqual(album, test.example)
+    @Test
+    func productionAlbumFixtureCoversRealWorldPayload() throws {
+        let album: Album = try decodeFixture("album_prod")
+        #expect(album.name == "Through the Lens")
+        #expect(album.tracks?.total == 18)
+        #expect(album.artists?.first?.name == "Desi Valentine")
+        try expectCodableRoundTrip(album)
+    }
+
+    @Test
+    func documentationSampleDecodes() throws {
+        let album: Album = try decodeFixture("main_album")
+        #expect(album.albumType == .album)
+        #expect((album.tracks?.total ?? 0) > 0)
+        try expectCodableRoundTrip(album)
+    }
+
+    @Test
+    func albumRoundTripsExamples() throws {
+        try expectCodableRoundTrip(Album.fullExample)
+        try expectCodableRoundTrip(Album.minimalExample)
     }
 
     private func expectAlbumsEqual(_ actual: Album, _ expected: Album) {
@@ -52,16 +63,10 @@ import Testing
         #expect(actual.label == expected.label)
         #expect(actual.popularity == expected.popularity)
     }
-
-    @Test func decodesUserFromSpotifyDocumentationSample() throws {
-        let testData = try TestDataLoader.load("main_album.json")
-        let album: Album = try decodeModel(from: testData)
-        #expect(album.albumType == .album)
-    }
 }
 
 extension Album {
-    fileprivate static let fullExample = Album(
+    static let fullExample = Album(
         albumType: .album,
         totalTracks: 18,
         availableMarkets: Self.euMarkets,
@@ -93,7 +98,7 @@ extension Album {
         popularity: 53
     )
 
-    fileprivate static let minimalExample = Album(
+    static let minimalExample = Album(
         albumType: .single,
         totalTracks: 1,
         availableMarkets: ["US"],

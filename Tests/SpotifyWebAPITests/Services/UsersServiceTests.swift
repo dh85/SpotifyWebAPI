@@ -14,14 +14,12 @@ struct UsersServiceTests {
     
     @Test
     func getBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let userData = try TestDataLoader.load("public_user_profile.json")
-        await http.addMockResponse(data: userData, statusCode: 200)
-        
-        let profile = try await client.users.get("user123")
-        
-        #expect(profile.id == "user123")
-        expectRequest(await http.firstRequest, path: "/v1/users/user123", method: "GET")
+        try await withMockServiceClient(fixture: "public_user_profile.json") { client, http in
+            let profile = try await client.users.get("user123")
+
+            #expect(profile.id == "user123")
+            expectRequest(await http.firstRequest, path: "/v1/users/user123", method: "GET")
+        }
     }
     
     @Test
@@ -51,41 +49,33 @@ struct UsersServiceTests {
     
     @Test
     func meBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let profileData = try TestDataLoader.load("current_user_profile.json")
-        await http.addMockResponse(data: profileData, statusCode: 200)
-        
-        let profile = try await client.users.me()
-        
-        #expect(profile.id == "mockuser")
-        expectRequest(await http.firstRequest, path: "/v1/me", method: "GET")
+        try await withMockServiceClient(fixture: "current_user_profile.json") { client, http in
+            let profile = try await client.users.me()
+
+            #expect(profile.id == "mockuser")
+            expectRequest(await http.firstRequest, path: "/v1/me", method: "GET")
+        }
     }
     
     @Test
     func topArtistsBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let artistsData = try TestDataLoader.load("top_artists.json")
-        await http.addMockResponse(data: artistsData, statusCode: 200)
-        
-        let page = try await client.users.topArtists(range: .shortTerm, limit: 10, offset: 5)
-        
-        #expect(page.items.count > 0)
-        let request = await http.firstRequest
-        expectRequest(
-            request, path: "/v1/me/top/artists", method: "GET",
-            queryContains: "time_range=short_term", "limit=10", "offset=5"
-        )
+        try await withMockServiceClient(fixture: "top_artists.json") { client, http in
+            let page = try await client.users.topArtists(range: .shortTerm, limit: 10, offset: 5)
+
+            #expect(page.items.count > 0)
+            let request = await http.firstRequest
+            expectRequest(
+                request, path: "/v1/me/top/artists", method: "GET",
+                queryContains: "time_range=short_term", "limit=10", "offset=5"
+            )
+        }
     }
     
     @Test
     func topArtistsUsesDefaultPagination() async throws {
-        let (client, http) = makeUserAuthClient()
-        let artistsData = try TestDataLoader.load("top_artists.json")
-        await http.addMockResponse(data: artistsData, statusCode: 200)
-        
-        _ = try await client.users.topArtists()
-        
-        expectPaginationDefaults(await http.firstRequest)
+        try await expectDefaultPagination(fixture: "top_artists.json") { client in
+            _ = try await client.users.topArtists()
+        }
     }
     
     @Test
@@ -98,29 +88,23 @@ struct UsersServiceTests {
     
     @Test
     func topTracksBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let tracksData = try TestDataLoader.load("top_tracks.json")
-        await http.addMockResponse(data: tracksData, statusCode: 200)
-        
-        let page = try await client.users.topTracks(range: .longTerm, limit: 15, offset: 10)
-        
-        #expect(page.items.count > 0)
-        let request = await http.firstRequest
-        expectRequest(
-            request, path: "/v1/me/top/tracks", method: "GET",
-            queryContains: "time_range=long_term", "limit=15", "offset=10"
-        )
+        try await withMockServiceClient(fixture: "top_tracks.json") { client, http in
+            let page = try await client.users.topTracks(range: .longTerm, limit: 15, offset: 10)
+
+            #expect(page.items.count > 0)
+            let request = await http.firstRequest
+            expectRequest(
+                request, path: "/v1/me/top/tracks", method: "GET",
+                queryContains: "time_range=long_term", "limit=15", "offset=10"
+            )
+        }
     }
     
     @Test
     func topTracksUsesDefaultPagination() async throws {
-        let (client, http) = makeUserAuthClient()
-        let tracksData = try TestDataLoader.load("top_tracks.json")
-        await http.addMockResponse(data: tracksData, statusCode: 200)
-        
-        _ = try await client.users.topTracks()
-        
-        expectPaginationDefaults(await http.firstRequest)
+        try await expectDefaultPagination(fixture: "top_tracks.json") { client in
+            _ = try await client.users.topTracks()
+        }
     }
     
     @Test
@@ -133,30 +117,26 @@ struct UsersServiceTests {
     
     @Test
     func followedArtistsBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let artistsData = try TestDataLoader.load("followed_artists.json")
-        await http.addMockResponse(data: artistsData, statusCode: 200)
-        
-        let page = try await client.users.followedArtists(limit: 10, after: "artist123")
-        
-        #expect(page.items.count > 0)
-        let request = await http.firstRequest
-        expectRequest(
-            request, path: "/v1/me/following", method: "GET",
-            queryContains: "type=artist", "limit=10", "after=artist123"
-        )
+        try await withMockServiceClient(fixture: "followed_artists.json") { client, http in
+            let page = try await client.users.followedArtists(limit: 10, after: "artist123")
+
+            #expect(page.items.count > 0)
+            let request = await http.firstRequest
+            expectRequest(
+                request, path: "/v1/me/following", method: "GET",
+                queryContains: "type=artist", "limit=10", "after=artist123"
+            )
+        }
     }
     
     @Test
     func followedArtistsUsesDefaultLimit() async throws {
-        let (client, http) = makeUserAuthClient()
-        let artistsData = try TestDataLoader.load("followed_artists.json")
-        await http.addMockResponse(data: artistsData, statusCode: 200)
-        
-        _ = try await client.users.followedArtists()
-        
-        let request = await http.firstRequest
-        #expect(request?.url?.query()?.contains("limit=20") == true)
+        try await withMockServiceClient(fixture: "followed_artists.json") { client, http in
+            _ = try await client.users.followedArtists()
+
+            let request = await http.firstRequest
+            #expect(request?.url?.query()?.contains("limit=20") == true)
+        }
     }
     
     @Test

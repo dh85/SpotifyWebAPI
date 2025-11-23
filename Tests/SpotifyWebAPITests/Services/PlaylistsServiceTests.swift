@@ -15,57 +15,47 @@ struct PlaylistsServiceTests {
 
     @Test
     func getBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistData = try TestDataLoader.load("playlist_full.json")
-        await http.addMockResponse(data: playlistData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlist_full.json") { client, http in
+            let id = "playlist123"
+            let playlist = try await client.playlists.get(
+                id, market: "US", fields: "name,id", additionalTypes: [.track, .episode])
 
-        let id = "playlist123"
-        let playlist = try await client.playlists.get(
-            id, market: "US", fields: "name,id", additionalTypes: [.track, .episode])
-
-        #expect(playlist.id == id)
-        expectRequest(
-            await http.firstRequest, path: "/v1/playlists/\(id)", method: "GET",
-            queryContains: "market=US", "fields=name,id", "additional_types=episode,track")
+            #expect(playlist.id == id)
+            expectRequest(
+                await http.firstRequest, path: "/v1/playlists/\(id)", method: "GET",
+                queryContains: "market=US", "fields=name,id", "additional_types=episode,track")
+        }
     }
 
     @Test(arguments: [nil, "US"])
     func getIncludesMarketParameter(market: String?) async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistData = try TestDataLoader.load("playlist_full.json")
-        await http.addMockResponse(data: playlistData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlist_full.json") { client, http in
+            _ = try await client.playlists.get("playlist123", market: market)
 
-        _ = try await client.playlists.get("playlist123", market: market)
-
-        expectMarketParameter(await http.firstRequest, market: market)
+            expectMarketParameter(await http.firstRequest, market: market)
+        }
     }
 
     @Test
     func itemsBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        await http.addMockResponse(data: itemsData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http in
+            let page = try await client.playlists.items(
+                "playlist123", market: "US", fields: "items", limit: 10, offset: 5,
+                additionalTypes: [.episode])
 
-        let page = try await client.playlists.items(
-            "playlist123", market: "US", fields: "items", limit: 10, offset: 5,
-            additionalTypes: [.episode])
-
-        #expect(page.items.count > 0)
-        expectRequest(
-            await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "GET",
-            queryContains: "limit=10", "offset=5", "market=US", "fields=items",
-            "additional_types=episode")
+            #expect(page.items.count > 0)
+            expectRequest(
+                await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "GET",
+                queryContains: "limit=10", "offset=5", "market=US", "fields=items",
+                "additional_types=episode")
+        }
     }
 
     @Test
     func itemsUsesDefaultPagination() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-
-        _ = try await client.playlists.items("playlist123")
-
-        expectPaginationDefaults(await http.firstRequest)
+        try await expectDefaultPagination(fixture: "playlist_tracks.json") { client in
+            _ = try await client.playlists.items("playlist123")
+        }
     }
 
     @Test
@@ -78,28 +68,22 @@ struct PlaylistsServiceTests {
 
     @Test
     func userPlaylistsBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistsData = try TestDataLoader.load("playlists_user.json")
-        await http.addMockResponse(data: playlistsData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlists_user.json") { client, http in
+            let page = try await client.playlists.userPlaylists(
+                userID: "user123", limit: 10, offset: 5)
 
-        let page = try await client.playlists.userPlaylists(
-            userID: "user123", limit: 10, offset: 5)
-
-        #expect(page.items.count > 0)
-        expectRequest(
-            await http.firstRequest, path: "/v1/users/user123/playlists", method: "GET",
-            queryContains: "limit=10", "offset=5")
+            #expect(page.items.count > 0)
+            expectRequest(
+                await http.firstRequest, path: "/v1/users/user123/playlists", method: "GET",
+                queryContains: "limit=10", "offset=5")
+        }
     }
 
     @Test
     func userPlaylistsUsesDefaultPagination() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistsData = try TestDataLoader.load("playlists_user.json")
-        await http.addMockResponse(data: playlistsData, statusCode: 200)
-
-        _ = try await client.playlists.userPlaylists(userID: "user123")
-
-        expectPaginationDefaults(await http.firstRequest)
+        try await expectDefaultPagination(fixture: "playlists_user.json") { client in
+            _ = try await client.playlists.userPlaylists(userID: "user123")
+        }
     }
 
     @Test
@@ -112,42 +96,34 @@ struct PlaylistsServiceTests {
 
     @Test
     func coverImageBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let imagesData = try TestDataLoader.load("playlist_images.json")
-        await http.addMockResponse(data: imagesData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlist_images.json") { client, http in
+            let images = try await client.playlists.coverImage(id: "playlist123")
 
-        let images = try await client.playlists.coverImage(id: "playlist123")
-
-        #expect(images.count > 0)
-        expectRequest(
-            await http.firstRequest, path: "/v1/playlists/playlist123/images", method: "GET")
+            #expect(images.count > 0)
+            expectRequest(
+                await http.firstRequest, path: "/v1/playlists/playlist123/images", method: "GET")
+        }
     }
 
     // MARK: - User Access Tests
 
     @Test
     func myPlaylistsBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistsData = try TestDataLoader.load("playlists_user.json")
-        await http.addMockResponse(data: playlistsData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlists_user.json") { client, http in
+            let page = try await client.playlists.myPlaylists(limit: 10, offset: 5)
 
-        let page = try await client.playlists.myPlaylists(limit: 10, offset: 5)
-
-        #expect(page.items.count > 0)
-        expectRequest(
-            await http.firstRequest, path: "/v1/me/playlists", method: "GET",
-            queryContains: "limit=10", "offset=5")
+            #expect(page.items.count > 0)
+            expectRequest(
+                await http.firstRequest, path: "/v1/me/playlists", method: "GET",
+                queryContains: "limit=10", "offset=5")
+        }
     }
 
     @Test
     func myPlaylistsUsesDefaultPagination() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistsData = try TestDataLoader.load("playlists_user.json")
-        await http.addMockResponse(data: playlistsData, statusCode: 200)
-
-        _ = try await client.playlists.myPlaylists()
-
-        expectPaginationDefaults(await http.firstRequest)
+        try await expectDefaultPagination(fixture: "playlists_user.json") { client in
+            _ = try await client.playlists.myPlaylists()
+        }
     }
 
     @Test
@@ -160,16 +136,15 @@ struct PlaylistsServiceTests {
 
     @Test
     func createBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistData = try TestDataLoader.load("playlist_full.json")
-        await http.addMockResponse(data: playlistData, statusCode: 201)
+        try await withMockServiceClient(fixture: "playlist_full.json", statusCode: 201) {
+            client, http in
+            let playlist = try await client.playlists.create(
+                for: "user123", name: "My Playlist", isPublic: true)
 
-        let playlist = try await client.playlists.create(
-            for: "user123", name: "My Playlist", isPublic: true)
-
-        #expect(playlist.name == "Test Playlist")
-        expectRequest(
-            await http.firstRequest, path: "/v1/users/user123/playlists", method: "POST")
+            #expect(playlist.name == "Test Playlist")
+            expectRequest(
+                await http.firstRequest, path: "/v1/users/user123/playlists", method: "POST")
+        }
     }
 
     @Test
@@ -498,18 +473,21 @@ struct PlaylistsServiceTests {
 
     @Test
     func allMyPlaylistsUsesDefaultMaxItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let playlistsData = try TestDataLoader.load("playlists_user.json")
-        
-        // Mock enough responses to exceed default limit
-        for _ in 0..<25 {
-            await http.addMockResponse(data: playlistsData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlists_user.json") { client, http, data in
+            guard let playlistsData = data else {
+                Issue.record("Missing playlists fixture data")
+                return
+            }
+            // Mock enough responses to exceed default limit
+            for _ in 1..<25 {  // Already enqueued once.
+                await http.addMockResponse(data: playlistsData, statusCode: 200)
+            }
+
+            let playlists = try await client.playlists.allMyPlaylists()
+
+            // Should stop at default limit of 1000, not fetch all
+            #expect(playlists.count <= 1000)
         }
-        
-        let playlists = try await client.playlists.allMyPlaylists()
-        
-        // Should stop at default limit of 1000, not fetch all
-        #expect(playlists.count <= 1000)
     }
 
     @Test
@@ -533,142 +511,156 @@ struct PlaylistsServiceTests {
 
     @Test
     func allItemsFetchesAllPages() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        // Mock 3 pages of results
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        let allItems = try await client.playlists.allItems("playlist123")
-        
-        #expect(allItems.count > 0)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
+            guard let itemsData = data else {
+                Issue.record("Missing playlist tracks fixture")
+                return
+            }
+
+            // Mock 3 pages of results (one already enqueued)
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+
+            let allItems = try await client.playlists.allItems("playlist123")
+
+            #expect(allItems.count > 0)
+        }
     }
 
     @Test
     func allItemsRespectsMaxItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        let items = try await client.playlists.allItems("playlist123", maxItems: 1)
-        
-        #expect(items.count == 1)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
+            guard let itemsData = data else {
+                Issue.record("Missing playlist tracks fixture")
+                return
+            }
+
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+
+            let items = try await client.playlists.allItems("playlist123", maxItems: 1)
+
+            #expect(items.count == 1)
+        }
     }
 
     @Test
     func allItemsPassesParametersCorrectly() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        _ = try await client.playlists.allItems(
-            "playlist123",
-            market: "US",
-            fields: "items(track(name))",
-            additionalTypes: [.episode]
-        )
-        
-        let request = await http.firstRequest
-        #expect(request?.url?.query()?.contains("market=US") == true)
-        #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
-        #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, _ in
+            _ = try await client.playlists.allItems(
+                "playlist123",
+                market: "US",
+                fields: "items(track(name))",
+                additionalTypes: [.episode]
+            )
+
+            let request = await http.firstRequest
+            #expect(request?.url?.query()?.contains("market=US") == true)
+            #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
+            #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+        }
     }
 
     @Test
     func allItemsUsesDefaultMaxItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        // Mock enough responses to exceed default limit
-        for _ in 0..<150 {
-            await http.addMockResponse(data: itemsData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
+            guard let itemsData = data else {
+                Issue.record("Missing playlist tracks fixture")
+                return
+            }
+
+            // Mock enough responses to exceed default limit (one already added)
+            for _ in 1..<150 {
+                await http.addMockResponse(data: itemsData, statusCode: 200)
+            }
+
+            let items = try await client.playlists.allItems("playlist123")
+
+            // Should stop at default limit of 5000, not fetch all
+            #expect(items.count <= 5000)
         }
-        
-        let items = try await client.playlists.allItems("playlist123")
-        
-        // Should stop at default limit of 5000, not fetch all
-        #expect(items.count <= 5000)
     }
 
     @Test
     func allItemsAllowsUnlimitedWithNil() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        let items = try await client.playlists.allItems("playlist123", maxItems: nil)
-        
-        #expect(items.count > 0)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, _, _ in
+            let items = try await client.playlists.allItems("playlist123", maxItems: nil)
+
+            #expect(items.count > 0)
+        }
     }
 
     @Test
     func streamItemsYieldsAllItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        // Mock 2 pages
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        var items: [PlaylistTrackItem] = []
-        let stream = await client.playlists.streamItems("playlist123")
-        
-        for try await item in stream {
-            items.append(item)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
+            guard let itemsData = data else {
+                Issue.record("Missing playlist tracks fixture")
+                return
+            }
+
+            // Mock 2 pages (one already queued)
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+
+            var items: [PlaylistTrackItem] = []
+            let stream = await client.playlists.streamItems("playlist123")
+
+            for try await item in stream {
+                items.append(item)
+            }
+
+            #expect(items.count > 0)
         }
-        
-        #expect(items.count > 0)
     }
 
     @Test
     func streamItemsRespectsMaxItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        // Mock has 2 items, request only 1
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        var items: [PlaylistTrackItem] = []
-        let stream = await client.playlists.streamItems("playlist123", maxItems: 1)
-        
-        for try await item in stream {
-            items.append(item)
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
+            guard let itemsData = data else {
+                Issue.record("Missing playlist tracks fixture")
+                return
+            }
+
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+
+            var items: [PlaylistTrackItem] = []
+            let stream = await client.playlists.streamItems("playlist123", maxItems: 1)
+
+            for try await item in stream {
+                items.append(item)
+            }
+
+            // Should stop at maxItems
+            #expect(items.count == 1)
         }
-        
-        // Should stop at maxItems
-        #expect(items.count == 1)
     }
 
     @Test
     func streamItemsPassesParameters() async throws {
-        let (client, http) = makeUserAuthClient()
-        let itemsData = try TestDataLoader.load("playlist_tracks.json")
-        
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-        
-        var itemCount = 0
-        let stream = await client.playlists.streamItems(
-            "playlist123",
-            market: "US",
-            fields: "items(track(name))",
-            additionalTypes: [.episode]
-        )
-        
-        for try await _ in stream {
-            itemCount += 1
+        try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
+            guard let itemsData = data else {
+                Issue.record("Missing playlist tracks fixture")
+                return
+            }
+
+            await http.addMockResponse(data: itemsData, statusCode: 200)
+
+            var itemCount = 0
+            let stream = await client.playlists.streamItems(
+                "playlist123",
+                market: "US",
+                fields: "items(track(name))",
+                additionalTypes: [.episode]
+            )
+
+            for try await _ in stream {
+                itemCount += 1
+            }
+
+            let request = await http.firstRequest
+            #expect(request?.url?.query()?.contains("market=US") == true)
+            #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
+            #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+            #expect(itemCount > 0)
         }
-        
-        let request = await http.firstRequest
-        #expect(request?.url?.query()?.contains("market=US") == true)
-        #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
-        #expect(request?.url?.query()?.contains("additional_types=episode") == true)
-        #expect(itemCount > 0)
     }
 
     // MARK: - Helper Methods

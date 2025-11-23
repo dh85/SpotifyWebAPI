@@ -7,9 +7,8 @@ import Testing
 
     @Test
     func artistDecodesCorrectly() throws {
-        let testData = try TestDataLoader.load("artist_full.json")
-        let artist: Artist = try decodeModel(from: testData)
-        expectArtistMatches(artist, Artist.fullExample)
+        let artist: Artist = try decodeFixture("artist_full")
+        expectArtistMatches(artist, .fullExample)
     }
 
     @Test
@@ -27,7 +26,13 @@ import Testing
             """
         let data = json.data(using: .utf8)!
         let artist: Artist = try decodeModel(from: data)
-        expectArtistMatches(artist, Artist.minimalExample)
+        expectArtistMatches(artist, .minimalExample)
+    }
+
+    @Test
+    func artistRoundTrips() throws {
+        try expectCodableRoundTrip(Artist.fullExample)
+        try expectCodableRoundTrip(Artist.minimalExample)
     }
 
     private func expectArtistMatches(_ actual: Artist, _ expected: Artist) {

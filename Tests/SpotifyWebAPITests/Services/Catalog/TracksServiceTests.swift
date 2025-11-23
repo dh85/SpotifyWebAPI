@@ -15,64 +15,54 @@ struct TracksServiceTests {
 
     @Test
     func getBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let trackData = try TestDataLoader.load("track_full.json")
-        await http.addMockResponse(data: trackData, statusCode: 200)
+        try await withMockServiceClient(fixture: "track_full.json") { client, http in
+            let track = try await client.tracks.get("track_id")
 
-        let track = try await client.tracks.get("track_id")
-
-        #expect(track.id == "track_id")
-        #expect(track.name == "Test Track")
-        expectRequest(await http.firstRequest, path: "/v1/tracks/track_id", method: "GET")
+            #expect(track.id == "track_id")
+            #expect(track.name == "Test Track")
+            expectRequest(await http.firstRequest, path: "/v1/tracks/track_id", method: "GET")
+        }
     }
 
     @Test(arguments: [nil, "US"])
     func getIncludesMarketParameter(market: String?) async throws {
-        let (client, http) = makeUserAuthClient()
-        let trackData = try TestDataLoader.load("track_full.json")
-        await http.addMockResponse(data: trackData, statusCode: 200)
+        try await withMockServiceClient(fixture: "track_full.json") { client, http in
+            _ = try await client.tracks.get("track123", market: market)
 
-        _ = try await client.tracks.get("track123", market: market)
-
-        expectMarketParameter(await http.firstRequest, market: market)
+            expectMarketParameter(await http.firstRequest, market: market)
+        }
     }
 
     @Test
     func severalBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let tracksData = try TestDataLoader.load("tracks_several.json")
-        await http.addMockResponse(data: tracksData, statusCode: 200)
+        try await withMockServiceClient(fixture: "tracks_several.json") { client, http in
+            let ids: Set<String> = ["track1", "track2"]
+            let tracks = try await client.tracks.several(ids: ids)
 
-        let ids: Set<String> = ["track1", "track2"]
-        let tracks = try await client.tracks.several(ids: ids)
-
-        #expect(tracks.count == 2)
-        let request = await http.firstRequest
-        expectRequest(request, path: "/v1/tracks", method: "GET")
-        #expect(extractIDs(from: request?.url) == ids)
+            #expect(tracks.count == 2)
+            let request = await http.firstRequest
+            expectRequest(request, path: "/v1/tracks", method: "GET")
+            #expect(extractIDs(from: request?.url) == ids)
+        }
     }
 
     @Test(arguments: [nil, "US"])
     func severalIncludesMarketParameter(market: String?) async throws {
-        let (client, http) = makeUserAuthClient()
-        let tracksData = try TestDataLoader.load("tracks_several.json")
-        await http.addMockResponse(data: tracksData, statusCode: 200)
+        try await withMockServiceClient(fixture: "tracks_several.json") { client, http in
+            _ = try await client.tracks.several(ids: ["track123"], market: market)
 
-        _ = try await client.tracks.several(ids: ["track123"], market: market)
-
-        expectMarketParameter(await http.firstRequest, market: market)
+            expectMarketParameter(await http.firstRequest, market: market)
+        }
     }
 
     @Test
     func severalAllowsMaximumIDBatchSize() async throws {
-        let (client, http) = makeUserAuthClient()
-        let ids = makeIDs(count: 50)
-        let tracksData = try TestDataLoader.load("tracks_several_50.json")
-        await http.addMockResponse(data: tracksData, statusCode: 200)
+        try await withMockServiceClient(fixture: "tracks_several_50.json") { client, _ in
+            let ids = makeIDs(count: 50)
+            let tracks = try await client.tracks.several(ids: ids)
 
-        let tracks = try await client.tracks.several(ids: ids)
-
-        #expect(tracks.count == 50)
+            #expect(tracks.count == 50)
+        }
     }
 
     @Test
@@ -87,28 +77,23 @@ struct TracksServiceTests {
 
     @Test(arguments: [nil, "US"])
     func savedBuildsCorrectRequest(market: String?) async throws {
-        let (client, http) = makeUserAuthClient()
-        let savedData = try TestDataLoader.load("tracks_saved.json")
-        await http.addMockResponse(data: savedData, statusCode: 200)
+        try await withMockServiceClient(fixture: "tracks_saved.json") { client, http in
+            let page = try await client.tracks.saved(limit: 10, offset: 5, market: market)
 
-        let page = try await client.tracks.saved(limit: 10, offset: 5, market: market)
-
-        #expect(page.items.first?.track.name == "Test Track")
-        let request = await http.firstRequest
-        expectRequest(
-            request, path: "/v1/me/tracks", method: "GET", queryContains: "limit=10", "offset=5")
-        expectMarketParameter(request, market: market)
+            #expect(page.items.first?.track.name == "Test Track")
+            let request = await http.firstRequest
+            expectRequest(
+                request, path: "/v1/me/tracks", method: "GET", queryContains: "limit=10",
+                "offset=5")
+            expectMarketParameter(request, market: market)
+        }
     }
 
     @Test
     func savedUsesDefaultPagination() async throws {
-        let (client, http) = makeUserAuthClient()
-        let savedData = try TestDataLoader.load("tracks_saved.json")
-        await http.addMockResponse(data: savedData, statusCode: 200)
-
-        _ = try await client.tracks.saved()
-
-        expectPaginationDefaults(await http.firstRequest)
+        try await expectDefaultPagination(fixture: "tracks_saved.json") { client in
+            _ = try await client.tracks.saved()
+        }
     }
 
     @Test
@@ -216,17 +201,15 @@ struct TracksServiceTests {
 
     @Test
     func checkSavedBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let checkData = try TestDataLoader.load("check_saved_tracks.json")
-        await http.addMockResponse(data: checkData, statusCode: 200)
+        try await withMockServiceClient(fixture: "check_saved_tracks.json") { client, http in
+            let trackIDs = makeIDs(count: 50)
+            let results = try await client.tracks.checkSaved(trackIDs)
 
-        let trackIDs = makeIDs(count: 50)
-        let results = try await client.tracks.checkSaved(trackIDs)
-
-        #expect(results.count == 50)
-        let request = await http.firstRequest
-        expectRequest(request, path: "/v1/me/tracks/contains", method: "GET")
-        #expect(extractIDs(from: request?.url) == trackIDs)
+            #expect(results.count == 50)
+            let request = await http.firstRequest
+            expectRequest(request, path: "/v1/me/tracks/contains", method: "GET")
+            #expect(extractIDs(from: request?.url) == trackIDs)
+        }
     }
 
     @Test

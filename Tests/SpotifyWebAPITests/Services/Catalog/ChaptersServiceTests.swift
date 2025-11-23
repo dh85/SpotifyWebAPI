@@ -13,68 +13,58 @@ struct ChaptersServiceTests {
 
     @Test
     func getBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("chapter_full.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await withMockServiceClient(fixture: "chapter_full.json") { client, http in
+            let id = "chapterid"
+            let chapter = try await client.chapters.get(id, market: "US")
 
-        let id = "chapterid"
-        let chapter = try await client.chapters.get(id, market: "US")
-
-        #expect(chapter.id == id)
-        #expect(chapter.name == "Chapter 1")
-        expectRequest(
-            await http.firstRequest, path: "/v1/chapters/\(id)", method: "GET",
-            queryContains: "market=US")
+            #expect(chapter.id == id)
+            #expect(chapter.name == "Chapter 1")
+            expectRequest(
+                await http.firstRequest, path: "/v1/chapters/\(id)", method: "GET",
+                queryContains: "market=US")
+        }
     }
 
     @Test(arguments: [nil, "US"])
     func getIncludesMarketParameter(market: String?) async throws {
-        let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("chapter_full.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await withMockServiceClient(fixture: "chapter_full.json") { client, http in
+            _ = try await client.chapters.get("id", market: market)
 
-        _ = try await client.chapters.get("id", market: market)
-
-        expectMarketParameter(await http.firstRequest, market: market)
+            expectMarketParameter(await http.firstRequest, market: market)
+        }
     }
 
     @Test
     func severalBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("chapters_several.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await withMockServiceClient(fixture: "chapters_several.json") { client, http in
+            let ids = ["id1", "id2", "id3"]
+            let chapters = try await client.chapters.several(ids: ids, market: "ES")
 
-        let ids = ["id1", "id2", "id3"]
-        let chapters = try await client.chapters.several(ids: ids, market: "ES")
+            #expect(chapters.count == 3)
+            #expect(chapters.first?.name == "Chapter 1")
 
-        #expect(chapters.count == 3)
-        #expect(chapters.first?.name == "Chapter 1")
-
-        let request = await http.firstRequest
-        expectRequest(request, path: "/v1/chapters", method: "GET", queryContains: "market=ES")
-        #expect(request?.url?.query()?.contains("ids=id1,id2,id3") == true)
+            let request = await http.firstRequest
+            expectRequest(request, path: "/v1/chapters", method: "GET", queryContains: "market=ES")
+            #expect(request?.url?.query()?.contains("ids=id1,id2,id3") == true)
+        }
     }
 
     @Test(arguments: [nil, "US"])
     func severalIncludesMarketParameter(market: String?) async throws {
-        let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("chapters_several.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await withMockServiceClient(fixture: "chapters_several.json") { client, http in
+            _ = try await client.chapters.several(ids: ["id"], market: market)
 
-        _ = try await client.chapters.several(ids: ["id"], market: market)
-
-        expectMarketParameter(await http.firstRequest, market: market)
+            expectMarketParameter(await http.firstRequest, market: market)
+        }
     }
 
     @Test
     func severalAllowsMaximumIDBatchSize() async throws {
-        let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("chapters_several.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await withMockServiceClient(fixture: "chapters_several.json") { client, http in
+            _ = try await client.chapters.several(ids: makeIDs(count: 50).map { $0 })
 
-        _ = try await client.chapters.several(ids: makeIDs(count: 50).map { $0 })
-
-        #expect(await http.firstRequest?.url?.query()?.contains("ids=") == true)
+            #expect(await http.firstRequest?.url?.query()?.contains("ids=") == true)
+        }
     }
 
     @Test

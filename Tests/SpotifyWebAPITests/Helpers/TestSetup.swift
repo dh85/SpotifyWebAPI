@@ -1,27 +1,30 @@
 import Foundation
 @testable import SpotifyWebAPI
 
-/// Global test setup to optimize performance
+/// Centralized test environment utilities.
 @MainActor
-struct TestSetup {
-    
-    /// Configure all tests for optimal performance
-    static func configure() async {
-        await TestDebugHelper.configureForTests()
-    }
-    
-    /// Clear metrics between test suites
-    static func clearMetrics() async {
-        await TestDebugHelper.clearAllMetrics()
-    }
-}
+enum TestEnvironment {
 
-/// Test suite initializer to ensure consistent setup
-extension TestSetup {
-    
-    /// Call this in test suite init() methods
-    static func initializeSuite() async {
-        await configure()
+    /// Apply a consistent debug logger configuration for tests.
+    static func bootstrap() async {
+        await configureDebugLogging()
         await clearMetrics()
+    }
+
+    /// Resets any recorded performance metrics between suites.
+    static func clearMetrics() async {
+        await DebugLogger.testInstance.clearPerformanceMetrics()
+        await DebugLogger.shared.clearPerformanceMetrics()
+    }
+
+    /// Provides the logger that tests should use.
+    static var logger: DebugLogger {
+        DebugLogger.testInstance
+    }
+
+    private static func configureDebugLogging() async {
+        let config = DebugConfiguration.disabled
+        await DebugLogger.testInstance.configure(config)
+        await DebugLogger.shared.configure(config)
     }
 }

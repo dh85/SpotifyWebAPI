@@ -7,23 +7,29 @@ import Testing
 
     @Test
     func trackDecodesCorrectly() throws {
-        let testData = try TestDataLoader.load("track_full.json")
-        let track: Track = try decodeModel(from: testData)
-        expectTrackMatches(track, Track.fullExample)
+        let track: Track = try decodeFixture("track_full")
+        expectTrackMatches(track, .fullExample)
     }
 
     @Test
     func trackDecodesWithMinimalFields() throws {
-        let testData = try TestDataLoader.load("track_minimal.json")
-        let track: Track = try decodeModel(from: testData)
-        expectTrackMatches(track, Track.minimalExample)
+        let track: Track = try decodeFixture("track_minimal")
+        expectTrackMatches(track, .minimalExample)
     }
 
     @Test
     func trackDecodesProductionSample() throws {
-        let testData = try TestDataLoader.load("track_prod.json")
-        let track: Track = try decodeModel(from: testData)
+        let track: Track = try decodeFixture("track_prod")
         #expect(track.trackNumber == 1)
+        #expect(track.name == "Cut To The Feeling")
+        #expect(track.album?.id == "0tGPJ0bkWOUmH7MEOR77qc")
+        try expectCodableRoundTrip(track)
+    }
+
+    @Test
+    func trackRoundTripsExamples() throws {
+        try expectCodableRoundTrip(Track.fullExample)
+        try expectCodableRoundTrip(Track.minimalExample)
     }
 
     private func expectTrackMatches(_ actual: Track, _ expected: Track) {
