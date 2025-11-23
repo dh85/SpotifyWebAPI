@@ -71,6 +71,35 @@ struct RequestInterceptorTests {
         }
     }
 
+    @Test("Interceptor failures do not poison subsequent requests")
+    @MainActor
+    func interceptorFailureDoesNotAffectFutureRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let controller = InterceptorThrowState()
+
+        await client.addInterceptor { request in
+            if await controller.consume() {
+                throw TestError.general("boom")
+            }
+            return request
+        }
+
+        await http.addMockResponse(
+            data: try TestDataLoader.load("current_user_profile"),
+            statusCode: 200
+        )
+
+        await #expect(throws: TestError.general("boom")) {
+            _ = try await client.users.me()
+        }
+
+        let profile = try await client.users.me()
+        #expect(profile.id == "mockuser")
+
+        let requests = await http.requests
+        #expect(requests.count == 1)
+    }
+
     @Test("Remove all interceptors works")
     @MainActor
     func removeAllInterceptors() async throws {
@@ -112,5 +141,17 @@ struct RequestInterceptorTests {
 
         let requests = await http.requests
         #expect(requests[0].value(forHTTPHeaderField: "X-Config") == "ConfigValue")
+    }
+}
+
+actor InterceptorThrowState {
+    private var shouldThrow = true
+
+    func consume() -> Bool {
+        if shouldThrow {
+            shouldThrow = false
+            return true
+        }
+        return false
     }
 }

@@ -1,4 +1,9 @@
+import Foundation
 import Testing
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 @testable import SpotifyWebAPI
 
@@ -64,6 +69,142 @@ struct PlaylistsServiceExtensionsTests {
         #expect(chunks[2] == [7, 8, 9])
         #expect(chunks[3] == [10])
     }
+
+    @Test
+    func addTracksSkipsEmptyCollections() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await client.playlists.addTracks([], to: "playlist123")
+        let requests = await http.requests
+        #expect(requests.isEmpty)
+    }
+
+    @Test
+    func removeTracksSkipsEmptyCollections() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await client.playlists.removeTracks([], from: "playlist123")
+        let requests = await http.requests
+        #expect(requests.isEmpty)
+    }
+
+    @Test
+    func addTracksPreservesOrderAcrossBatches() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(
+            data: #"{"snapshot_id":"snap1"}"#.data(using: .utf8)!, statusCode: 201)
+        await http.addMockResponse(
+            data: #"{"snapshot_id":"snap2"}"#.data(using: .utf8)!, statusCode: 201)
+
+        let uris = (1...150).map { "spotify:track:\($0)" }
+        try await client.playlists.addTracks(uris, to: "playlist123")
+
+        let requests = await http.requests
+        #expect(requests.count == 2)
+
+        let firstBody = decodeAddBody(requests[0])
+        let secondBody = decodeAddBody(requests[1])
+        #expect(firstBody == Array(uris.prefix(100)))
+        #expect(secondBody == Array(uris.suffix(50)))
+    }
+
+    @Test
+    func removeTracksMaintainsOrderAndChunking() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(
+            data: #"{"snapshot_id":"snap1"}"#.data(using: .utf8)!, statusCode: 200)
+        await http.addMockResponse(
+            data: #"{"snapshot_id":"snap2"}"#.data(using: .utf8)!, statusCode: 200)
+
+        let uris = (1...120).map { "spotify:track:\($0)" }
+        try await client.playlists.removeTracks(uris, from: "playlist123")
+
+        let requests = await http.requests
+        #expect(requests.count == 2)
+
+        let first = decodeRemoveBody(requests[0])
+        let second = decodeRemoveBody(requests[1])
+        #expect(first == Array(uris.prefix(100)))
+        #expect(second == Array(uris.suffix(20)))
+    }
+
+    @Test
+    func addTracksRetriesAfterRateLimit() async throws {
+        let configuration = SpotifyClientConfiguration(maxRateLimitRetries: 2)
+        let (client, http) = makeUserAuthClient(configuration: configuration)
+        let successData = #"{"snapshot_id":"snap"}"#.data(using: .utf8)!
+        await http.addMockResponse(
+            statusCode: 429,
+            headers: ["Retry-After": "0"]
+        )
+        await http.addMockResponse(data: successData, statusCode: 201)
+        await http.addMockResponse(data: successData, statusCode: 201)
+
+        let uris = (1...120).map { "spotify:track:\($0)" }
+        try await client.playlists.addTracks(uris, to: "playlist123")
+
+        let requests = await http.requests
+        #expect(requests.count == 3)  // 2 for first chunk (retry) + 1 for second chunk
+    }
+
+    @Test
+    func removeTracksRetriesAfterRateLimit() async throws {
+        let configuration = SpotifyClientConfiguration(maxRateLimitRetries: 2)
+        let (client, http) = makeUserAuthClient(configuration: configuration)
+        let successData = #"{"snapshot_id":"snap"}"#.data(using: .utf8)!
+        await http.addMockResponse(
+            statusCode: 429,
+            headers: ["Retry-After": "0"]
+        )
+        await http.addMockResponse(data: successData, statusCode: 200)
+        await http.addMockResponse(data: successData, statusCode: 200)
+
+        let uris = (1...120).map { "spotify:track:\($0)" }
+        try await client.playlists.removeTracks(uris, from: "playlist123")
+
+        let requests = await http.requests
+        #expect(requests.count == 3)
+    }
+
+    @Test
+    func addTracksCancellationStopsFurtherRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let success = #"{"snapshot_id":"snap"}"#.data(using: .utf8)!
+        await http.addMockResponse(data: success, statusCode: 201, delay: .seconds(1))
+        await http.addMockResponse(data: success, statusCode: 201)
+
+        let uris = (1...150).map { "spotify:track:\($0)" }
+        let task = Task {
+            try await client.playlists.addTracks(uris, to: "playlist123")
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await task.value
+        }
+        #expect(await http.requests.count == 1)
+    }
+
+    @Test
+    func removeTracksCancellationStopsFurtherRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let success = #"{"snapshot_id":"snap"}"#.data(using: .utf8)!
+        await http.addMockResponse(data: success, statusCode: 200, delay: .seconds(1))
+        await http.addMockResponse(data: success, statusCode: 200)
+
+        let uris = (1...150).map { "spotify:track:\($0)" }
+        let task = Task {
+            try await client.playlists.removeTracks(uris, from: "playlist123")
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await task.value
+        }
+        #expect(await http.requests.count == 1)
+    }
 }
 
 // MARK: - Test Helpers
@@ -74,4 +215,26 @@ extension Array {
             Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
+}
+
+private func decodeAddBody(_ request: URLRequest?) -> [String]? {
+    guard
+        let data = request?.httpBody,
+        let body = try? JSONDecoder().decode(AddBody.self, from: data)
+    else { return nil }
+    return body.uris
+}
+
+private func decodeRemoveBody(_ request: URLRequest?) -> [String]? {
+    guard
+        let data = request?.httpBody,
+        let body = try? JSONDecoder().decode(RemoveBody.self, from: data)
+    else { return nil }
+    return body.tracks?.map { $0.uri }
+}
+
+private struct AddBody: Decodable { let uris: [String] }
+private struct RemoveBody: Decodable {
+    struct Track: Decodable { let uri: String }
+    let tracks: [Track]?
 }

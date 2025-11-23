@@ -17,7 +17,7 @@ extension SimplifiedPlaylist {
     public var totalTracks: Int { tracks?.total ?? 0 }
 
     /// Whether the playlist is empty (has no tracks).
-    public var isEmpty: Bool { tracks?.total == 0 }
+    public var isEmpty: Bool { totalTracks == 0 }
 }
 
 // MARK: - Album Convenience

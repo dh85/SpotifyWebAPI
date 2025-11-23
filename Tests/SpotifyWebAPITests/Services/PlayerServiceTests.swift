@@ -15,16 +15,14 @@ struct PlayerServiceTests {
 
     @Test
     func stateBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let stateData = try TestDataLoader.load("playback_state.json")
-        await http.addMockResponse(data: stateData, statusCode: 200)
+        try await withMockServiceClient(fixture: "playback_state.json") { client, http in
+            let state = try await client.player.state(market: "US", additionalTypes: [.episode])
 
-        let state = try await client.player.state(market: "US", additionalTypes: [.episode])
-
-        #expect(state != nil)
-        expectRequest(
-            await http.firstRequest, path: "/v1/me/player", method: "GET",
-            queryContains: "market=US", "additional_types=episode")
+            #expect(state != nil)
+            expectRequest(
+                await http.firstRequest, path: "/v1/me/player", method: "GET",
+                queryContains: "market=US", "additional_types=episode")
+        }
     }
 
     @Test
@@ -39,17 +37,15 @@ struct PlayerServiceTests {
 
     @Test
     func currentlyPlayingBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let currentData = try TestDataLoader.load("currently_playing.json")
-        await http.addMockResponse(data: currentData, statusCode: 200)
+        try await withMockServiceClient(fixture: "currently_playing.json") { client, http in
+            let current = try await client.player.currentlyPlaying(
+                market: "US", additionalTypes: [.track, .episode])
 
-        let current = try await client.player.currentlyPlaying(
-            market: "US", additionalTypes: [.track, .episode])
-
-        #expect(current != nil)
-        expectRequest(
-            await http.firstRequest, path: "/v1/me/player/currently-playing", method: "GET",
-            queryContains: "market=US", "additional_types=episode,track")
+            #expect(current != nil)
+            expectRequest(
+                await http.firstRequest, path: "/v1/me/player/currently-playing", method: "GET",
+                queryContains: "market=US", "additional_types=episode,track")
+        }
     }
 
     @Test
@@ -64,14 +60,12 @@ struct PlayerServiceTests {
 
     @Test
     func devicesBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let devicesData = try TestDataLoader.load("devices.json")
-        await http.addMockResponse(data: devicesData, statusCode: 200)
+        try await withMockServiceClient(fixture: "devices.json") { client, http in
+            let devices = try await client.player.devices()
 
-        let devices = try await client.player.devices()
-
-        #expect(devices.count > 0)
-        expectRequest(await http.firstRequest, path: "/v1/me/player/devices", method: "GET")
+            #expect(devices.count > 0)
+            expectRequest(await http.firstRequest, path: "/v1/me/player/devices", method: "GET")
+        }
     }
 
     // MARK: - Playback Control Tests
@@ -235,14 +229,12 @@ struct PlayerServiceTests {
 
     @Test
     func getQueueBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let queueData = try TestDataLoader.load("queue.json")
-        await http.addMockResponse(data: queueData, statusCode: 200)
+        try await withMockServiceClient(fixture: "queue.json") { client, http in
+            let queue = try await client.player.getQueue()
 
-        let queue = try await client.player.getQueue()
-
-        #expect(queue.queue.count > 0)
-        expectRequest(await http.firstRequest, path: "/v1/me/player/queue", method: "GET")
+            #expect(queue.queue.count > 0)
+            expectRequest(await http.firstRequest, path: "/v1/me/player/queue", method: "GET")
+        }
     }
 
     @Test
@@ -261,44 +253,38 @@ struct PlayerServiceTests {
 
     @Test
     func recentlyPlayedBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let historyData = try TestDataLoader.load("recently_played.json")
-        await http.addMockResponse(data: historyData, statusCode: 200)
+        try await withMockServiceClient(fixture: "recently_played.json") { client, http in
+            let page = try await client.player.recentlyPlayed(limit: 10)
 
-        let page = try await client.player.recentlyPlayed(limit: 10)
-
-        #expect(page.items.count > 0)
-        expectRequest(
-            await http.firstRequest, path: "/v1/me/player/recently-played", method: "GET",
-            queryContains: "limit=10")
+            #expect(page.items.count > 0)
+            expectRequest(
+                await http.firstRequest, path: "/v1/me/player/recently-played", method: "GET",
+                queryContains: "limit=10")
+        }
     }
 
     @Test
     func recentlyPlayedWithAfterBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let historyData = try TestDataLoader.load("recently_played.json")
-        await http.addMockResponse(data: historyData, statusCode: 200)
+        try await withMockServiceClient(fixture: "recently_played.json") { client, http in
+            let after = Date(timeIntervalSince1970: 1609459200)
+            _ = try await client.player.recentlyPlayed(after: after)
 
-        let after = Date(timeIntervalSince1970: 1609459200)
-        _ = try await client.player.recentlyPlayed(after: after)
-
-        expectRequest(
-            await http.firstRequest, path: "/v1/me/player/recently-played", method: "GET",
-            queryContains: "after=1609459200000")
+            expectRequest(
+                await http.firstRequest, path: "/v1/me/player/recently-played", method: "GET",
+                queryContains: "after=1609459200000")
+        }
     }
 
     @Test
     func recentlyPlayedWithBeforeBuildsCorrectRequest() async throws {
-        let (client, http) = makeUserAuthClient()
-        let historyData = try TestDataLoader.load("recently_played.json")
-        await http.addMockResponse(data: historyData, statusCode: 200)
+        try await withMockServiceClient(fixture: "recently_played.json") { client, http in
+            let before = Date(timeIntervalSince1970: 1609459200)
+            _ = try await client.player.recentlyPlayed(before: before)
 
-        let before = Date(timeIntervalSince1970: 1609459200)
-        _ = try await client.player.recentlyPlayed(before: before)
-
-        expectRequest(
-            await http.firstRequest, path: "/v1/me/player/recently-played", method: "GET",
-            queryContains: "before=1609459200000")
+            expectRequest(
+                await http.firstRequest, path: "/v1/me/player/recently-played", method: "GET",
+                queryContains: "before=1609459200000")
+        }
     }
 
     @Test

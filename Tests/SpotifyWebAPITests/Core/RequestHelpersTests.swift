@@ -1,6 +1,10 @@
 import Foundation
 import Testing
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 @testable import SpotifyWebAPI
 
 @Suite
@@ -193,6 +197,7 @@ struct RequestHelpersTests {
         #expect(profile.id == "mockuser")
         #expect(profile.displayName == "Mock User")
     }
+
 
     // MARK: - requestOptionalJSON Tests
 

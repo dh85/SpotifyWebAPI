@@ -37,7 +37,10 @@ public struct URLSessionHTTPClient: HTTPClient {
 
     public init(
         configuration: URLSessionHTTPClientConfiguration,
-        delegateQueue: OperationQueue? = nil
+        delegateQueue: OperationQueue? = nil,
+        sessionFactory: @Sendable (URLSessionConfiguration, OperationQueue?) -> URLSession = { config, queue in
+            URLSession(configuration: config, delegate: nil, delegateQueue: queue)
+        }
     ) {
         let sessionConfiguration = URLSessionConfiguration.default
         sessionConfiguration.timeoutIntervalForRequest = configuration.timeoutIntervalForRequest
@@ -47,7 +50,7 @@ public struct URLSessionHTTPClient: HTTPClient {
         if !configuration.httpAdditionalHeaders.isEmpty {
             sessionConfiguration.httpAdditionalHeaders = configuration.httpAdditionalHeaders
         }
-        self.session = URLSession(configuration: sessionConfiguration, delegate: nil, delegateQueue: delegateQueue)
+        self.session = sessionFactory(sessionConfiguration, delegateQueue)
     }
 
     public func data(for request: URLRequest) async throws -> HTTPResponse {

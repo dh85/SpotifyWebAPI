@@ -12,7 +12,7 @@ import Testing
 struct DebugToolingTests {
     
     init() async {
-        await TestDebugHelper.configureForTests()
+        await TestEnvironment.bootstrap()
     }
 
     @Test("Debug configuration disabled by default")
@@ -48,36 +48,30 @@ struct DebugToolingTests {
     @Test("Debug logger can be configured")
     func debugLoggerCanBeConfigured() async {
         let config = DebugConfiguration.verbose
-        await TestDebugHelper.testLogger.configure(config)
-
-        // Test that logger accepts configuration without errors
-        await TestDebugHelper.testLogger.log(.info, "Test message")
+        await TestEnvironment.logger.configure(config)
+        await TestEnvironment.logger.log(.info, "Test message")
     }
 
     @Test("Performance measurement tracks duration")
     func performanceMeasurementTracksDuration() async {
-        await TestDebugHelper.testLogger.clearPerformanceMetrics()
-        
-        // Enable performance logging
+        await TestEnvironment.logger.clearPerformanceMetrics()
+
         let config = DebugConfiguration(logPerformance: true)
-        await TestDebugHelper.testLogger.configure(config)
-        
-        // Create measurement and record metrics directly
+        await TestEnvironment.logger.configure(config)
+
         let startTime = Date()
-        
-        // Simulate some work
         try? await Task.sleep(for: .milliseconds(50))
-        
         let duration = Date().timeIntervalSince(startTime)
+
         let metrics = PerformanceMetrics(
             operationName: "test-operation",
             duration: duration,
             retryCount: 1
         )
-        
-        await TestDebugHelper.testLogger.recordPerformance(metrics)
 
-        let allMetrics = await TestDebugHelper.testLogger.getPerformanceMetrics()
+        await TestEnvironment.logger.recordPerformance(metrics)
+
+        let allMetrics = await TestEnvironment.logger.getPerformanceMetrics()
         #expect(allMetrics.count > 0)
 
         guard let testMetric = allMetrics.first(where: { $0.operationName == "test-operation" }) else {
@@ -88,7 +82,7 @@ struct DebugToolingTests {
         #expect(testMetric.duration > 0.04)  // At least 40ms (allowing for some variance)
         #expect(testMetric.retryCount == 1)
 
-        await TestDebugHelper.testLogger.clearPerformanceMetrics()
+        await TestEnvironment.logger.clearPerformanceMetrics()
     }
 
     @Test("Debug logger logs requests when enabled")
@@ -97,7 +91,7 @@ struct DebugToolingTests {
             logLevel: .debug,
             logRequests: true
         )
-        await TestDebugHelper.testLogger.configure(config)
+        await TestEnvironment.logger.configure(config)
 
         let url = URL(string: "https://api.spotify.com/v1/me")!
         var request = URLRequest(url: url)
@@ -105,7 +99,7 @@ struct DebugToolingTests {
         request.setValue("Bearer test-token", forHTTPHeaderField: "Authorization")
 
         // This should not throw when logging is enabled
-        await TestDebugHelper.testLogger.logRequest(request)
+        await TestEnvironment.logger.logRequest(request)
     }
 
     @Test("Debug logger logs responses when enabled")
@@ -114,7 +108,7 @@ struct DebugToolingTests {
             logLevel: .debug,
             logResponses: true
         )
-        await TestDebugHelper.testLogger.configure(config)
+        await TestEnvironment.logger.configure(config)
 
         let url = URL(string: "https://api.spotify.com/v1/me")!
         let response = HTTPURLResponse(
@@ -126,7 +120,7 @@ struct DebugToolingTests {
         let data = Data("{\"id\": \"test\"}".utf8)
 
         // This should not throw when logging is enabled
-        await TestDebugHelper.testLogger.logResponse(response, data: data, error: nil)
+        await TestEnvironment.logger.logResponse(response, data: data, error: nil)
     }
 
     @Test("Debug logger logs network retries when enabled")
@@ -135,12 +129,12 @@ struct DebugToolingTests {
             logLevel: .info,
             logNetworkRetries: true
         )
-        await TestDebugHelper.testLogger.configure(config)
+        await TestEnvironment.logger.configure(config)
 
         let error = URLError(.timedOut)
 
         // This should not throw when logging is enabled
-        await TestDebugHelper.testLogger.logNetworkRetry(attempt: 1, error: error, delay: 0.5)
+        await TestEnvironment.logger.logNetworkRetry(attempt: 1, error: error, delay: 0.5)
     }
 
     @Test("Debug logger logs token operations when enabled")
@@ -149,21 +143,20 @@ struct DebugToolingTests {
             logLevel: .info,
             logTokenOperations: true
         )
-        await TestDebugHelper.testLogger.configure(config)
+        await TestEnvironment.logger.configure(config)
 
         // This should not throw when logging is enabled
-        await TestDebugHelper.testLogger.logTokenOperation("refresh", success: true)
-        await TestDebugHelper.testLogger.logTokenOperation("exchange", success: false)
+        await TestEnvironment.logger.logTokenOperation("refresh", success: true)
+        await TestEnvironment.logger.logTokenOperation("exchange", success: false)
     }
 
     @Test("Performance metrics are limited to 100 entries")
     func performanceMetricsAreLimitedTo100Entries() async {
         // Clear any existing metrics from other tests
-        await TestDebugHelper.testLogger.clearPerformanceMetrics()
-        
-        // Disable all logging to prevent interference
+        await TestEnvironment.logger.clearPerformanceMetrics()
+
         let originalConfig = DebugConfiguration.disabled
-        await TestDebugHelper.testLogger.configure(originalConfig)
+        await TestEnvironment.logger.configure(originalConfig)
 
         // Add exactly 150 metrics with unique names to test the limiting behavior
         let testPrefix = "limit-test-\(UUID().uuidString.prefix(8))"
@@ -174,10 +167,10 @@ struct DebugToolingTests {
                 requestCount: 1,
                 retryCount: 0
             )
-            await TestDebugHelper.testLogger.recordPerformance(metrics)
+            await TestEnvironment.logger.recordPerformance(metrics)
         }
 
-        let allMetrics = await TestDebugHelper.testLogger.getPerformanceMetrics()
+        let allMetrics = await TestEnvironment.logger.getPerformanceMetrics()
         
         // Should be limited to 100 entries total
         #expect(allMetrics.count == 100)
@@ -191,7 +184,7 @@ struct DebugToolingTests {
         let actualNames = testMetrics.map { $0.operationName }
         #expect(Set(actualNames) == Set(expectedNames))
 
-        await TestDebugHelper.testLogger.clearPerformanceMetrics()
+        await TestEnvironment.logger.clearPerformanceMetrics()
     }
 
     @Test("Debug log levels work correctly")

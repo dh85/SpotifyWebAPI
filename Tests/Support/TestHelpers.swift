@@ -77,6 +77,33 @@ func encodeModel<T: Encodable>(_ model: T) throws -> Data {
     return try encoder.encode(model)
 }
 
+func decodeFixture<T: Decodable>(
+    _ name: String,
+    as type: T.Type = T.self
+) throws -> T {
+    try decodeModel(from: try TestDataLoader.load(name))
+}
+
+func assertFixtureEqual<T: Decodable & Equatable>(
+    _ name: String,
+    expected: T,
+    fileID: StaticString = #fileID,
+    filePath: StaticString = #filePath,
+    line: UInt = #line,
+    column: UInt = #column
+) throws {
+    let decoded: T = try decodeFixture(name, as: T.self)
+    #expect(
+        decoded == expected,
+        sourceLocation: makeSourceLocation(
+            fileID: fileID,
+            filePath: filePath,
+            line: line,
+            column: column
+        )
+    )
+}
+
 func expectCodableRoundTrip<T: Codable & Equatable>(
     _ value: T,
     fileID: StaticString = #fileID,
@@ -159,6 +186,34 @@ func makePaginatedResponse<Item: Codable & Sendable & Equatable>(
     return try encodeModel(page)
 }
 
+/// Builds an in-memory page for ad-hoc tests without hitting fixtures.
+func makeStubPage<T>(
+    baseURL: URL = URL(string: "https://api.spotify.com/v1/test")!,
+    limit: Int,
+    offset: Int,
+    total: Int = 10_000,
+    items: @autoclosure () -> [T]
+) -> Page<T> where T: Sendable {
+    let nextOffset = offset + limit
+    let nextURL = nextOffset < total
+        ? URL(string: "\(baseURL.absoluteString)?offset=\(nextOffset)")!
+        : nil
+    let previousURL = offset == 0
+        ? nil
+        : URL(
+            string: "\(baseURL.absoluteString)?offset=\(max(offset - limit, 0))")!
+
+    return Page(
+        href: baseURL,
+        items: items(),
+        limit: limit,
+        next: nextURL,
+        offset: offset,
+        previous: previousURL,
+        total: total
+    )
+}
+
 // MARK: - Testing Framework Helpers
 
 func makeSourceLocation(
@@ -197,6 +252,24 @@ func expectMarketParameter(_ request: URLRequest?, market: String?) {
     }
 }
 
+/// Assert that a request has or doesn't have a country parameter.
+func expectCountryParameter(_ request: URLRequest?, country: String?) {
+    if let country {
+        #expect(request?.url?.query()?.contains("country=\(country)") == true)
+    } else {
+        #expect(request?.url?.query()?.contains("country=") == false)
+    }
+}
+
+/// Assert that a request has or doesn't have a locale parameter.
+func expectLocaleParameter(_ request: URLRequest?, locale: String?) {
+    if let locale {
+        #expect(request?.url?.query()?.contains("locale=\(locale)") == true)
+    } else {
+        #expect(request?.url?.query()?.contains("locale=") == false)
+    }
+}
+
 /// Assert that a request uses default pagination values.
 func expectPaginationDefaults(_ request: URLRequest?) {
     #expect(request?.url?.query()?.contains("limit=20") == true)
@@ -215,6 +288,60 @@ func expectIDsInBody(
         return
     }
     #expect(body.ids == expectedIDs)
+}
+
+// MARK: - Service Test Helpers
+
+/// Provides a configured client and mock HTTP response for service tests.
+@MainActor
+func withMockServiceClient(
+    fixture: String? = nil,
+    statusCode: Int = 200,
+    configuration: SpotifyClientConfiguration = .default,
+    _ perform: (SpotifyClient<UserAuthCapability>, MockHTTPClient) async throws -> Void
+) async throws {
+    let (client, http) = makeUserAuthClient(configuration: configuration)
+    if let fixture {
+        let data = try TestDataLoader.load(fixture)
+        await http.addMockResponse(data: data, statusCode: statusCode)
+    }
+    try await perform(client, http)
+}
+
+/// Provides service client plus loaded fixture data for reuse.
+@MainActor
+func withMockServiceClient(
+    fixture: String? = nil,
+    statusCode: Int = 200,
+    configuration: SpotifyClientConfiguration = .default,
+    _ perform: (SpotifyClient<UserAuthCapability>, MockHTTPClient, Data?) async throws -> Void
+) async throws {
+    let (client, http) = makeUserAuthClient(configuration: configuration)
+    var loadedData: Data?
+    if let fixture {
+        let data = try TestDataLoader.load(fixture)
+        loadedData = data
+        await http.addMockResponse(data: data, statusCode: statusCode)
+    }
+    try await perform(client, http, loadedData)
+}
+
+/// Asserts that a service request uses the default pagination query params.
+@MainActor
+func expectDefaultPagination(
+    fixture: String,
+    statusCode: Int = 200,
+    configuration: SpotifyClientConfiguration = .default,
+    _ operation: (SpotifyClient<UserAuthCapability>) async throws -> Void
+) async throws {
+    try await withMockServiceClient(
+        fixture: fixture,
+        statusCode: statusCode,
+        configuration: configuration
+    ) { client, http in
+        try await operation(client)
+        expectPaginationDefaults(await http.firstRequest)
+    }
 }
 
 // MARK: - Validation Assertions

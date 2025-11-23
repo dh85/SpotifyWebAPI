@@ -1,6 +1,10 @@
 import Foundation
 import Testing
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 @testable import SpotifyWebAPI
 
 @Suite("Library Service Extensions Tests")
@@ -128,6 +132,52 @@ struct LibraryServiceExtensionsTests {
         #expect(chunks.reduce(0) { $0 + $1.count } == 10)
         #expect(chunks.allSatisfy { $0.count <= 3 })
     }
+
+    @Test
+    func albumsSaveAllDeduplicatesIDs() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        try await client.albums.saveAll(["album1", "album1", "album2"])
+
+        let requests = await http.requests
+        #expect(requests.count == 1)
+        #expect(decodedIDs(from: requests.first) == Set(["album1", "album2"]))
+    }
+
+    @Test
+    func tracksSaveAllSkipsEmptyInput() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await client.tracks.saveAll([])
+        let requests = await http.requests
+        #expect(requests.isEmpty)
+    }
+
+    @Test
+    func episodesSaveAllDeduplicatesIDs() async throws {
+        let (client, http) = makeUserAuthClient()
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        try await client.episodes.saveAll(["episode1", "episode1", "episode2"])
+
+        let requests = await http.requests
+        #expect(requests.count == 1)
+        #expect(decodedIDs(from: requests.first) == Set(["episode1", "episode2"]))
+    }
+
+    @Test
+    func showsRemoveAllPropagatesErrors() async {
+        let (client, http) = makeUserAuthClient()
+        await http.addError(TestError.general("boom"))
+        await http.addMockResponse(data: Data(), statusCode: 200)
+
+        await #expect(throws: TestError.general("boom")) {
+            try await client.shows.removeAll(["show1", "show2"])
+        }
+
+        let requests = await http.requests
+        #expect(requests.count == 1)
+    }
 }
 
 // MARK: - Test Helpers
@@ -139,4 +189,14 @@ extension Set {
             Set(array[$0..<Swift.min($0 + size, array.count)])
         }
     }
+}
+
+private func decodedIDs(from request: URLRequest?) -> Set<String>? {
+    guard
+        let body = request?.httpBody,
+        let payload = try? JSONDecoder().decode(IDsBody.self, from: body)
+    else {
+        return nil
+    }
+    return payload.ids
 }

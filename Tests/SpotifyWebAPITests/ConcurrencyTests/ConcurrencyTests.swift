@@ -79,7 +79,11 @@ struct ConcurrencyTests {
                 pageSize: 50,
                 fetchPage: { limit, offset in
                     try await Task.sleep(for: .milliseconds(100))
-                    return makeStubPage(limit: limit, offset: offset)
+                    return makeStubPage(
+                        limit: limit,
+                        offset: offset,
+                        items: ["item"]
+                    )
                 })
             {
                 count += 1
@@ -109,7 +113,11 @@ struct ConcurrencyTests {
         let task = Task<[String], Error> {
             try await client.collectAllPages(pageSize: 50, maxItems: nil) { limit, offset in
                 try await Task.sleep(for: .milliseconds(100))
-                return makeStubPage(limit: limit, offset: offset)
+                return makeStubPage(
+                    limit: limit,
+                    offset: offset,
+                    items: (0..<limit).map { "item-\(offset + $0)" }
+                )
             }
         }
 
@@ -182,31 +190,4 @@ struct ConcurrencyTests {
         }
     }
 
-    // MARK: - Helpers
-
-    private func makeStubPage(
-        limit: Int,
-        offset: Int,
-        total: Int = 10_000
-    ) -> Page<String> {
-        let baseURL = URL(string: "https://api.spotify.com/v1/test")!
-        let nextOffset = offset + limit
-        let nextURL = nextOffset < total
-            ? URL(string: "\(baseURL.absoluteString)?offset=\(nextOffset)")!
-            : nil
-        let previousURL = offset == 0
-            ? nil
-            : URL(
-                string: "\(baseURL.absoluteString)?offset=\(max(offset - limit, 0))")!
-
-        return Page(
-            href: baseURL,
-            items: (0..<limit).map { "item-\(offset + $0)" },
-            limit: limit,
-            next: nextURL,
-            offset: offset,
-            previous: previousURL,
-            total: total
-        )
-    }
 }

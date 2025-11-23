@@ -39,21 +39,13 @@ struct ModelExtensionsTests {
 
     @Test("Image array largest")
     func imageArrayLargest() {
-        let images = [
-            SpotifyImage(url: URL(string: "url1")!, height: 640, width: 640),
-            SpotifyImage(url: URL(string: "url2")!, height: 300, width: 300),
-            SpotifyImage(url: URL(string: "url3")!, height: 64, width: 64)
-        ]
+        let images = makeImageArray()
         #expect(images.largest?.width == 640)
     }
 
     @Test("Image array smallest")
     func imageArraySmallest() {
-        let images = [
-            SpotifyImage(url: URL(string: "url1")!, height: 640, width: 640),
-            SpotifyImage(url: URL(string: "url2")!, height: 300, width: 300),
-            SpotifyImage(url: URL(string: "url3")!, height: 64, width: 64)
-        ]
+        let images = makeImageArray()
         #expect(images.smallest?.width == 64)
     }
 
@@ -66,13 +58,31 @@ struct ModelExtensionsTests {
 
     @Test("Image array with nil widths")
     func imageArrayNilWidths() {
-        let images = [
-            SpotifyImage(url: URL(string: "url1")!, height: 640, width: nil),
-            SpotifyImage(url: URL(string: "url2")!, height: 300, width: 300),
-            SpotifyImage(url: URL(string: "url3")!, height: 64, width: nil)
-        ]
+        let images = makeImageArray(widthOverrides: [nil, 300, nil])
         #expect(images.largest?.width == 300)
         #expect(images.smallest?.width == nil)
+    }
+
+    @Test
+    func chunkedUniqueSetsDeduplicatesAndChunksCorrectly() {
+        let batches = chunkedUniqueSets(
+            from: ["a", "a", "b", "c", "d", "d"],
+            chunkSize: 2
+        )
+        #expect(batches.count == 2)
+        #expect(batches[0] == Set(["a", "b"]))
+        #expect(batches[1] == Set(["c", "d"]))
+    }
+
+    @Test
+    func chunkedArraysHandlesEmptyInput() {
+        #expect(chunkedArrays(from: [Int](), chunkSize: 5).isEmpty)
+
+        let batches = chunkedArrays(from: Array(1...5), chunkSize: 2)
+        #expect(batches.count == 3)
+        #expect(batches[0] == [1, 2])
+        #expect(batches[1] == [3, 4])
+        #expect(batches[2] == [5])
     }
 }
 
@@ -82,4 +92,15 @@ fileprivate func formatDuration(_ ms: Int) -> String {
     let minutes = ms / 60000
     let seconds = (ms % 60000) / 1000
     return String(format: "%d:%02d", minutes, seconds)
+}
+
+private func makeImageArray(widthOverrides: [Int?]? = nil) -> [SpotifyImage] {
+    let widths = widthOverrides ?? [640, 300, 64]
+    return widths.enumerated().map { index, width in
+        SpotifyImage(
+            url: URL(string: "https://example.com/\(index)")!,
+            height: width ?? 100,
+            width: width
+        )
+    }
 }
