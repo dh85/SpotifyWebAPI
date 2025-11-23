@@ -7,6 +7,10 @@ import Testing
     import FoundationNetworking
 #endif
 
+#if canImport(Combine)
+    import Combine
+#endif
+
 // MARK: - JSON Loading
 
 /// A helper to load mock JSON data from files in the test bundle.
@@ -123,6 +127,194 @@ func expectCodableRoundTrip<T: Codable & Equatable>(
         )
     )
 }
+
+#if canImport(Combine)
+
+    enum CombineTestError: Error {
+        case missingValue
+    }
+
+    @MainActor
+    func awaitFirstValue<P: Publisher>(
+        _ publisher: P,
+        fileID: StaticString = #fileID,
+        filePath: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
+    ) async throws -> P.Output where P.Failure == Error {
+        for try await value in publisher.values {
+            return value
+        }
+
+        Issue.record(
+            Comment(stringLiteral: "Publisher completed without emitting a value"),
+            sourceLocation: makeSourceLocation(
+                fileID: fileID,
+                filePath: filePath,
+                line: line,
+                column: column
+            )
+        )
+        throw CombineTestError.missingValue
+    }
+
+    @MainActor
+    @discardableResult
+    func assertPublisherRequest<Output>(
+        fixture: String,
+        path: String,
+        method: String,
+        queryContains: [String] = [],
+        statusCode: Int = 200,
+        fileID: StaticString = #fileID,
+        filePath: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
+        verifyRequest: ((URLRequest?) -> Void)? = nil,
+        makePublisher:
+            @escaping (SpotifyClient<UserAuthCapability>) async throws -> AnyPublisher<
+                Output, Error
+            >
+    ) async throws -> Output {
+        var output: Output!
+        try await withMockServiceClient(
+            fixture: fixture,
+            statusCode: statusCode
+        ) { client, http in
+            let publisher = try await makePublisher(client)
+            output = try await awaitFirstValue(
+                publisher,
+                fileID: fileID,
+                filePath: filePath,
+                line: line,
+                column: column
+            )
+            let request = await http.firstRequest
+            expectRequest(
+                request,
+                path: path,
+                method: method
+            )
+            for query in queryContains {
+                #expect(request?.url?.query()?.contains(query) == true)
+            }
+            verifyRequest?(request)
+        }
+        return output
+    }
+
+    /// Asserts that a paginated publisher fetches multiple pages and merges them into
+    /// a single collection of items. This helper enqueues two responses by default,
+    /// executes the provided publisher, and validates the final item count.
+    @MainActor
+    @discardableResult
+    func assertAggregatesPages<Item>(
+        fixture: String,
+        of type: Item.Type,
+        expectedCount: Int = 2,
+        fileID: StaticString = #fileID,
+        filePath: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
+        configureResponses: ((MockHTTPClient) async throws -> Void)? = nil,
+        verifyFirstRequest: ((URLRequest?) -> Void)? = nil,
+        makePublisher:
+            @escaping (SpotifyClient<UserAuthCapability>) async throws -> AnyPublisher<
+                [Item], Error
+            >
+    ) async throws -> [Item]
+    where Item: Codable & Sendable & Equatable {
+        let (client, http) = makeUserAuthClient()
+        if let configureResponses {
+            try await configureResponses(http)
+        } else {
+            try await enqueueTwoPageResponses(
+                fixture: fixture,
+                of: Item.self,
+                http: http
+            )
+        }
+
+        let publisher = try await makePublisher(client)
+        let items = try await awaitFirstValue(
+            publisher,
+            fileID: fileID,
+            filePath: filePath,
+            line: line,
+            column: column
+        )
+
+        #expect(
+            items.count == expectedCount,
+            sourceLocation: makeSourceLocation(
+                fileID: fileID,
+                filePath: filePath,
+                line: line,
+                column: column
+            )
+        )
+
+        if let verifyFirstRequest {
+            let request = await http.firstRequest
+            verifyFirstRequest(request)
+        }
+
+        return items
+    }
+
+    /// Asserts that a mutation publisher sends the expected IDs in the request body
+    /// while allowing callers to customize the HTTP method, path, and response.
+    @MainActor
+    @discardableResult
+    func assertIDsMutationPublisher<Output>(
+        path: String,
+        method: String,
+        ids: Set<String>,
+        queryContains: [String] = [],
+        statusCode: Int = 200,
+        responseData: Data? = nil,
+        fileID: StaticString = #fileID,
+        filePath: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
+        verifyRequest: ((URLRequest?) -> Void)? = nil,
+        makePublisher:
+            @escaping (SpotifyClient<UserAuthCapability>, Set<String>) async throws -> AnyPublisher<
+                Output, Error
+            >
+    ) async throws -> Output {
+        let (client, http) = makeUserAuthClient()
+        if let responseData {
+            await http.addMockResponse(data: responseData, statusCode: statusCode)
+        } else {
+            await http.addMockResponse(statusCode: statusCode)
+        }
+
+        let publisher = try await makePublisher(client, ids)
+        let output = try await awaitFirstValue(
+            publisher,
+            fileID: fileID,
+            filePath: filePath,
+            line: line,
+            column: column
+        )
+
+        let request = await http.firstRequest
+        expectIDsInBody(
+            request,
+            path: path,
+            method: method,
+            expectedIDs: ids
+        )
+        for query in queryContains {
+            #expect(request?.url?.query()?.contains(query) == true)
+        }
+        verifyRequest?(request)
+
+        return output
+    }
+
+#endif
 
 // MARK: - Test Client Factories
 
@@ -454,6 +646,81 @@ func expectLimitErrors(operation: @escaping (Int) async throws -> Void) async {
     await expectInvalidRequest(reasonEquals: "Limit must be between 1 and 50. You provided 0.") {
         try await operation(0)
     }
+}
+
+/// Asserts that an operation rejects out-of-range limit values.
+@MainActor
+func assertLimitOutOfRange(
+    _ limits: [Int] = [0, 51],
+    reasonContains message: String = "Limit must be between",
+    fileID: StaticString = #fileID,
+    filePath: StaticString = #filePath,
+    line: UInt = #line,
+    column: UInt = #column,
+    operation: @escaping (Int) async throws -> Void
+) async {
+    for limit in limits {
+        await expectInvalidRequest(
+            reasonContains: message,
+            fileID: fileID,
+            filePath: filePath,
+            line: line,
+            column: column
+        ) {
+            try await operation(limit)
+        }
+    }
+}
+
+/// Asserts that providing too many IDs to an operation triggers an invalid request.
+@MainActor
+func assertIDBatchTooLarge<IDCollection>(
+    maxAllowed: Int,
+    overflow: Int = 1,
+    reasonContains message: String = "Maximum of",
+    fileID: StaticString = #fileID,
+    filePath: StaticString = #filePath,
+    line: UInt = #line,
+    column: UInt = #column,
+    buildIDs: (Int) -> IDCollection,
+    operation: @MainActor @escaping (IDCollection) async throws -> Void
+) async where IDCollection: Collection, IDCollection.Element == String {
+    let ids = buildIDs(maxAllowed + overflow)
+    await expectInvalidRequest(
+        reasonContains: message,
+        fileID: fileID,
+        filePath: filePath,
+        line: line,
+        column: column
+    ) {
+        try await operation(ids)
+    }
+}
+
+/// Convenience overload for ID batch assertions when IDs are simple generated sets.
+@MainActor
+func assertIDBatchTooLarge(
+    maxAllowed: Int,
+    overflow: Int = 1,
+    prefix: String = "id_",
+    reasonContains message: String = "Maximum of",
+    fileID: StaticString = #fileID,
+    filePath: StaticString = #filePath,
+    line: UInt = #line,
+    column: UInt = #column,
+    operation: @MainActor @escaping (Set<String>) async throws -> Void
+) async {
+    await assertIDBatchTooLarge(
+        maxAllowed: maxAllowed,
+        overflow: overflow,
+        reasonContains: message,
+        fileID: fileID,
+        filePath: filePath,
+        line: line,
+        column: column,
+        buildIDs: { count in makeIDs(prefix: prefix, count: count) },
+        operation: operation
+    )
 }
 
 // MARK: - Error Assertions
