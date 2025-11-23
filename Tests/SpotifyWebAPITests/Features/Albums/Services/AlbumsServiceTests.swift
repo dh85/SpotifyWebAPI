@@ -235,6 +235,37 @@ struct AlbumsServiceTests {
     }
 
     @Test
+    func streamSavedAlbumsRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "albums_saved.json",
+            of: SavedAlbum.self,
+            http: http
+        )
+
+        let stream = await client.albums.streamSavedAlbums(maxItems: 1)
+        let collected = try await collectStreamItems(stream)
+
+        #expect(collected.count == 1)
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/albums")
+    }
+
+    @Test
+    func streamSavedAlbumPagesEmitsPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "albums_saved.json",
+            of: SavedAlbum.self,
+            http: http
+        )
+
+        let stream = await client.albums.streamSavedAlbumPages(maxPages: 2)
+        let offsets = try await collectPageOffsets(stream)
+        #expect(offsets == [0, 50])
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/albums")
+    }
+
+    @Test
     func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)

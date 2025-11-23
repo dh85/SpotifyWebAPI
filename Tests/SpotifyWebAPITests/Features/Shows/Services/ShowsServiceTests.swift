@@ -224,6 +224,38 @@ struct ShowsServiceTests {
     }
 
     @Test
+    func streamSavedShowsRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "shows_saved.json",
+            of: SavedShow.self,
+            http: http
+        )
+
+        let stream = await client.shows.streamSavedShows(maxItems: 1)
+        let collected = try await collectStreamItems(stream)
+
+        #expect(collected.count == 1)
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/shows")
+    }
+
+    @Test
+    func streamSavedShowPagesEmitsPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "shows_saved.json",
+            of: SavedShow.self,
+            http: http
+        )
+
+        let stream = await client.shows.streamSavedShowPages(maxPages: 2)
+        let offsets = try await collectPageOffsets(stream)
+
+        #expect(offsets == [0, 50])
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/shows")
+    }
+
+    @Test
     func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)

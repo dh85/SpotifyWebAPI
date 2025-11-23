@@ -133,60 +133,33 @@ struct TracksServiceTests {
     @Test
     func streamSavedTracksRespectsMaxItems() async throws {
         let (client, http) = makeUserAuthClient()
-        let first = try makePaginatedResponse(
+        try await enqueueTwoPageResponses(
             fixture: "tracks_saved.json",
             of: SavedTrack.self,
-            offset: 0,
-            total: 3,
-            hasNext: true
+            http: http
         )
-        let second = try makePaginatedResponse(
-            fixture: "tracks_saved.json",
-            of: SavedTrack.self,
-            offset: 50,
-            total: 3,
-            hasNext: false
-        )
-        await http.addMockResponse(data: first, statusCode: 200)
-        await http.addMockResponse(data: second, statusCode: 200)
 
-        var collected: [SavedTrack] = []
         let stream = await client.tracks.streamSavedTracks(maxItems: 1)
-        for try await track in stream {
-            collected.append(track)
-        }
+        let collected = try await collectStreamItems(stream)
 
         #expect(collected.count == 1)
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/tracks")
     }
 
     @Test
     func streamSavedTrackPagesEmitsPages() async throws {
         let (client, http) = makeUserAuthClient()
-        let first = try makePaginatedResponse(
+        try await enqueueTwoPageResponses(
             fixture: "tracks_saved.json",
             of: SavedTrack.self,
-            offset: 0,
-            total: 3,
-            hasNext: true
+            http: http
         )
-        let second = try makePaginatedResponse(
-            fixture: "tracks_saved.json",
-            of: SavedTrack.self,
-            offset: 50,
-            total: 3,
-            hasNext: false
-        )
-        await http.addMockResponse(data: first, statusCode: 200)
-        await http.addMockResponse(data: second, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.tracks.streamSavedTrackPages(market: "US")
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0, 50])
-        expectMarketParameter(await http.firstRequest, market: "US")
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/tracks", market: "US")
     }
 
     @Test

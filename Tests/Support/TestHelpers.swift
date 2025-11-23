@@ -165,16 +165,23 @@ func makeIDs(prefix: String = "id_", count: Int) -> Set<String> {
 // MARK: - Paginated Response Builders
 
 /// Builds mock `Page` JSON using items from an existing fixture.
-func makePaginatedResponse<Item: Codable & Sendable & Equatable>(
+func makePaginatedPage<Item: Codable & Sendable & Equatable>(
     fixture: String,
     of type: Item.Type,
     offset: Int,
     limit: Int = 50,
     total: Int,
-    hasNext: Bool
-) throws -> Data {
-    let base: Page<Item> = try decodeModel(from: TestDataLoader.load(fixture))
-    let page = Page<Item>(
+    hasNext: Bool,
+    extractor: ((String) throws -> Page<Item>)? = nil
+) throws -> Page<Item> {
+    let base: Page<Item>
+    if let extractor {
+        base = try extractor(fixture)
+    } else {
+        let data = try TestDataLoader.load(fixture)
+        base = try decodeModel(from: data)
+    }
+    return Page<Item>(
         href: base.href,
         items: base.items,
         limit: limit,
@@ -183,7 +190,97 @@ func makePaginatedResponse<Item: Codable & Sendable & Equatable>(
         previous: nil,
         total: total
     )
+}
+
+func makePaginatedResponse<Item: Codable & Sendable & Equatable>(
+    fixture: String,
+    of type: Item.Type,
+    offset: Int,
+    limit: Int = 50,
+    total: Int,
+    hasNext: Bool,
+    extractor: ((String) throws -> Page<Item>)? = nil
+) throws -> Data {
+    let page: Page<Item> = try makePaginatedPage(
+        fixture: fixture,
+        of: type,
+        offset: offset,
+        limit: limit,
+        total: total,
+        hasNext: hasNext,
+        extractor: extractor
+    )
     return try encodeModel(page)
+}
+
+@discardableResult
+func enqueueTwoPageResponses<Item: Codable & Sendable & Equatable>(
+    fixture: String,
+    of type: Item.Type,
+    firstOffset: Int = 0,
+    secondOffset: Int = 50,
+    limit: Int = 50,
+    total: Int = 3,
+    http: MockHTTPClient,
+    wrap: ((Page<Item>) throws -> Data)? = nil,
+    extractor: ((String) throws -> Page<Item>)? = nil
+) async throws -> (first: Data, second: Data) {
+    let firstPage = try makePaginatedPage(
+        fixture: fixture,
+        of: Item.self,
+        offset: firstOffset,
+        limit: limit,
+        total: total,
+        hasNext: true,
+        extractor: extractor
+    )
+    let secondPage = try makePaginatedPage(
+        fixture: fixture,
+        of: Item.self,
+        offset: secondOffset,
+        limit: limit,
+        total: total,
+        hasNext: false,
+        extractor: extractor
+    )
+    let firstData = try wrap?(firstPage) ?? encodeModel(firstPage)
+    let secondData = try wrap?(secondPage) ?? encodeModel(secondPage)
+    await http.addMockResponse(data: firstData, statusCode: 200)
+    await http.addMockResponse(data: secondData, statusCode: 200)
+    return (firstData, secondData)
+}
+
+func collectStreamItems<Item>(
+    _ stream: AsyncThrowingStream<Item, Error>
+) async throws -> [Item] {
+    var items: [Item] = []
+    for try await item in stream {
+        items.append(item)
+    }
+    return items
+}
+
+func collectPageOffsets<Item>(
+    _ stream: AsyncThrowingStream<Page<Item>, Error>
+) async throws -> [Int] {
+    var offsets: [Int] = []
+    for try await page in stream {
+        offsets.append(page.offset)
+    }
+    return offsets
+}
+
+func expectSavedStreamRequest(
+    _ request: URLRequest?,
+    path: String,
+    market: String? = nil,
+    limit: Int = 50
+) {
+    expectRequest(request, path: path, method: "GET")
+    if let market {
+        expectMarketParameter(request, market: market)
+    }
+    #expect(request?.url?.query()?.contains("limit=\(limit)") == true)
 }
 
 /// Builds an in-memory page for ad-hoc tests without hitting fixtures.
@@ -195,10 +292,12 @@ func makeStubPage<T>(
     items: @autoclosure () -> [T]
 ) -> Page<T> where T: Sendable {
     let nextOffset = offset + limit
-    let nextURL = nextOffset < total
+    let nextURL =
+        nextOffset < total
         ? URL(string: "\(baseURL.absoluteString)?offset=\(nextOffset)")!
         : nil
-    let previousURL = offset == 0
+    let previousURL =
+        offset == 0
         ? nil
         : URL(
             string: "\(baseURL.absoluteString)?offset=\(max(offset - limit, 0))")!
@@ -282,7 +381,7 @@ func expectIDsInBody(
 ) {
     expectRequest(request, path: path, method: method)
     guard let bodyData = request?.httpBody,
-          let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
+        let body = try? JSONDecoder().decode(IDsBody.self, from: bodyData)
     else {
         Issue.record("Failed to decode HTTP body or body was nil")
         return

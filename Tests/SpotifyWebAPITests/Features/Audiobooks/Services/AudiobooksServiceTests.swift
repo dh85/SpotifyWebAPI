@@ -231,6 +231,38 @@ struct AudiobooksServiceTests {
     }
 
     @Test
+    func streamSavedAudiobooksRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "audiobooks_saved.json",
+            of: SavedAudiobook.self,
+            http: http
+        )
+
+        let stream = await client.audiobooks.streamSavedAudiobooks(maxItems: 1)
+        let collected = try await collectStreamItems(stream)
+
+        #expect(collected.count == 1)
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/audiobooks")
+    }
+
+    @Test
+    func streamSavedAudiobookPagesEmitsPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "audiobooks_saved.json",
+            of: SavedAudiobook.self,
+            http: http
+        )
+
+        let stream = await client.audiobooks.streamSavedAudiobookPages(maxPages: 2)
+        let offsets = try await collectPageOffsets(stream)
+
+        #expect(offsets == [0, 50])
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/audiobooks")
+    }
+
+    @Test
     func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
