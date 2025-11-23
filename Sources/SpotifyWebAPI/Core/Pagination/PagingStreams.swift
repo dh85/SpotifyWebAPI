@@ -30,6 +30,18 @@ extension SpotifyClient {
     /// }
     /// ```
     ///
+    /// ## Example: Cancel From UI
+    /// ```swift
+    /// let task = Task {
+    ///     for try await page in client.streamPages(pageSize: 50) { limit, offset in
+    ///         try await client.tracks.saved(limit: limit, offset: offset)
+    ///     } {
+    ///         render(page.items)
+    ///     }
+    /// }
+    /// cancelButton.onTap { task.cancel() }
+    /// ```
+    ///
     /// - Parameters:
     ///   - pageSize: Number of items per request (clamped to 1-50).
     ///   - maxPages: Optional limit on number of pages to fetch.
@@ -40,49 +52,13 @@ extension SpotifyClient {
         maxPages: Int? = nil,
         fetchPage: @escaping @Sendable (_ limit: Int, _ offset: Int) async throws -> Page<T>
     ) -> AsyncThrowingStream<Page<T>, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                let clampedPageSize = min(max(pageSize, 1), 50)
-                var offset = 0
-                var pageCount = 0
-                
-                do {
-                    while true {
-                        // Check for cancellation
-                        try Task.checkCancellation()
-                        
-                        // Fetch page
-                        let page = try await fetchPage(clampedPageSize, offset)
-                        
-                        // Yield page to consumer
-                        continuation.yield(page)
-                        
-                        pageCount += 1
-                        
-                        // Check if we should stop
-                        if let maxPages, pageCount >= maxPages {
-                            break
-                        }
-                        
-                        if page.next == nil {
-                            break
-                        }
-                        
-                        offset += page.limit
-                    }
-                    
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            
-            continuation.onTermination = { @Sendable _ in
-                task.cancel()
-            }
-        }
+        PaginationStreamBuilder.pages(
+            pageSize: pageSize,
+            maxPages: maxPages,
+            fetchPage: fetchPage
+        )
     }
-    
+
     /// Streams individual items from a paginated endpoint.
     ///
     /// Returns an `AsyncStream` that yields items one at a time, fetching pages as needed.
@@ -97,6 +73,21 @@ extension SpotifyClient {
     /// }
     /// ```
     ///
+    /// ## Example: Early Exit With Cancellation
+    /// ```swift
+    /// let task = Task {
+    ///     for try await track in client.streamItems(maxItems: 250) { limit, offset in
+    ///         try await client.tracks.saved(limit: limit, offset: offset)
+    ///     } {
+    ///         try await store(track)
+    ///     }
+    /// }
+    /// Task.detached {
+    ///     try await Task.sleep(for: .seconds(1))
+    ///     task.cancel()
+    /// }
+    /// ```
+    ///
     /// - Parameters:
     ///   - pageSize: Number of items per request (clamped to 1-50).
     ///   - maxItems: Optional limit on total items to stream.
@@ -107,45 +98,10 @@ extension SpotifyClient {
         maxItems: Int? = nil,
         fetchPage: @escaping @Sendable (_ limit: Int, _ offset: Int) async throws -> Page<T>
     ) -> AsyncThrowingStream<T, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                let clampedPageSize = min(max(pageSize, 1), 50)
-                var offset = 0
-                var itemCount = 0
-                
-                do {
-                    while true {
-                        try Task.checkCancellation()
-                        
-                        let page = try await fetchPage(clampedPageSize, offset)
-                        
-                        // Yield each item individually
-                        for item in page.items {
-                            continuation.yield(item)
-                            itemCount += 1
-                            
-                            if let maxItems, itemCount >= maxItems {
-                                continuation.finish()
-                                return
-                            }
-                        }
-                        
-                        if page.next == nil {
-                            break
-                        }
-                        
-                        offset += page.limit
-                    }
-                    
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            
-            continuation.onTermination = { @Sendable _ in
-                task.cancel()
-            }
-        }
+        PaginationStreamBuilder.items(
+            pageSize: pageSize,
+            maxItems: maxItems,
+            fetchPage: fetchPage
+        )
     }
 }

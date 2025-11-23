@@ -1,5 +1,22 @@
 import Foundation
 
+public enum NetworkRecoveryConfigurationError: Error, CustomStringConvertible {
+    case negativeRetryCount(Int)
+    case nonPositiveBaseDelay(TimeInterval)
+    case invalidMaxDelay(base: TimeInterval, max: TimeInterval)
+
+    public var description: String {
+        switch self {
+        case .negativeRetryCount(let value):
+            return "maxNetworkRetries must be >= 0 (received \(value))"
+        case .nonPositiveBaseDelay(let value):
+            return "baseRetryDelay must be > 0 (received \(value))"
+        case .invalidMaxDelay(let base, let max):
+            return "maxRetryDelay (\(max)) must be >= baseRetryDelay (\(base))"
+        }
+    }
+}
+
 /// Configuration for network failure recovery.
 public struct NetworkRecoveryConfiguration: Sendable {
     /// Maximum number of retry attempts for network failures.
@@ -42,6 +59,25 @@ public struct NetworkRecoveryConfiguration: Sendable {
     
     /// Disabled recovery configuration.
     public static let disabled = NetworkRecoveryConfiguration(maxNetworkRetries: 0)
+}
+
+public extension NetworkRecoveryConfiguration {
+    func validate() throws {
+        if maxNetworkRetries < 0 {
+            throw NetworkRecoveryConfigurationError.negativeRetryCount(maxNetworkRetries)
+        }
+
+        if baseRetryDelay <= 0 {
+            throw NetworkRecoveryConfigurationError.nonPositiveBaseDelay(baseRetryDelay)
+        }
+
+        if maxRetryDelay < baseRetryDelay {
+            throw NetworkRecoveryConfigurationError.invalidMaxDelay(
+                base: baseRetryDelay,
+                max: maxRetryDelay
+            )
+        }
+    }
 }
 
 /// Handles network failure recovery with exponential backoff.

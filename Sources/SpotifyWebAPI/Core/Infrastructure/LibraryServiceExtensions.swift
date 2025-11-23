@@ -17,7 +17,7 @@ extension AlbumsService where Capability == UserAuthCapability {
     /// - Parameter ids: Album IDs to save.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 20) {
+        for batch in chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize) {
             try await save(batch)
         }
     }
@@ -34,7 +34,7 @@ extension AlbumsService where Capability == UserAuthCapability {
     /// - Parameter ids: Album IDs to remove.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 20) {
+        for batch in chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize) {
             try await remove(batch)
         }
     }
@@ -56,7 +56,10 @@ extension TracksService where Capability == UserAuthCapability {
     /// - Parameter ids: Track IDs to save.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 50) {
+        for batch in chunkedUniqueSets(
+            from: ids,
+            chunkSize: SpotifyAPILimits.Tracks.libraryBatchSize
+        ) {
             try await save(batch)
         }
     }
@@ -73,7 +76,10 @@ extension TracksService where Capability == UserAuthCapability {
     /// - Parameter ids: Track IDs to remove.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 50) {
+        for batch in chunkedUniqueSets(
+            from: ids,
+            chunkSize: SpotifyAPILimits.Tracks.libraryBatchSize
+        ) {
             try await remove(batch)
         }
     }
@@ -95,7 +101,10 @@ extension ShowsService where Capability == UserAuthCapability {
     /// - Parameter ids: Show IDs to save.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 50) {
+        for batch in chunkedUniqueSets(
+            from: ids,
+            chunkSize: SpotifyAPILimits.Shows.batchSize
+        ) {
             try await save(batch)
         }
     }
@@ -112,7 +121,10 @@ extension ShowsService where Capability == UserAuthCapability {
     /// - Parameter ids: Show IDs to remove.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 50) {
+        for batch in chunkedUniqueSets(
+            from: ids,
+            chunkSize: SpotifyAPILimits.Shows.batchSize
+        ) {
             try await remove(batch)
         }
     }
@@ -134,7 +146,10 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// - Parameter ids: Episode IDs to save.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 50) {
+        for batch in chunkedUniqueSets(
+            from: ids,
+            chunkSize: SpotifyAPILimits.Episodes.batchSize
+        ) {
             try await save(batch)
         }
     }
@@ -151,7 +166,10 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// - Parameter ids: Episode IDs to remove.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: 50) {
+        for batch in chunkedUniqueSets(
+            from: ids,
+            chunkSize: SpotifyAPILimits.Episodes.batchSize
+        ) {
             try await remove(batch)
         }
     }

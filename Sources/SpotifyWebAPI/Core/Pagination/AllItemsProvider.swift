@@ -32,6 +32,15 @@ struct AllItemsProvider<Capability: Sendable, Item: Codable & Sendable & Equatab
         )
     }
 
+    /// Streams full pages lazily, handy for batching UI updates or progress tracking.
+    func streamPages(maxPages: Int? = nil) -> AsyncThrowingStream<Page<Item>, Error> {
+        client.streamPages(
+            pageSize: pageSize,
+            maxPages: maxPages,
+            fetchPage: fetchPage
+        )
+    }
+
     /// Streams items one-by-one, fetching pages lazily.
     func stream(maxItems: Int? = nil) -> AsyncThrowingStream<Item, Error> {
         client.streamItems(

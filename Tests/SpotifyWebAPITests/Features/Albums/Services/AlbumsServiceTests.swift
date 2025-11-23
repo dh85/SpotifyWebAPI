@@ -84,7 +84,8 @@ struct AlbumsServiceTests {
     @Test(arguments: [nil, "US"])
     func tracksBuildsCorrectRequest(market: String?) async throws {
         try await withMockServiceClient(fixture: "album_tracks.json") { client, http in
-            let page = try await client.albums.tracks("album123", market: market, limit: 10, offset: 5)
+            let page = try await client.albums.tracks(
+                "album123", market: market, limit: 10, offset: 5)
 
             #expect(page.items.first?.name == "Global Warming (feat. Sensato)")
 
@@ -109,6 +110,70 @@ struct AlbumsServiceTests {
         await expectLimitErrors { limit in
             _ = try await client.albums.tracks("id", limit: limit)
         }
+    }
+
+    @Test
+    func streamTrackPagesBuildsRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "album_tracks.json",
+            of: SimplifiedTrack.self,
+            offset: 0,
+            limit: 25,
+            total: 25,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var offsets: [Int] = []
+        let stream = await client.albums.streamTrackPages(
+            "album123",
+            market: "US",
+            pageSize: 25,
+            maxPages: 1
+        )
+        for try await page in stream {
+            offsets.append(page.offset)
+        }
+
+        #expect(offsets == [0])
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/albums/album123/tracks", method: "GET")
+        expectMarketParameter(request, market: "US")
+        #expect(request?.url?.query()?.contains("limit=25") == true)
+    }
+
+    @Test
+    func streamTracksEmitsItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "album_tracks.json",
+            of: SimplifiedTrack.self,
+            offset: 0,
+            limit: 30,
+            total: 30,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var ids: [String] = []
+        let stream = await client.albums.streamTracks(
+            "album123",
+            market: "SE",
+            pageSize: 30,
+            maxItems: 50
+        )
+        for try await track in stream {
+            if let id = track.id {
+                ids.append(id)
+            }
+        }
+
+        #expect(ids.isEmpty == false)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/albums/album123/tracks", method: "GET")
+        expectMarketParameter(request, market: "SE")
+        #expect(request?.url?.query()?.contains("limit=30") == true)
     }
 
     // MARK: - User Library Tests
@@ -234,6 +299,5 @@ struct AlbumsServiceTests {
             _ = try await client.albums.checkSaved(makeIDs(count: 21))
         }
     }
-
 
 }

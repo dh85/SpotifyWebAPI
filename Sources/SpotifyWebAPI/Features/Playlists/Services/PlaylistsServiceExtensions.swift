@@ -20,7 +20,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - playlistID: The Spotify ID for the playlist.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func addTracks(_ trackURIs: [String], to playlistID: String) async throws {
-        for batch in chunkedArrays(from: trackURIs, chunkSize: 100) {
+        for batch in chunkedArrays(
+            from: trackURIs,
+            chunkSize: SpotifyAPILimits.Playlists.itemMutationBatchSize
+        ) {
             try Task.checkCancellation()
             _ = try await add(to: playlistID, uris: batch)
         }
@@ -41,7 +44,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - playlistID: The Spotify ID for the playlist.
     /// - Throws: ``SpotifyError`` if any request fails.
     public func removeTracks(_ trackURIs: [String], from playlistID: String) async throws {
-        for batch in chunkedArrays(from: trackURIs, chunkSize: 100) {
+        for batch in chunkedArrays(
+            from: trackURIs,
+            chunkSize: SpotifyAPILimits.Playlists.itemMutationBatchSize
+        ) {
             try Task.checkCancellation()
             _ = try await remove(from: playlistID, uris: batch)
         }

@@ -48,7 +48,8 @@ struct AudiobooksServiceTests {
             #expect(audiobooks[2]?.name == "Dune: Book One in the Dune Chronicles")
 
             let request = await http.firstRequest
-            expectRequest(request, path: "/v1/audiobooks", method: "GET", queryContains: "market=ES")
+            expectRequest(
+                request, path: "/v1/audiobooks", method: "GET", queryContains: "market=ES")
             #expect(extractIDs(from: request?.url) == ids)
         }
     }
@@ -111,6 +112,68 @@ struct AudiobooksServiceTests {
         }
     }
 
+    @Test
+    func streamChapterPagesBuildsRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "audiobook_chapters.json",
+            of: SimplifiedChapter.self,
+            offset: 0,
+            limit: 40,
+            total: 40,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var offsets: [Int] = []
+        let stream = await client.audiobooks.streamChapterPages(
+            for: "audiobook123",
+            market: "GB",
+            pageSize: 40,
+            maxPages: 1
+        )
+        for try await page in stream {
+            offsets.append(page.offset)
+        }
+
+        #expect(offsets == [0])
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/audiobooks/audiobook123/chapters", method: "GET")
+        expectMarketParameter(request, market: "GB")
+        #expect(request?.url?.query()?.contains("limit=40") == true)
+    }
+
+    @Test
+    func streamChaptersEmitsItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "audiobook_chapters.json",
+            of: SimplifiedChapter.self,
+            offset: 0,
+            limit: 35,
+            total: 35,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var ids: [String] = []
+        let stream = await client.audiobooks.streamChapters(
+            for: "audiobook123",
+            market: "DE",
+            pageSize: 35,
+            maxItems: 35
+        )
+        for try await chapter in stream {
+            ids.append(chapter.id)
+        }
+
+        #expect(ids.isEmpty == false)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/audiobooks/audiobook123/chapters", method: "GET")
+        expectMarketParameter(request, market: "DE")
+        #expect(request?.url?.query()?.contains("limit=35") == true)
+    }
+
     // MARK: - User Access Tests
 
     @Test
@@ -121,7 +184,8 @@ struct AudiobooksServiceTests {
             #expect(page.items.first?.audiobook.name == "Saved Audiobook Title")
 
             let request = await http.firstRequest
-            expectRequest(request, path: "/v1/me/audiobooks", method: "GET", queryContains: "limit=5")
+            expectRequest(
+                request, path: "/v1/me/audiobooks", method: "GET", queryContains: "limit=5")
             #expect(request?.url?.query()?.contains("market=") == false)
         }
     }
@@ -228,6 +292,5 @@ struct AudiobooksServiceTests {
             _ = try await client.audiobooks.checkSaved(makeIDs(count: 51))
         }
     }
-
 
 }

@@ -2,8 +2,6 @@ import Foundation
 
 private typealias SeveralAlbumsWrapper = ArrayWrapper<Album>
 
-private let MAXIMUM_ALBUM_ID_BATCH_SIZE = 20
-
 /// A service for fetching and managing Spotify Album resources.
 ///
 /// ## Overview
@@ -118,11 +116,45 @@ extension AlbumsService where Capability: PublicSpotifyCapability {
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<SimplifiedTrack> {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
+        let query =
+            try buildPaginationQuery(limit: limit, offset: offset)
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<Page<SimplifiedTrack>>.get(
             "/albums/\(id)/tracks", query: query)
         return try await client.perform(request)
+    }
+
+    /// Streams an album's tracks page-by-page for batched processing.
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the album.
+    ///   - market: Optional market relinking code.
+    ///   - pageSize: Desired number of tracks per request (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional limit on pages to emit from the stream.
+    /// - Returns: Async sequence yielding raw `Page<SimplifiedTrack>` responses.
+    public func streamTrackPages(
+        _ id: String,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SimplifiedTrack>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.tracks(id, market: market, limit: limit, offset: offset)
+        }
+    }
+
+    /// Streams an album's tracks one-by-one while fetching pages lazily.
+    ///
+    /// - Parameters mirror ``streamTrackPages`` but replace `maxPages` with `maxItems`.
+    public func streamTracks(
+        _ id: String,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<SimplifiedTrack, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.tracks(id, market: market, limit: limit, offset: offset)
+        }
     }
 }
 
@@ -163,10 +195,21 @@ extension AlbumsService where Capability == UserAuthCapability {
         savedAlbumsProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
     }
 
+    /// Streams entire pages of saved albums, useful for batched UI updates or caching.
+    ///
+    /// - Parameter maxPages: Optional limit on the number of pages to fetch.
+    /// - Returns: Async sequence emitting the raw `Page` responses.
+    public func streamSavedAlbumPages(maxPages: Int? = nil)
+        -> AsyncThrowingStream<Page<SavedAlbum>, Error>
+    {
+        savedAlbumsProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
+    }
+
     private func savedAlbumsProvider(
         defaultMaxItems: Int?
     ) -> AllItemsProvider<Capability, SavedAlbum> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.saved(limit: limit, offset: offset)
         }
     }
@@ -215,6 +258,6 @@ extension AlbumsService where Capability == UserAuthCapability {
 
 extension AlbumsService {
     fileprivate func validateAlbumIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(MAXIMUM_ALBUM_ID_BATCH_SIZE, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Albums.batchSize, for: ids)
     }
 }

@@ -159,6 +159,72 @@ struct ArtistsServiceTests {
         }
     }
 
+    @Test
+    func streamAlbumPagesBuildsRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "artist_albums.json",
+            of: SimplifiedAlbum.self,
+            offset: 0,
+            limit: 25,
+            total: 25,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var offsets: [Int] = []
+        let stream = await client.artists.streamAlbumPages(
+            for: "artist123",
+            includeGroups: [.album],
+            market: "US",
+            pageSize: 25,
+            maxPages: 1
+        )
+        for try await page in stream {
+            offsets.append(page.offset)
+        }
+
+        #expect(offsets == [0])
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/artists/artist123/albums", method: "GET")
+        expectMarketParameter(request, market: "US")
+        #expect(request?.url?.query()?.contains("include_groups=album") == true)
+        #expect(request?.url?.query()?.contains("limit=25") == true)
+    }
+
+    @Test
+    func streamAlbumsEmitsItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "artist_albums.json",
+            of: SimplifiedAlbum.self,
+            offset: 0,
+            limit: 30,
+            total: 30,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var names: [String] = []
+        let stream = await client.artists.streamAlbums(
+            for: "artist123",
+            includeGroups: [.single],
+            market: "CA",
+            pageSize: 30,
+            maxItems: 60
+        )
+        for try await album in stream {
+            names.append(album.name)
+        }
+
+        #expect(names.isEmpty == false)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/artists/artist123/albums", method: "GET")
+        expectMarketParameter(request, market: "CA")
+        #expect(request?.url?.query()?.contains("include_groups=single") == true)
+        #expect(request?.url?.query()?.contains("limit=30") == true)
+    }
+
     // MARK: - Get Artist Top Tracks
 
     @Test

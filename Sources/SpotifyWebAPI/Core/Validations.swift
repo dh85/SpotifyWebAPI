@@ -1,6 +1,6 @@
 func validateLimit(
     _ limit: Int,
-    withinRange range: ClosedRange<Int> = 1...50
+    withinRange range: ClosedRange<Int> = SpotifyAPILimits.Pagination.standardLimitRange
 ) throws {
     guard range.contains(limit) else {
         throw SpotifyClientError.invalidRequest(

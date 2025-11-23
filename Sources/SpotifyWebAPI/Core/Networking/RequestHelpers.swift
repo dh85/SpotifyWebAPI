@@ -15,12 +15,21 @@ extension SpotifyClient {
     // MARK: - URL building
 
     func apiURL(path: String, queryItems: [URLQueryItem]? = nil) -> URL {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "api.spotify.com"
-        components.path = "/v1" + path
+        var url = configuration.apiBaseURL
+        let trimmed = path.split(separator: "/", omittingEmptySubsequences: true)
+        for segment in trimmed {
+            url.appendPathComponent(String(segment))
+        }
+
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            fatalError("Invalid apiBaseURL: \(configuration.apiBaseURL)")
+        }
+
         components.queryItems = queryItems
-        return components.url!
+        guard let finalURL = components.url else {
+            fatalError("Unable to construct API URL for path \(path)")
+        }
+        return finalURL
     }
 
     private func prepare<RequestType: Decodable>(
@@ -182,11 +191,18 @@ extension SpotifyClient {
         let measurement = PerformanceMeasurement(
             "\(prepared.request.method) \(prepared.request.path)", logger: logger)
 
-        await logger.logRequest(prepared.urlRequest)
+        let requestToken = await logger.logRequest(prepared.urlRequest)
 
-        let (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+        } catch {
+            await logger.logResponse(nil, data: nil, error: error, token: requestToken)
+            throw error
+        }
 
-        await logger.logResponse(response, data: data, error: nil)
+        await logger.logResponse(response, data: data, error: nil, token: requestToken)
 
         // Handle 204 No Content
         if response.statusCode == 204 {
@@ -260,11 +276,18 @@ extension SpotifyClient {
         let measurement = PerformanceMeasurement(
             "\(prepared.request.method) \(prepared.request.path)", logger: logger)
 
-        await logger.logRequest(prepared.urlRequest)
+        let requestToken = await logger.logRequest(prepared.urlRequest)
 
-        let (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+        } catch {
+            await logger.logResponse(nil, data: nil, error: error, token: requestToken)
+            throw error
+        }
 
-        await logger.logResponse(response, data: data, error: nil)
+        await logger.logResponse(response, data: data, error: nil, token: requestToken)
 
         if response.statusCode == 204 || data.isEmpty {
             await measurement.finish()
