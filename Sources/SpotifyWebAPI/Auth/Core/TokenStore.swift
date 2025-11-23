@@ -162,7 +162,9 @@ public actor RestrictedFileTokenStore: TokenStore {
         filename: String = "spotify_tokens.json",
         directory: URL? = nil,
         directoryName: String = "SpotifyWebAPI",
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        encoder: JSONEncoder = RestrictedFileTokenStore.makeDefaultEncoder(),
+        decoder: JSONDecoder = RestrictedFileTokenStore.makeDefaultDecoder()
     ) {
         self.fileManager = fileManager
         let resolvedDirectory: URL
@@ -177,11 +179,7 @@ public actor RestrictedFileTokenStore: TokenStore {
         Self.ensureDirectory(resolvedDirectory, fileManager: fileManager)
         self.fileURL = resolvedDirectory.appendingPathComponent(filename, isDirectory: false)
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
         self.encoder = encoder
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
         self.decoder = decoder
     }
 
@@ -251,6 +249,20 @@ public actor RestrictedFileTokenStore: TokenStore {
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: NSNumber(value: Int16(0o700))]
         )
+    }
+
+    @usableFromInline
+    static func makeDefaultEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    @usableFromInline
+    static func makeDefaultDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 
     private static func applyRestrictedPermissions(to fileURL: URL) throws {

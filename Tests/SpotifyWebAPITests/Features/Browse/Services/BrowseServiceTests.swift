@@ -7,6 +7,32 @@ import Testing
     import FoundationNetworking
 #endif
 
+private struct NewReleasesWrapper: Codable {
+    let albums: Page<SimplifiedAlbum>
+}
+
+private struct CategoriesWrapper: Codable {
+    let categories: Page<SpotifyCategory>
+}
+
+private func wrapNewReleasesPage(_ page: Page<SimplifiedAlbum>) throws -> Data {
+    try encodeModel(NewReleasesWrapper(albums: page))
+}
+
+private func wrapCategoriesPage(_ page: Page<SpotifyCategory>) throws -> Data {
+    try encodeModel(CategoriesWrapper(categories: page))
+}
+
+private func newReleasesPage(from fixture: String) throws -> Page<SimplifiedAlbum> {
+    let wrapper: NewReleasesWrapper = try decodeModel(from: TestDataLoader.load(fixture))
+    return wrapper.albums
+}
+
+private func categoriesPage(from fixture: String) throws -> Page<SpotifyCategory> {
+    let wrapper: CategoriesWrapper = try decodeModel(from: TestDataLoader.load(fixture))
+    return wrapper.categories
+}
+
 @Suite
 @MainActor
 struct BrowseServiceTests {
@@ -52,20 +78,25 @@ struct BrowseServiceTests {
     @Test
     func streamNewReleasePagesBuildsRequests() async throws {
         let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("new_releases.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await enqueueTwoPageResponses(
+            fixture: "new_releases.json",
+            of: SimplifiedAlbum.self,
+            secondOffset: 20,
+            limit: 20,
+            total: 40,
+            http: http,
+            wrap: wrapNewReleasesPage,
+            extractor: newReleasesPage
+        )
 
-        var pages: [Int] = []
         let stream = await client.browse.streamNewReleasePages(
             country: "SE",
             pageSize: 20,
-            maxPages: 1
+            maxPages: 2
         )
-        for try await page in stream {
-            pages.append(page.items.count)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
-        #expect(pages.count == 1)
+        #expect(offsets == [0, 20])
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/browse/new-releases", method: "GET")
         expectCountryParameter(request, country: "SE")
@@ -75,16 +106,23 @@ struct BrowseServiceTests {
     @Test
     func streamNewReleasesEmitsItems() async throws {
         let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("new_releases.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await enqueueTwoPageResponses(
+            fixture: "new_releases.json",
+            of: SimplifiedAlbum.self,
+            secondOffset: 15,
+            limit: 15,
+            total: 30,
+            http: http,
+            wrap: wrapNewReleasesPage,
+            extractor: newReleasesPage
+        )
 
-        var albums: [String] = []
-        let stream = await client.browse.streamNewReleases(country: "DK", pageSize: 15)
-        for try await album in stream {
-            if let id = album.id {
-                albums.append(id)
-            }
-        }
+        let stream = await client.browse.streamNewReleases(
+            country: "DK",
+            pageSize: 15,
+            maxItems: 20
+        )
+        let albums = try await collectStreamItems(stream).compactMap { $0.id }
 
         #expect(albums.isEmpty == false)
         let request = await http.firstRequest
@@ -153,21 +191,26 @@ struct BrowseServiceTests {
     @Test
     func streamCategoryPagesBuildsRequests() async throws {
         let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("categories_several.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await enqueueTwoPageResponses(
+            fixture: "categories_several.json",
+            of: SpotifyCategory.self,
+            secondOffset: 20,
+            limit: 20,
+            total: 40,
+            http: http,
+            wrap: wrapCategoriesPage,
+            extractor: categoriesPage
+        )
 
-        var pages: [Int] = []
         let stream = await client.browse.streamCategoryPages(
             country: "MX",
             locale: "es_MX",
             pageSize: 20,
-            maxPages: 1
+            maxPages: 2
         )
-        for try await page in stream {
-            pages.append(page.items.count)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
-        #expect(pages.count == 1)
+        #expect(offsets == [0, 20])
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/browse/categories", method: "GET")
         expectCountryParameter(request, country: "MX")
@@ -178,19 +221,24 @@ struct BrowseServiceTests {
     @Test
     func streamCategoriesEmitsItems() async throws {
         let (client, http) = makeUserAuthClient()
-        let data = try TestDataLoader.load("categories_several.json")
-        await http.addMockResponse(data: data, statusCode: 200)
+        try await enqueueTwoPageResponses(
+            fixture: "categories_several.json",
+            of: SpotifyCategory.self,
+            secondOffset: 25,
+            limit: 25,
+            total: 50,
+            http: http,
+            wrap: wrapCategoriesPage,
+            extractor: categoriesPage
+        )
 
-        var categories: [String] = []
         let stream = await client.browse.streamCategories(
             country: "BR",
             locale: "pt_BR",
             pageSize: 25,
             maxItems: 25
         )
-        for try await category in stream {
-            categories.append(category.id)
-        }
+        let categories = try await collectStreamItems(stream).map(\.id)
 
         #expect(categories.isEmpty == false)
         let request = await http.firstRequest

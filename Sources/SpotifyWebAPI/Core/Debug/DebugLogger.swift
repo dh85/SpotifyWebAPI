@@ -218,8 +218,15 @@ public struct DebugLogObserver: Hashable, Sendable {
 public actor DebugLogger {
     public static let shared = DebugLogger()
 
-    private static var isDebugBuild: Bool {
+    #if DEBUG
+        private var debugBuildOverride: Bool?
+    #endif
+
+    private var isDebugBuild: Bool {
         #if DEBUG
+            if let override = debugBuildOverride {
+                return override
+            }
             return true
         #else
             return false
@@ -243,6 +250,26 @@ public actor DebugLogger {
     #endif
 
     private init() {}
+
+    #if DEBUG
+        internal func overrideIsDebugBuildForTests(_ value: Bool?) {
+            debugBuildOverride = value
+        }
+
+        internal func configurationSnapshotForTests() -> DebugConfiguration {
+            configuration
+        }
+
+        internal func resetWarningFlagsForTests() {
+            hasLoggedExposureWarning = false
+            hasLoggedObserverWarning = false
+            hasLoggedProductionRestriction = false
+        }
+
+        internal func didLogProductionRestrictionWarningForTests() -> Bool {
+            hasLoggedProductionRestriction
+        }
+    #endif
 
     public func configure(_ config: DebugConfiguration) {
         let sanitized = enforceProductionSafety(for: config)
@@ -564,7 +591,7 @@ public actor DebugLogger {
     }
 
     private func enforceProductionSafety(for config: DebugConfiguration) -> DebugConfiguration {
-        guard !Self.isDebugBuild else { return config }
+        guard !isDebugBuild else { return config }
 
         var sanitized = config
         var wasModified = false

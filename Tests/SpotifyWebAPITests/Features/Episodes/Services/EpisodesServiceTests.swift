@@ -132,6 +132,38 @@ struct EpisodesServiceTests {
     }
 
     @Test
+    func streamSavedEpisodesRespectsMaxItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "episodes_saved.json",
+            of: SavedEpisode.self,
+            http: http
+        )
+
+        let stream = await client.episodes.streamSavedEpisodes(market: "US", maxItems: 1)
+        let collected = try await collectStreamItems(stream)
+
+        #expect(collected.count == 1)
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/episodes", market: "US")
+    }
+
+    @Test
+    func streamSavedEpisodePagesEmitsPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        try await enqueueTwoPageResponses(
+            fixture: "episodes_saved.json",
+            of: SavedEpisode.self,
+            http: http
+        )
+
+        let stream = await client.episodes.streamSavedEpisodePages(market: "CA", maxPages: 2)
+        let offsets = try await collectPageOffsets(stream)
+
+        #expect(offsets == [0, 50])
+        expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/episodes", market: "CA")
+    }
+
+    @Test
     func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)
@@ -193,6 +225,5 @@ struct EpisodesServiceTests {
             _ = try await client.episodes.checkSaved(makeIDs(count: 51))
         }
     }
-
 
 }

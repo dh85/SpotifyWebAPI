@@ -160,6 +160,28 @@ struct NetworkRecoveryTests {
         #expect(requests.count == 1)  // No retries when disabled
     }
 
+    @Test("Network recovery configuration error descriptions")
+    func networkRecoveryConfigurationErrorDescriptions() {
+        let descriptionCases: [(NetworkRecoveryConfigurationError, String)] = [
+            (
+                .negativeRetryCount(-1),
+                "maxNetworkRetries must be >= 0 (received -1)"
+            ),
+            (
+                .nonPositiveBaseDelay(0),
+                "baseRetryDelay must be > 0 (received 0.0)"
+            ),
+            (
+                .invalidMaxDelay(base: 2, max: 1),
+                "maxRetryDelay (1.0) must be >= baseRetryDelay (2.0)"
+            ),
+        ]
+
+        for (error, expected) in descriptionCases {
+            #expect(error.description == expected)
+        }
+    }
+
     @Test("Network recovery configuration validation")
     func networkRecoveryConfigurationValidation() {
         let config = NetworkRecoveryConfiguration(
@@ -173,6 +195,36 @@ struct NetworkRecoveryTests {
         #expect(config.maxRetryDelay == 10.0)
         #expect(config.retryableNetworkErrors.contains(.timedOut))
         #expect(config.retryableStatusCodes.contains(503))
+    }
+
+    @Test("Network recovery validate rejects negative retry count")
+    func networkRecoveryValidateRejectsNegativeRetries() {
+        let config = NetworkRecoveryConfiguration(maxNetworkRetries: -1)
+
+        expectValidationError(config) { error in
+            guard case .negativeRetryCount(let value) = error else {
+                Issue.record("Expected negativeRetryCount, received \(error)")
+                return
+            }
+            #expect(value == -1)
+        }
+    }
+
+    @Test("Network recovery validate rejects invalid max delay")
+    func networkRecoveryValidateRejectsInvalidMaxDelay() {
+        let config = NetworkRecoveryConfiguration(
+            baseRetryDelay: 2,
+            maxRetryDelay: 1
+        )
+
+        expectValidationError(config) { error in
+            guard case .invalidMaxDelay(let base, let max) = error else {
+                Issue.record("Expected invalidMaxDelay, received \(error)")
+                return
+            }
+            #expect(base == 2)
+            #expect(max == 1)
+        }
     }
 
     @Test("Network recovery preserves rate limit handling")
@@ -198,6 +250,73 @@ struct NetworkRecoveryTests {
 
         let requests = await http.requests
         #expect(requests.count == 2)  // Rate limit retry should still work
+    }
+
+    @Test("Network recovery retries SpotifyAuthError HTTP responses")
+    func networkRecoveryRetriesSpotifyAuthErrors() async throws {
+        let handler = NetworkRecoveryHandler(
+            configuration: NetworkRecoveryConfiguration(
+                maxNetworkRetries: 1,
+                baseRetryDelay: 0.001,
+                maxRetryDelay: 0.001,
+                retryableStatusCodes: [503]
+            )
+        )
+
+        actor AttemptCounter {
+            private var value = 0
+            func increment() -> Int {
+                value += 1
+                return value
+            }
+
+            func current() -> Int { value }
+        }
+        let counter = AttemptCounter()
+        let value: Int = try await handler.executeWithRecovery {
+            let attempt = await counter.increment()
+            if attempt == 1 {
+                throw SpotifyAuthError.httpError(statusCode: 503, body: "retry")
+            }
+            return 123
+        }
+
+        #expect(value == 123)
+        #expect(await counter.current() == 2)
+    }
+}
+
+private func expectValidationError(
+    _ config: NetworkRecoveryConfiguration,
+    fileID: StaticString = #fileID,
+    filePath: StaticString = #filePath,
+    line: UInt = #line,
+    column: UInt = #column,
+    verifier: (NetworkRecoveryConfigurationError) -> Void
+) {
+    do {
+        try config.validate()
+        Issue.record(
+            "Expected validation to fail",
+            sourceLocation: makeSourceLocation(
+                fileID: fileID,
+                filePath: filePath,
+                line: line,
+                column: column
+            )
+        )
+    } catch let error as NetworkRecoveryConfigurationError {
+        verifier(error)
+    } catch {
+        Issue.record(
+            "Unexpected error: \(error)",
+            sourceLocation: makeSourceLocation(
+                fileID: fileID,
+                filePath: filePath,
+                line: line,
+                column: column
+            )
+        )
     }
 }
 

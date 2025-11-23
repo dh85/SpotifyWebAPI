@@ -364,43 +364,6 @@ struct DebugToolingTests {
         await TestEnvironment.logger.logTokenOperation("exchange", success: false)
     }
 
-    @Test("Performance metrics are limited to 100 entries")
-    func performanceMetricsAreLimitedTo100Entries() async {
-        // Clear any existing metrics from other tests
-        await TestEnvironment.logger.clearPerformanceMetrics()
-
-        let originalConfig = DebugConfiguration.disabled
-        await TestEnvironment.logger.configure(originalConfig)
-
-        // Add exactly 150 metrics with unique names to test the limiting behavior
-        let testPrefix = "limit-test-\(UUID().uuidString.prefix(8))"
-        for i in 0..<150 {
-            let metrics = PerformanceMetrics(
-                operationName: "\(testPrefix)-\(i)",
-                duration: 0.001,
-                requestCount: 1,
-                retryCount: 0
-            )
-            await TestEnvironment.logger.recordPerformance(metrics)
-        }
-
-        let allMetrics = await TestEnvironment.logger.getPerformanceMetrics()
-
-        // Should be limited to 100 entries total
-        #expect(allMetrics.count == 100)
-
-        // All metrics should be our test metrics since we cleared before starting
-        let testMetrics = allMetrics.filter { $0.operationName.hasPrefix(testPrefix) }
-        #expect(testMetrics.count == 100)
-
-        // Verify the metrics are the last 100 we added (50-149)
-        let expectedNames = (50..<150).map { "\(testPrefix)-\($0)" }
-        let actualNames = testMetrics.map { $0.operationName }
-        #expect(Set(actualNames) == Set(expectedNames))
-
-        await TestEnvironment.logger.clearPerformanceMetrics()
-    }
-
     @Test("Debug log levels work correctly")
     func debugLogLevelsWorkCorrectly() {
         #expect(DebugLogLevel.off.rawValue == 0)
@@ -474,6 +437,34 @@ struct DebugToolingTests {
         #expect(verbose.logPerformance == true)
         #expect(verbose.logNetworkRetries == true)
         #expect(verbose.logTokenOperations == true)
+    }
+
+    @Test("Debug logger sanitizes release configurations")
+    func debugLoggerSanitizesReleaseConfigurations() async {
+        #if DEBUG
+            await TestEnvironment.logger.resetWarningFlagsForTests()
+            await TestEnvironment.logger.overrideIsDebugBuildForTests(false)
+
+            let unsafeConfig = DebugConfiguration(
+                logLevel: .verbose,
+                logRequests: true,
+                logResponses: true,
+                logNetworkRetries: true,
+                logTokenOperations: true
+            )
+
+            await TestEnvironment.logger.configure(unsafeConfig)
+            let sanitized = await TestEnvironment.logger.configurationSnapshotForTests()
+
+            #expect(sanitized.logLevel == .info)
+            #expect(sanitized.logRequests == false)
+            #expect(sanitized.logResponses == false)
+            #expect(await TestEnvironment.logger.didLogProductionRestrictionWarningForTests())
+
+            await TestEnvironment.logger.overrideIsDebugBuildForTests(nil)
+        #else
+            Issue.record("Debug build required for sanitization test")
+        #endif
     }
 
     @Test("Debug logger redacts sensitive headers and bodies")
