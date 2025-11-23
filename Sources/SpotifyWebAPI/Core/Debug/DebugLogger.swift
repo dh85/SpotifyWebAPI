@@ -617,8 +617,8 @@ public actor DebugLogger {
     ]
 }
 
-private extension DebugConfiguration {
-    func overriding(
+extension DebugConfiguration {
+    fileprivate func overriding(
         logLevel: DebugLogLevel? = nil,
         logRequests: Bool? = nil,
         logResponses: Bool? = nil,
