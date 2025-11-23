@@ -160,6 +160,36 @@ struct TracksServiceTests {
     }
 
     @Test
+    func streamSavedTrackPagesEmitsPages() async throws {
+        let (client, http) = makeUserAuthClient()
+        let first = try makePaginatedResponse(
+            fixture: "tracks_saved.json",
+            of: SavedTrack.self,
+            offset: 0,
+            total: 3,
+            hasNext: true
+        )
+        let second = try makePaginatedResponse(
+            fixture: "tracks_saved.json",
+            of: SavedTrack.self,
+            offset: 50,
+            total: 3,
+            hasNext: false
+        )
+        await http.addMockResponse(data: first, statusCode: 200)
+        await http.addMockResponse(data: second, statusCode: 200)
+
+        var offsets: [Int] = []
+        let stream = await client.tracks.streamSavedTrackPages(market: "US")
+        for try await page in stream {
+            offsets.append(page.offset)
+        }
+
+        #expect(offsets == [0, 50])
+        expectMarketParameter(await http.firstRequest, market: "US")
+    }
+
+    @Test
     func saveBuildsCorrectRequest() async throws {
         let (client, http) = makeUserAuthClient()
         await http.addMockResponse(statusCode: 200)

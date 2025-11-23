@@ -2,8 +2,6 @@ import Foundation
 
 private typealias SeveralAudiobooksWrapper = ArrayWrapper<Audiobook?>
 
-private let MAXIMUM_AUDIOBOOK_ID_BATCH_SIZE = 50
-
 /// A service for fetching and managing Spotify Audiobook resources and their chapters.
 public struct AudiobooksService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
@@ -13,7 +11,7 @@ public struct AudiobooksService<Capability: Sendable>: Sendable {
 // MARK: - Helpers
 extension AudiobooksService {
     private func validateAudiobookIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(MAXIMUM_AUDIOBOOK_ID_BATCH_SIZE, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Audiobooks.batchSize, for: ids)
     }
 }
 
@@ -70,11 +68,52 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
         offset: Int = 0,
         market: String? = nil
     ) async throws -> Page<SimplifiedChapter> {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
+        let query =
+            try buildPaginationQuery(limit: limit, offset: offset)
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<Page<SimplifiedChapter>>.get(
             "/audiobooks/\(id)/chapters", query: query)
         return try await client.perform(request)
+    }
+
+    /// Streams an audiobook's chapters page-by-page for responsive UIs.
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the audiobook.
+    ///   - market: Optional market filter.
+    ///   - pageSize: Desired number of chapters per request (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional limit on emitted pages.
+    public func streamChapterPages(
+        for id: String,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SimplifiedChapter>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.chapters(
+                for: id,
+                limit: limit,
+                offset: offset,
+                market: market
+            )
+        }
+    }
+
+    /// Streams an audiobook's chapters individually.
+    public func streamChapters(
+        for id: String,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<SimplifiedChapter, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.chapters(
+                for: id,
+                limit: limit,
+                offset: offset,
+                market: market
+            )
+        }
     }
 }
 
@@ -112,10 +151,21 @@ extension AudiobooksService where Capability == UserAuthCapability {
         savedAudiobooksProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
     }
 
+    /// Streams full pages of saved audiobooks for batched processing.
+    ///
+    /// - Parameter maxPages: Optional limit on the number of pages to emit.
+    /// - Returns: Async sequence yielding `Page` batches directly from the API.
+    public func streamSavedAudiobookPages(maxPages: Int? = nil)
+        -> AsyncThrowingStream<Page<SavedAudiobook>, Error>
+    {
+        savedAudiobooksProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
+    }
+
     private func savedAudiobooksProvider(
         defaultMaxItems: Int?
     ) -> AllItemsProvider<Capability, SavedAudiobook> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.saved(limit: limit, offset: offset)
         }
     }
@@ -128,7 +178,8 @@ extension AudiobooksService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/save-audiobooks-user)
     public func save(_ ids: Set<String>) async throws {
         try validateAudiobookIDs(ids)
-        try await performLibraryOperation(.put, endpoint: "/me/audiobooks", ids: ids, client: client)
+        try await performLibraryOperation(
+            .put, endpoint: "/me/audiobooks", ids: ids, client: client)
     }
 
     /// Remove one or more audiobooks from the Spotify user's library.
@@ -139,7 +190,8 @@ extension AudiobooksService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-audiobooks-user)
     public func remove(_ ids: Set<String>) async throws {
         try validateAudiobookIDs(ids)
-        try await performLibraryOperation(.delete, endpoint: "/me/audiobooks", ids: ids, client: client)
+        try await performLibraryOperation(
+            .delete, endpoint: "/me/audiobooks", ids: ids, client: client)
     }
 
     /// Check if one or more audiobooks are already saved in the current Spotify user's library.

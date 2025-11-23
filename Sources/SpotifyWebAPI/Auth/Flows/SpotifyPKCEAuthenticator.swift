@@ -44,7 +44,7 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
         config: SpotifyAuthConfig,
         pkceProvider: PKCEProvider = DefaultPKCEProvider(),
         httpClient: HTTPClient = URLSessionHTTPClient(),
-        tokenStore: TokenStore = FileTokenStore(),
+        tokenStore: TokenStore = TokenStoreFactory.defaultStore(),
         componentsBuilder: @escaping (URL) -> URLComponents? = {
             URLComponents(url: $0, resolvingAgainstBaseURL: false)
         }

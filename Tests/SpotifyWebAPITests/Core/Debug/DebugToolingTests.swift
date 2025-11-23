@@ -7,10 +7,101 @@ import Testing
     import FoundationNetworking
 #endif
 
+private actor DebugEventCollector {
+    private var events: [DebugEvent] = []
+
+    func append(_ event: DebugEvent) {
+        events.append(event)
+    }
+
+    func all() -> [DebugEvent] {
+        events
+    }
+
+    func waitForEvents(
+        minCount: Int,
+        timeout: Duration = .milliseconds(250)
+    ) async -> [DebugEvent] {
+        if events.count >= minCount {
+            return events
+        }
+
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+
+        while events.count < minCount {
+            let now = clock.now
+            if now >= deadline {
+                break
+            }
+
+            let remaining = deadline - now
+            let sleepDuration = remaining < .milliseconds(5) ? remaining : .milliseconds(5)
+            try? await Task.sleep(for: sleepDuration)
+        }
+
+        return events
+    }
+
+    func waitForEvent<T>(
+        timeout: Duration = .milliseconds(250),
+        transform: @Sendable (DebugEvent) -> T?
+    ) async -> T? {
+        if let match = events.compactMap(transform).first {
+            return match
+        }
+
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+
+        while true {
+            if let match = events.compactMap(transform).first {
+                return match
+            }
+
+            let now = clock.now
+            if now >= deadline {
+                return nil
+            }
+
+            let remaining = deadline - now
+            let sleepDuration = remaining < .milliseconds(5) ? remaining : .milliseconds(5)
+            try? await Task.sleep(for: sleepDuration)
+        }
+    }
+
+    func waitForTokenEvents(
+        count: Int,
+        timeout: Duration = .milliseconds(250)
+    ) async -> [TokenOperationContext] {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+
+        while true {
+            let tokens = events.compactMap { event -> TokenOperationContext? in
+                guard case .token(let context) = event else { return nil }
+                return context
+            }
+            if tokens.count >= count {
+                return tokens
+            }
+
+            let now = clock.now
+            if now >= deadline {
+                return tokens
+            }
+
+            let remaining = deadline - now
+            let sleepDuration = remaining < .milliseconds(5) ? remaining : .milliseconds(5)
+            try? await Task.sleep(for: sleepDuration)
+        }
+    }
+}
+
 @Suite("Debug Tooling Tests")
 @MainActor
 struct DebugToolingTests {
-    
+
     init() async {
         await TestEnvironment.bootstrap()
     }
@@ -74,7 +165,8 @@ struct DebugToolingTests {
         let allMetrics = await TestEnvironment.logger.getPerformanceMetrics()
         #expect(allMetrics.count > 0)
 
-        guard let testMetric = allMetrics.first(where: { $0.operationName == "test-operation" }) else {
+        guard let testMetric = allMetrics.first(where: { $0.operationName == "test-operation" })
+        else {
             Issue.record("No test-operation metrics found")
             return
         }
@@ -121,6 +213,128 @@ struct DebugToolingTests {
 
         // This should not throw when logging is enabled
         await TestEnvironment.logger.logResponse(response, data: data, error: nil)
+    }
+
+    @Test("Debug observers receive structured request and response events")
+    func debugObserversReceiveStructuredEvents() async {
+        await TestEnvironment.logger.configure(.disabled)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        let testURL = URL(string: "https://api.spotify.com/v1/observer-test/\(UUID().uuidString)")!
+        var request = URLRequest(url: testURL)
+        request.httpMethod = "POST"
+        request.httpBody = Data("{\"name\":\"test\"}".utf8)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let response = HTTPURLResponse(
+            url: testURL,
+            statusCode: 201,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )
+        let responseData = Data("{\"id\":\"123\"}".utf8)
+
+        let token = await TestEnvironment.logger.logRequest(request)
+        await TestEnvironment.logger.logResponse(
+            response, data: responseData, error: nil, token: token)
+
+        let requestContext = await collector.waitForEvent { event -> RequestLogContext? in
+            guard case .request(let context) = event else { return nil }
+            guard context.url == testURL else { return nil }
+            return context
+        }
+
+        guard let requestContext else {
+            Issue.record("Missing request event for observer test")
+            return
+        }
+
+        let responseContext = await collector.waitForEvent { event -> ResponseLogContext? in
+            guard case .response(let context) = event else { return nil }
+            guard context.url == testURL else { return nil }
+            return context
+        }
+
+        guard let responseContext else {
+            Issue.record("Missing response event for observer test")
+            return
+        }
+
+        #expect(requestContext.method == "POST")
+        #expect(requestContext.bodyBytes == request.httpBody?.count ?? 0)
+        #expect(responseContext.statusCode == 201)
+        #expect(responseContext.token == requestContext.token)
+    }
+
+    @Test("Debug observers receive network retry events")
+    func debugObserversReceiveNetworkRetryEvents() async {
+        await TestEnvironment.logger.configure(.disabled)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        let attempt = 2
+        let delay: TimeInterval = 1.25
+        let error = URLError(.cannotFindHost)
+
+        await TestEnvironment.logger.logNetworkRetry(attempt: attempt, error: error, delay: delay)
+
+        let context = await collector.waitForEvent { event -> NetworkRetryContext? in
+            guard case .networkRetry(let context) = event else { return nil }
+            guard context.attempt == attempt else { return nil }
+            guard abs(context.delay - delay) < 0.001 else { return nil }
+            guard context.errorDescription == error.localizedDescription else { return nil }
+            return context
+        }
+
+        guard let context else {
+            Issue.record("Missing matching network retry event for observer test")
+            return
+        }
+
+        #expect(context.attempt == attempt)
+        #expect(abs(context.delay - delay) < 0.001)
+        #expect(context.errorDescription == error.localizedDescription)
+    }
+
+    @Test("Debug observers receive token operation events")
+    func debugObserversReceiveTokenOperationEvents() async {
+        await TestEnvironment.logger.configure(.disabled)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        await TestEnvironment.logger.logTokenOperation("refresh", success: true)
+        await TestEnvironment.logger.logTokenOperation("exchange", success: false)
+
+        let tokenEvents = await collector.waitForTokenEvents(count: 2)
+
+        let refresh = tokenEvents.first { $0.operation == "refresh" }
+        let exchange = tokenEvents.first { $0.operation == "exchange" }
+
+        guard let refresh else {
+            Issue.record("Missing refresh token event for observer test")
+            return
+        }
+
+        guard let exchange else {
+            Issue.record("Missing exchange token event for observer test")
+            return
+        }
+
+        #expect(refresh.success == true)
+        #expect(exchange.success == false)
     }
 
     @Test("Debug logger logs network retries when enabled")
@@ -171,14 +385,14 @@ struct DebugToolingTests {
         }
 
         let allMetrics = await TestEnvironment.logger.getPerformanceMetrics()
-        
+
         // Should be limited to 100 entries total
         #expect(allMetrics.count == 100)
 
         // All metrics should be our test metrics since we cleared before starting
         let testMetrics = allMetrics.filter { $0.operationName.hasPrefix(testPrefix) }
         #expect(testMetrics.count == 100)
-        
+
         // Verify the metrics are the last 100 we added (50-149)
         let expectedNames = (50..<150).map { "\(testPrefix)-\($0)" }
         let actualNames = testMetrics.map { $0.operationName }
@@ -228,14 +442,14 @@ struct DebugToolingTests {
     func performanceMeasurementWithRetries() async {
         // This test verifies that PerformanceMetrics can store retry count correctly
         // We don't need to use the shared logger for this
-        
+
         let metrics = PerformanceMetrics(
             operationName: "test-operation",
             duration: 0.1,
             requestCount: 1,
             retryCount: 3
         )
-        
+
         // Test the metrics object directly
         #expect(metrics.operationName == "test-operation")
         #expect(metrics.retryCount == 3)
@@ -260,5 +474,69 @@ struct DebugToolingTests {
         #expect(verbose.logPerformance == true)
         #expect(verbose.logNetworkRetries == true)
         #expect(verbose.logTokenOperations == true)
+    }
+
+    @Test("Debug logger redacts sensitive headers and bodies")
+    func debugLoggerRedactsSensitiveData() async {
+        await TestEnvironment.logger.configure(.disabled)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        let requestURL = URL(
+            string: "https://api.spotify.com/v1/redaction-test/\(UUID().uuidString)")!
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "POST"
+        request.setValue("Bearer top-secret-token", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data("{\"access_token\":\"secret\"}".utf8)
+
+        let token = await TestEnvironment.logger.logRequest(request)
+
+        let requestContext = await collector.waitForEvent { event -> RequestLogContext? in
+            guard case .request(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let requestContext else {
+            Issue.record("Missing request context for redaction test")
+            return
+        }
+
+        #expect(requestContext.headers["Authorization"] == "Bearer <redacted>")
+        #expect(requestContext.bodyPreview == "<redacted>")
+        #expect(requestContext.bodyBytes == request.httpBody?.count)
+
+        let response = HTTPURLResponse(
+            url: requestURL,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: [
+                "Set-Cookie": "session=abc123",
+                "Content-Type": "application/json",
+            ]
+        )
+
+        let responseData = Data("{\"refresh_token\":\"super-secret\"}".utf8)
+        await TestEnvironment.logger.logResponse(
+            response, data: responseData, error: nil, token: token)
+
+        let responseContext = await collector.waitForEvent { event -> ResponseLogContext? in
+            guard case .response(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let responseContext else {
+            Issue.record("Missing response context for redaction test")
+            return
+        }
+
+        #expect(responseContext.headers["Set-Cookie"] == "<redacted>")
+        #expect(responseContext.bodyPreview == "<redacted>")
     }
 }

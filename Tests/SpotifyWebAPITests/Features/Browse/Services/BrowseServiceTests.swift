@@ -49,6 +49,50 @@ struct BrowseServiceTests {
         }
     }
 
+    @Test
+    func streamNewReleasePagesBuildsRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("new_releases.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        var pages: [Int] = []
+        let stream = await client.browse.streamNewReleasePages(
+            country: "SE",
+            pageSize: 20,
+            maxPages: 1
+        )
+        for try await page in stream {
+            pages.append(page.items.count)
+        }
+
+        #expect(pages.count == 1)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/browse/new-releases", method: "GET")
+        expectCountryParameter(request, country: "SE")
+        #expect(request?.url?.query()?.contains("limit=20") == true)
+    }
+
+    @Test
+    func streamNewReleasesEmitsItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("new_releases.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        var albums: [String] = []
+        let stream = await client.browse.streamNewReleases(country: "DK", pageSize: 15)
+        for try await album in stream {
+            if let id = album.id {
+                albums.append(id)
+            }
+        }
+
+        #expect(albums.isEmpty == false)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/browse/new-releases", method: "GET")
+        expectCountryParameter(request, country: "DK")
+        #expect(request?.url?.query()?.contains("limit=15") == true)
+    }
+
     // MARK: - Categories
 
     @Test(arguments: [nil, "US"])
@@ -104,6 +148,56 @@ struct BrowseServiceTests {
         await expectLimitErrors { limit in
             _ = try await client.browse.categories(limit: limit)
         }
+    }
+
+    @Test
+    func streamCategoryPagesBuildsRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("categories_several.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        var pages: [Int] = []
+        let stream = await client.browse.streamCategoryPages(
+            country: "MX",
+            locale: "es_MX",
+            pageSize: 20,
+            maxPages: 1
+        )
+        for try await page in stream {
+            pages.append(page.items.count)
+        }
+
+        #expect(pages.count == 1)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/browse/categories", method: "GET")
+        expectCountryParameter(request, country: "MX")
+        expectLocaleParameter(request, locale: "es_MX")
+        #expect(request?.url?.query()?.contains("limit=20") == true)
+    }
+
+    @Test
+    func streamCategoriesEmitsItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let data = try TestDataLoader.load("categories_several.json")
+        await http.addMockResponse(data: data, statusCode: 200)
+
+        var categories: [String] = []
+        let stream = await client.browse.streamCategories(
+            country: "BR",
+            locale: "pt_BR",
+            pageSize: 25,
+            maxItems: 25
+        )
+        for try await category in stream {
+            categories.append(category.id)
+        }
+
+        #expect(categories.isEmpty == false)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/browse/categories", method: "GET")
+        expectCountryParameter(request, country: "BR")
+        expectLocaleParameter(request, locale: "pt_BR")
+        #expect(request?.url?.query()?.contains("limit=25") == true)
     }
 
     // MARK: - Available Markets

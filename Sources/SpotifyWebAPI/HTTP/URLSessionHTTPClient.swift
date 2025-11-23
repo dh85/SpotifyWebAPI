@@ -31,18 +31,19 @@ public struct URLSessionHTTPClientConfiguration: Sendable {
 public struct URLSessionHTTPClient: HTTPClient {
     private let session: URLSession
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = URLSessionHTTPClient.makeDefaultSession()) {
         self.session = session
     }
 
     public init(
         configuration: URLSessionHTTPClientConfiguration,
         delegateQueue: OperationQueue? = nil,
-        sessionFactory: @Sendable (URLSessionConfiguration, OperationQueue?) -> URLSession = { config, queue in
+        sessionFactory: @Sendable (URLSessionConfiguration, OperationQueue?) -> URLSession = {
+            config, queue in
             URLSession(configuration: config, delegate: nil, delegateQueue: queue)
         }
     ) {
-        let sessionConfiguration = URLSessionConfiguration.default
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
         sessionConfiguration.timeoutIntervalForRequest = configuration.timeoutIntervalForRequest
         sessionConfiguration.timeoutIntervalForResource = configuration.timeoutIntervalForResource
         sessionConfiguration.allowsCellularAccess = configuration.allowsCellularAccess
@@ -56,5 +57,10 @@ public struct URLSessionHTTPClient: HTTPClient {
     public func data(for request: URLRequest) async throws -> HTTPResponse {
         let (data, response) = try await session.data(for: request)
         return HTTPResponse(data: data, response: response)
+    }
+
+    public static func makeDefaultSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        return URLSession(configuration: configuration)
     }
 }

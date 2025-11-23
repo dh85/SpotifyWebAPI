@@ -2,8 +2,6 @@ import Foundation
 
 private typealias SeveralShowsWrapper = ArrayWrapper<SimplifiedShow>
 
-private let MAXIMUM_SHOW_ID_BATCH_SIZE = 50
-
 /// A service for fetching and managing Spotify Show (Podcast) resources and their episodes.
 public struct ShowsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
@@ -13,7 +11,7 @@ public struct ShowsService<Capability: Sendable>: Sendable {
 // MARK: - Helpers
 extension ShowsService {
     private func validateShowIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(MAXIMUM_SHOW_ID_BATCH_SIZE, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Shows.batchSize, for: ids)
     }
 }
 
@@ -46,7 +44,8 @@ extension ShowsService where Capability: PublicSpotifyCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-shows)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [SimplifiedShow] {
         try validateShowIDs(ids)
-        let query = [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
+        let query =
+            [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
             + makeMarketQueryItems(from: market)
         let request = SpotifyRequest<SeveralShowsWrapper>.get("/shows", query: query)
         return try await client.perform(request).items
@@ -69,10 +68,52 @@ extension ShowsService where Capability: PublicSpotifyCapability {
         offset: Int = 0,
         market: String? = nil
     ) async throws -> Page<SimplifiedEpisode> {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
+        let query =
+            try buildPaginationQuery(limit: limit, offset: offset)
             + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Page<SimplifiedEpisode>>.get("/shows/\(id)/episodes", query: query)
+        let request = SpotifyRequest<Page<SimplifiedEpisode>>.get(
+            "/shows/\(id)/episodes", query: query)
         return try await client.perform(request)
+    }
+
+    /// Streams a show's episodes one page at a time for chunked updates.
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the show.
+    ///   - market: Optional market filter for relinking episodes.
+    ///   - pageSize: Number of episodes to request per page (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional cap on total pages emitted.
+    public func streamEpisodePages(
+        for id: String,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SimplifiedEpisode>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.episodes(
+                for: id,
+                limit: limit,
+                offset: offset,
+                market: market
+            )
+        }
+    }
+
+    /// Streams a show's episodes individually for sequential processing.
+    public func streamEpisodes(
+        for id: String,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<SimplifiedEpisode, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.episodes(
+                for: id,
+                limit: limit,
+                offset: offset,
+                market: market
+            )
+        }
     }
 }
 
@@ -108,10 +149,20 @@ extension ShowsService where Capability == UserAuthCapability {
         savedShowsProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
     }
 
+    /// Streams entire pages of saved shows for batched processing.
+    ///
+    /// - Parameter maxPages: Optional limit on the number of pages to emit.
+    public func streamSavedShowPages(maxPages: Int? = nil)
+        -> AsyncThrowingStream<Page<SavedShow>, Error>
+    {
+        savedShowsProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
+    }
+
     private func savedShowsProvider(
         defaultMaxItems: Int?
     ) -> AllItemsProvider<Capability, SavedShow> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.saved(limit: limit, offset: offset)
         }
     }

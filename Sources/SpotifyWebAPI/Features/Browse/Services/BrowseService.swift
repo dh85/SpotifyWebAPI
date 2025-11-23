@@ -106,6 +106,34 @@ extension BrowseService where Capability: PublicSpotifyCapability {
         return try await client.perform(request).albums
     }
 
+    /// Streams Spotify's new releases a page at a time.
+    ///
+    /// - Parameters:
+    ///   - country: Optional market filter for regional listings.
+    ///   - pageSize: Number of albums to request per page (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional limit on total pages fetched.
+    /// - Returns: Async sequence yielding `Page<SimplifiedAlbum>` results straight from the API.
+    public func streamNewReleasePages(
+        country: String? = nil,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SimplifiedAlbum>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.newReleases(country: country, limit: limit, offset: offset)
+        }
+    }
+
+    /// Streams Spotify's new releases item-by-item for lightweight processing.
+    public func streamNewReleases(
+        country: String? = nil,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<SimplifiedAlbum, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.newReleases(country: country, limit: limit, offset: offset)
+        }
+    }
+
     /// Get a single category used to tag content in Spotify.
     /// Corresponds to: `GET /v1/browse/categories/{id}`
     ///
@@ -154,8 +182,49 @@ extension BrowseService where Capability: PublicSpotifyCapability {
             .addingLocale(locale)
             .build()
 
-        let request = SpotifyRequest<SeveralCategoriesResponse>.get("/browse/categories", query: query)
+        let request = SpotifyRequest<SeveralCategoriesResponse>.get(
+            "/browse/categories", query: query)
         return try await client.perform(request).categories
+    }
+
+    /// Streams Spotify browse categories for infinite-scroll style UIs.
+    ///
+    /// - Parameters:
+    ///   - country: Optional market filter.
+    ///   - locale: Optional locale (e.g., "es_MX").
+    ///   - pageSize: Desired number of categories per request (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional cap on emitted pages.
+    public func streamCategoryPages(
+        country: String? = nil,
+        locale: String? = nil,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SpotifyCategory>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.categories(
+                country: country,
+                locale: locale,
+                limit: limit,
+                offset: offset
+            )
+        }
+    }
+
+    /// Streams Spotify browse categories individually, ideal for incremental UI updates.
+    public func streamCategories(
+        country: String? = nil,
+        locale: String? = nil,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<SpotifyCategory, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.categories(
+                country: country,
+                locale: locale,
+                limit: limit,
+                offset: offset
+            )
+        }
     }
 
     /// Get the list of markets (countries) where Spotify is available.

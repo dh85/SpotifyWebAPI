@@ -18,7 +18,11 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-crypto.git",
             from: "3.0.0"
-        )
+        ),
+        .package(
+            url: "https://github.com/hummingbird-project/hummingbird.git",
+            from: "2.0.0"
+        ),
     ],
     targets: [
         .target(
@@ -29,7 +33,10 @@ let package = Package(
         ),
         .testTarget(
             name: "SpotifyWebAPITests",
-            dependencies: ["SpotifyWebAPI"],
+            dependencies: [
+                "SpotifyWebAPI",
+                .product(name: "Hummingbird", package: "hummingbird"),
+            ],
             path: "Tests",
             // Sources will only look in these folders
             sources: [

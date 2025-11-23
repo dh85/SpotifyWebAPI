@@ -3,8 +3,6 @@ import Foundation
 private typealias SeveralArtistsWrapper = ArrayWrapper<Artist>
 private typealias TopTracksWrapper = ArrayWrapper<Track>
 
-private let MAXIMUM_ARTIST_ID_BATCH_SIZE = 50
-
 /// A service for fetching and managing Spotify Artist resources.
 ///
 /// ## Overview
@@ -148,6 +146,59 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
         return try await client.perform(request)
     }
 
+    /// Stream full pages of an artist's albums for incremental processing.
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the artist.
+    ///   - includeGroups: Optional album type filters (albums, singles, etc.).
+    ///   - market: An ISO 3166-1 alpha-2 country code.
+    ///   - pageSize: Desired number of albums per page (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional limit on number of pages to emit.
+    /// - Returns: An async sequence yielding `Page<SimplifiedAlbum>` values as they are fetched.
+    public func streamAlbumPages(
+        for id: String,
+        includeGroups: Set<AlbumGroup>? = nil,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SimplifiedAlbum>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.albums(
+                for: id,
+                includeGroups: includeGroups,
+                market: market,
+                limit: limit,
+                offset: offset
+            )
+        }
+    }
+
+    /// Streams individual albums from an artist discography.
+    ///
+    /// - Parameters:
+    ///   - id: The Spotify ID for the artist.
+    ///   - includeGroups: Optional album filters.
+    ///   - market: Optional market code.
+    ///   - pageSize: Desired request size (clamped 1...50). Default: 50.
+    ///   - maxItems: Optional cap on emitted albums.
+    public func streamAlbums(
+        for id: String,
+        includeGroups: Set<AlbumGroup>? = nil,
+        market: String? = nil,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<SimplifiedAlbum, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.albums(
+                for: id,
+                includeGroups: includeGroups,
+                market: market,
+                limit: limit,
+                offset: offset
+            )
+        }
+    }
+
     /// Get Spotify catalog information about an artist's top tracks by country.
     ///
     /// - Parameters:
@@ -169,6 +220,6 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
 
 extension ArtistsService {
     fileprivate func validateArtistIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(MAXIMUM_ARTIST_ID_BATCH_SIZE, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Artists.batchSize, for: ids)
     }
 }

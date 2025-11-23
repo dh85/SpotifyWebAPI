@@ -9,35 +9,35 @@ import Testing
 
 @Suite
 struct URLSessionHTTPClientTests {
-    
+
     @Test
-    func init_usesSharedSessionByDefault() {
+    func init_usesEphemeralSessionByDefault() {
         let client = URLSessionHTTPClient()
-        
-        // Verify client was created (can't access private session property)
-        let _: HTTPClient = client
+        let session = extractSession(from: client)
+
+        #expect(session !== URLSession.shared)
     }
-    
+
     @Test
     func init_acceptsCustomSession() {
         let session = URLSession.shared
         let client = URLSessionHTTPClient(session: session)
-        
+
         // Verify client was created with custom session
         let _: HTTPClient = client
     }
-    
+
     @Test
     func conformsToHTTPClient() {
         let client = URLSessionHTTPClient()
         let _: any HTTPClient = client
     }
-    
+
     @Test
     func isSendable() {
         let _: any Sendable.Type = URLSessionHTTPClient.self
     }
-    
+
     @Test
     func data_delegatesToURLSession() async throws {
         let url = URL(string: "https://delegation.test")!
@@ -52,13 +52,13 @@ struct URLSessionHTTPClientTests {
             let data = "test data".data(using: .utf8)!
             return (response, data)
         }
-        
+
         let response = try await client.data(for: URLRequest(url: url))
-        
+
         #expect(String(data: response.data, encoding: .utf8) == "test data")
         #expect(response.statusCode == 200)
     }
-    
+
     @Test
     func data_propagatesURLSessionErrors() async {
         let url = URL(string: "https://errors.test")!
@@ -66,12 +66,12 @@ struct URLSessionHTTPClientTests {
         MockURLProtocol.setHandler(for: url) { _ in
             throw URLError(.notConnectedToInternet)
         }
-        
+
         await #expect(throws: URLError.self) {
             _ = try await client.data(for: URLRequest(url: url))
         }
     }
-    
+
     @Test
     func data_preservesHTTPURLResponseMetadata() async throws {
         let url = URL(string: "https://headers.test")!
@@ -85,14 +85,14 @@ struct URLSessionHTTPClientTests {
             )!
             return (response, Data())
         }
-        
+
         let response = try await client.data(for: URLRequest(url: url))
-        
+
         #expect(response.statusCode == 204)
         #expect(response.headerFields?["X-Test"] as? String == "value")
         #expect(response.httpURLResponse?.url == url)
     }
-    
+
     @Test
     func configurationInitializerAppliesSettings() {
         let config = URLSessionHTTPClientConfiguration(
@@ -102,18 +102,18 @@ struct URLSessionHTTPClientTests {
             cachePolicy: .returnCacheDataElseLoad,
             httpAdditionalHeaders: ["X-Test": "value"]
         )
-        
+
         let client = URLSessionHTTPClient(configuration: config)
         let session = extractSession(from: client)
         let applied = session.configuration
-        
+
         #expect(applied.timeoutIntervalForRequest == config.timeoutIntervalForRequest)
         #expect(applied.timeoutIntervalForResource == config.timeoutIntervalForResource)
         #expect(applied.allowsCellularAccess == config.allowsCellularAccess)
         #expect(applied.requestCachePolicy == config.cachePolicy)
         #expect(applied.httpAdditionalHeaders?["X-Test"] as? String == "value")
     }
-    
+
     @Test
     func configurationInitializerUsesCustomHeadersInRequests() async throws {
         let config = URLSessionHTTPClientConfiguration(
@@ -124,13 +124,13 @@ struct URLSessionHTTPClientTests {
             httpAdditionalHeaders: ["X-Test": "value"]
         )
         let configurationBox = ConfigurationBox()
-        
+
         let client = URLSessionHTTPClient(configuration: config) { configuration, queue in
             configurationBox.configuration = configuration
             configuration.protocolClasses = [MockURLProtocol.self]
             return URLSession(configuration: configuration, delegate: nil, delegateQueue: queue)
         }
-        
+
         let url = URL(string: "https://configured.test")!
         var handlerCalled = false
         MockURLProtocol.setHandler(for: url) { request in
@@ -143,13 +143,17 @@ struct URLSessionHTTPClientTests {
             )!
             return (response, Data())
         }
-        
+
         let response = try await client.data(for: URLRequest(url: url))
         #expect(response.statusCode == 200)
         #expect(handlerCalled)
-        #expect(configurationBox.configuration?.httpAdditionalHeaders?["X-Test"] as? String == "value")
+        #expect(
+            configurationBox.configuration?.httpAdditionalHeaders?["X-Test"] as? String == "value")
         #expect(configurationBox.configuration?.requestCachePolicy == config.cachePolicy)
-        #expect(configurationBox.configuration?.protocolClasses?.contains(where: { $0 == MockURLProtocol.self }) == true)
+        #expect(
+            configurationBox.configuration?.protocolClasses?.contains(where: {
+                $0 == MockURLProtocol.self
+            }) == true)
     }
 }
 
@@ -180,17 +184,17 @@ private final class ConfigurationBox: @unchecked Sendable {
 
 final class MockURLProtocol: URLProtocol {
     typealias Handler = (URLRequest) throws -> (HTTPURLResponse, Data)
-    
+
     private final class HandlerStore: @unchecked Sendable {
         private var handlers: [URL: Handler] = [:]
         private let lock = NSLock()
-        
+
         func set(_ handler: Handler?, for url: URL) {
             lock.lock()
             handlers[url] = handler
             lock.unlock()
         }
-        
+
         func handler(for url: URL) -> Handler? {
             lock.lock()
             let handler = handlers[url]
@@ -198,31 +202,31 @@ final class MockURLProtocol: URLProtocol {
             return handler
         }
     }
-    
+
     private static let handlerStore = HandlerStore()
-    
+
     static func setHandler(for url: URL, handler: Handler?) {
         handlerStore.set(handler, for: url)
     }
-    
+
     private static func handler(for url: URL) -> Handler? {
         handlerStore.handler(for: url)
     }
-    
+
     override class func canInit(with request: URLRequest) -> Bool {
         guard let url = request.url else { return false }
         return handlerStore.handler(for: url) != nil
     }
-    
+
     override class func canInit(with task: URLSessionTask) -> Bool {
         guard let url = task.currentRequest?.url else { return false }
         return handlerStore.handler(for: url) != nil
     }
-    
+
     override class func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
-    
+
     override func startLoading() {
         guard
             let url = request.url,
@@ -230,7 +234,7 @@ final class MockURLProtocol: URLProtocol {
         else {
             fatalError("Handler unavailable for \(String(describing: request.url)).")
         }
-        
+
         do {
             let (response, data) = try handler(request)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -240,7 +244,7 @@ final class MockURLProtocol: URLProtocol {
             client?.urlProtocol(self, didFailWithError: error)
         }
     }
-    
+
     override func stopLoading() {
         guard let url = request.url else { return }
         Self.handlerStore.set(nil, for: url)

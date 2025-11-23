@@ -272,6 +272,26 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
         ).stream(maxItems: maxItems)
     }
 
+    /// Streams entire `Page` batches of playlist items for scenarios that prefer chunked updates.
+    ///
+    /// - Parameters mirror ``streamItems`` but replace `maxItems` with `maxPages`.
+    /// - Returns: Async sequence yielding raw playlist item pages.
+    public func streamItemPages(
+        _ id: String,
+        market: String? = nil,
+        fields: String? = nil,
+        additionalTypes: Set<AdditionalItemType>? = nil,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<PlaylistTrackItem>, Error> {
+        playlistItemsProvider(
+            id,
+            market: market,
+            fields: fields,
+            additionalTypes: additionalTypes,
+            defaultMaxItems: nil
+        ).streamPages(maxPages: maxPages)
+    }
+
     private func playlistItemsProvider(
         _ id: String,
         market: String?,
@@ -279,7 +299,8 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
         additionalTypes: Set<AdditionalItemType>?,
         defaultMaxItems: Int?
     ) -> AllItemsProvider<Capability, PlaylistTrackItem> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.items(
                 id,
                 market: market,
@@ -362,8 +383,25 @@ extension PlaylistsService where Capability == UserAuthCapability {
         try await myPlaylistsProvider(defaultMaxItems: 1000).all(maxItems: maxItems)
     }
 
-    private func myPlaylistsProvider(defaultMaxItems: Int?) -> AllItemsProvider<Capability, SimplifiedPlaylist> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+    /// Streams the current user's playlists lazily.
+    public func streamMyPlaylists(maxItems: Int? = nil)
+        -> AsyncThrowingStream<SimplifiedPlaylist, Error>
+    {
+        myPlaylistsProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
+    }
+
+    /// Streams full playlist pages, ideal for batched UI rendering or caching.
+    public func streamMyPlaylistPages(maxPages: Int? = nil)
+        -> AsyncThrowingStream<Page<SimplifiedPlaylist>, Error>
+    {
+        myPlaylistsProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
+    }
+
+    private func myPlaylistsProvider(defaultMaxItems: Int?) -> AllItemsProvider<
+        Capability, SimplifiedPlaylist
+    > {
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.myPlaylists(limit: limit, offset: offset)
         }
     }
@@ -598,17 +636,19 @@ extension PlaylistsService where Capability == UserAuthCapability {
 
 extension PlaylistsService {
     fileprivate func validateURICount(_ uris: [String]) throws {
-        guard uris.count <= 100 else {
+        guard uris.count <= SpotifyAPILimits.Playlists.itemMutationBatchSize else {
             throw SpotifyClientError.invalidRequest(
-                reason: "Maximum of 100 URIs allowed per request. You provided \(uris.count).")
+                reason:
+                    "Maximum of \(SpotifyAPILimits.Playlists.itemMutationBatchSize) URIs allowed per request. You provided \(uris.count)."
+            )
         }
     }
 
     fileprivate func validatePositionCount(_ positions: [Int]) throws {
-        guard positions.count <= 100 else {
+        guard positions.count <= SpotifyAPILimits.Playlists.positionMutationBatchSize else {
             throw SpotifyClientError.invalidRequest(
                 reason:
-                    "Maximum of 100 positions allowed per request. You provided \(positions.count)."
+                    "Maximum of \(SpotifyAPILimits.Playlists.positionMutationBatchSize) positions allowed per request. You provided \(positions.count)."
             )
         }
     }

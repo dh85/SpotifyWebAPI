@@ -43,7 +43,7 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
     public init(
         config: SpotifyAuthConfig,
         httpClient: HTTPClient = URLSessionHTTPClient(),
-        tokenStore: TokenStore = FileTokenStore(),
+        tokenStore: TokenStore = TokenStoreFactory.defaultStore(),
         componentsBuilder: @escaping (URL) -> URLComponents? = {
             URLComponents(url: $0, resolvingAgainstBaseURL: false)
         }
@@ -84,7 +84,8 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
     /// - Returns: The access and refresh tokens.
     /// - Throws: ``SpotifyAuthError`` if the callback is invalid or token exchange fails.
     public func handleCallback(_ url: URL) async throws -> SpotifyTokens {
-        let (code, state) = try parseAuthorizationCallback(url, componentsBuilder: componentsBuilder)
+        let (code, state) = try parseAuthorizationCallback(
+            url, componentsBuilder: componentsBuilder)
         guard let expected = currentState, expected == state else {
             throw SpotifyAuthError.stateMismatch
         }

@@ -51,6 +51,7 @@ extension SpotifyClient {
 
             let page = try await fetchPage(clampedPageSize, offset)
             all.append(contentsOf: page.items)
+            try Task.checkCancellation()
 
             if let maxItems, all.count >= maxItems {
                 return Array(all.prefix(maxItems))

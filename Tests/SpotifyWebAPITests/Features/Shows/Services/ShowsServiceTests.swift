@@ -107,6 +107,70 @@ struct ShowsServiceTests {
     }
 
     @Test
+    func streamEpisodePagesBuildsRequests() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "show_episodes.json",
+            of: SimplifiedEpisode.self,
+            offset: 0,
+            limit: 30,
+            total: 30,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var offsets: [Int] = []
+        let stream = await client.shows.streamEpisodePages(
+            for: "showid",
+            market: "CA",
+            pageSize: 30,
+            maxPages: 1
+        )
+        for try await page in stream {
+            offsets.append(page.offset)
+        }
+
+        #expect(offsets == [0])
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/shows/showid/episodes", method: "GET")
+        expectMarketParameter(request, market: "CA")
+        #expect(request?.url?.query()?.contains("limit=30") == true)
+    }
+
+    @Test
+    func streamEpisodesEmitsItems() async throws {
+        let (client, http) = makeUserAuthClient()
+        let response = try makePaginatedResponse(
+            fixture: "show_episodes.json",
+            of: SimplifiedEpisode.self,
+            offset: 0,
+            limit: 40,
+            total: 40,
+            hasNext: false
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+
+        var names: [String] = []
+        let stream = await client.shows.streamEpisodes(
+            for: "showid",
+            market: "GB",
+            pageSize: 40,
+            maxItems: 80
+        )
+        for try await episode in stream {
+            if let name = episode.name {
+                names.append(name)
+            }
+        }
+
+        #expect(names.isEmpty == false)
+        let request = await http.firstRequest
+        expectRequest(request, path: "/v1/shows/showid/episodes", method: "GET")
+        expectMarketParameter(request, market: "GB")
+        #expect(request?.url?.query()?.contains("limit=40") == true)
+    }
+
+    @Test
     func savedBuildsCorrectRequest() async throws {
         try await withMockServiceClient(fixture: "shows_saved.json") { client, http in
             let page = try await client.shows.saved(limit: 10, offset: 5)
@@ -221,6 +285,5 @@ struct ShowsServiceTests {
             _ = try await client.shows.checkSaved(makeIDs(count: 51))
         }
     }
-
 
 }

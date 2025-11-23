@@ -142,12 +142,9 @@ import Testing
             }
         }
 
-        // Wait until the first fetch occurs
-        while await recorder.count == 0 {
-            await Task.yield()
+        let fetchCountBeforeCancel = await recorder.waitForCount(atLeast: 1) { _ in
+            collectingTask.cancel()
         }
-
-        collectingTask.cancel()
 
         do {
             _ = try await collectingTask.value
@@ -159,15 +156,59 @@ import Testing
         }
 
         let fetchCount = await recorder.count
-        #expect(fetchCount == 1)
+        #expect(fetchCount == fetchCountBeforeCancel)
     }
 }
 
 private actor FetchRecorder {
     private(set) var count: Int = 0
+    private var waiters: [CountWaiter] = []
+
+    private struct CountWaiter {
+        let target: Int
+        let continuation: CheckedContinuation<Int, Never>
+        let handler: (@Sendable (Int) -> Void)?
+    }
 
     func record(offset: Int) {
         _ = offset
         count += 1
+        fulfillWaiters()
+    }
+
+    func waitForCount(
+        atLeast target: Int,
+        onSatisfy: (@Sendable (Int) -> Void)? = nil
+    ) async -> Int {
+        if count >= target {
+            onSatisfy?(count)
+            return count
+        }
+
+        return await withCheckedContinuation { continuation in
+            waiters.append(
+                CountWaiter(
+                    target: target,
+                    continuation: continuation,
+                    handler: onSatisfy
+                )
+            )
+        }
+    }
+
+    private func fulfillWaiters() {
+        guard !waiters.isEmpty else { return }
+
+        var remaining: [CountWaiter] = []
+        for waiter in waiters {
+            if count >= waiter.target {
+                waiter.continuation.resume(returning: count)
+                waiter.handler?(count)
+            } else {
+                remaining.append(waiter)
+            }
+        }
+
+        waiters = remaining
     }
 }

@@ -98,6 +98,11 @@ public actor SpotifyClient<Capability: Sendable> {
         httpClient: HTTPClient = URLSessionHTTPClient(),
         configuration: SpotifyClientConfiguration = .default
     ) {
+        do {
+            try configuration.validate()
+        } catch {
+            preconditionFailure("Invalid SpotifyClientConfiguration: \(error)")
+        }
         self.backend = backend
         self.httpClient = httpClient
         self.configuration = configuration
@@ -188,7 +193,7 @@ extension SpotifyClient where Capability == UserAuthCapability {
         redirectURI: URL,
         scopes: Set<SpotifyScope>,
         showDialog: Bool = false,
-        tokenStore: TokenStore = FileTokenStore(),
+        tokenStore: TokenStore = TokenStoreFactory.defaultStore(),
         httpClient: HTTPClient = URLSessionHTTPClient(),
         pkceProvider: PKCEProvider = DefaultPKCEProvider(),
         configuration: SpotifyClientConfiguration = .default
@@ -230,7 +235,7 @@ extension SpotifyClient where Capability == UserAuthCapability {
         redirectURI: URL,
         scopes: Set<SpotifyScope>,
         showDialog: Bool = false,
-        tokenStore: TokenStore = FileTokenStore(),
+        tokenStore: TokenStore = TokenStoreFactory.defaultStore(),
         httpClient: HTTPClient = URLSessionHTTPClient(),
         configuration: SpotifyClientConfiguration = .default
     ) -> SpotifyClient {

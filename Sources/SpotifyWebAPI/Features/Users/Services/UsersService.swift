@@ -106,13 +106,14 @@ public struct UsersService<Capability: Sendable>: Sendable {
     }
 
     private func validateUserIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(50, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Users.followBatchSize, for: ids)
     }
 
     private func validatePlaylistFollowUserIDs(_ ids: Set<String>) throws {
-        guard ids.count <= 5 else {
+        let maximum = SpotifyAPILimits.Users.playlistFollowerCheckBatchSize
+        guard ids.count <= maximum else {
             throw SpotifyClientError.invalidRequest(
-                reason: "Maximum of 5 user IDs allowed. You provided \(ids.count)."
+                reason: "Maximum of \(maximum) user IDs allowed. You provided \(ids.count)."
             )
         }
     }
@@ -193,6 +194,33 @@ extension UsersService where Capability == UserAuthCapability {
         return try await client.perform(request)
     }
 
+    /// Streams entire pages of the current user's top artists.
+    ///
+    /// - Parameters:
+    ///   - range: Time frame for affinity calculations.
+    ///   - pageSize: Number of artists per request (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional limit on the number of pages to emit.
+    public func streamTopArtistPages(
+        range: TimeRange = .mediumTerm,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<Artist>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.topArtists(range: range, limit: limit, offset: offset)
+        }
+    }
+
+    /// Streams individual top artists for continuous affinity processing.
+    public func streamTopArtists(
+        range: TimeRange = .mediumTerm,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<Artist, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.topArtists(range: range, limit: limit, offset: offset)
+        }
+    }
+
     /// Get the current user's top tracks based on calculated affinity.
     ///
     /// - Parameters:
@@ -214,6 +242,33 @@ extension UsersService where Capability == UserAuthCapability {
             .build()
         let request = SpotifyRequest<Page<Track>>.get("/me/top/tracks", query: query)
         return try await client.perform(request)
+    }
+
+    /// Streams entire pages of the current user's top tracks for chunked analytics.
+    ///
+    /// - Parameters:
+    ///   - range: Time frame for affinity calculations.
+    ///   - pageSize: Desired number of tracks per request (clamped to 1...50). Default: 50.
+    ///   - maxPages: Optional cap on total pages emitted.
+    public func streamTopTrackPages(
+        range: TimeRange = .mediumTerm,
+        pageSize: Int = 50,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<Track>, Error> {
+        client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
+            try await self.topTracks(range: range, limit: limit, offset: offset)
+        }
+    }
+
+    /// Streams individual top tracks for sequential analytics.
+    public func streamTopTracks(
+        range: TimeRange = .mediumTerm,
+        pageSize: Int = 50,
+        maxItems: Int? = nil
+    ) -> AsyncThrowingStream<Track, Error> {
+        client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
+            try await self.topTracks(range: range, limit: limit, offset: offset)
+        }
     }
 
     /// Get the current user's followed artists.

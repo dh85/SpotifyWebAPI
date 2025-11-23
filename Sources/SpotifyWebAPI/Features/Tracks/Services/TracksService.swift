@@ -60,7 +60,7 @@ public struct TracksService<Capability: Sendable>: Sendable {
     }
 
     private func validateTrackIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(50, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Tracks.catalogBatchSize, for: ids)
     }
 }
 
@@ -151,11 +151,24 @@ extension TracksService where Capability == UserAuthCapability {
         savedTracksProvider(market: market, defaultMaxItems: nil).stream(maxItems: maxItems)
     }
 
+    /// Streams saved tracks page-by-page, allowing callers to batch work per response.
+    ///
+    /// - Parameters:
+    ///   - market: Optional market filter for track relinking.
+    ///   - maxPages: Optional limit on the number of pages to emit.
+    public func streamSavedTrackPages(
+        market: String? = nil,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SavedTrack>, Error> {
+        savedTracksProvider(market: market, defaultMaxItems: nil).streamPages(maxPages: maxPages)
+    }
+
     private func savedTracksProvider(
         market: String?,
         defaultMaxItems: Int?
     ) -> AllItemsProvider<Capability, SavedTrack> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.saved(limit: limit, offset: offset, market: market)
         }
     }

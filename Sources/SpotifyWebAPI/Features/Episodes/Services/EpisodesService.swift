@@ -2,8 +2,6 @@ import Foundation
 
 private typealias SeveralEpisodesWrapper = ArrayWrapper<Episode>
 
-private let MAXIMUM_EPISODE_ID_BATCH_SIZE = 50
-
 /// A service for fetching and managing Spotify Episode (Podcast Episode) resources.
 public struct EpisodesService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
@@ -13,7 +11,7 @@ public struct EpisodesService<Capability: Sendable>: Sendable {
 // MARK: - Helpers
 extension EpisodesService {
     private func validateEpisodeIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(MAXIMUM_EPISODE_ID_BATCH_SIZE, for: ids)
+        try validateMaxIdCount(SpotifyAPILimits.Episodes.batchSize, for: ids)
     }
 }
 
@@ -100,11 +98,24 @@ extension EpisodesService where Capability == UserAuthCapability {
         savedEpisodesProvider(market: market, defaultMaxItems: nil).stream(maxItems: maxItems)
     }
 
+    /// Streams full pages of saved episodes, ideal for batching progress updates.
+    ///
+    /// - Parameters:
+    ///   - market: Optional market code for episode relinking.
+    ///   - maxPages: Optional limit on emitted pages.
+    public func streamSavedEpisodePages(
+        market: String? = nil,
+        maxPages: Int? = nil
+    ) -> AsyncThrowingStream<Page<SavedEpisode>, Error> {
+        savedEpisodesProvider(market: market, defaultMaxItems: nil).streamPages(maxPages: maxPages)
+    }
+
     private func savedEpisodesProvider(
         market: String?,
         defaultMaxItems: Int?
     ) -> AllItemsProvider<Capability, SavedEpisode> {
-        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) { limit, offset in
+        client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
+            limit, offset in
             try await self.saved(limit: limit, offset: offset, market: market)
         }
     }
@@ -128,7 +139,8 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-episodes-user)
     public func remove(_ ids: Set<String>) async throws {
         try validateEpisodeIDs(ids)
-        try await performLibraryOperation(.delete, endpoint: "/me/episodes", ids: ids, client: client)
+        try await performLibraryOperation(
+            .delete, endpoint: "/me/episodes", ids: ids, client: client)
     }
 
     /// Check if one or more episodes are already saved in the current Spotify user's library.

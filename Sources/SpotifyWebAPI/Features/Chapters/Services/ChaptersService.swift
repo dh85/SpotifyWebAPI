@@ -2,8 +2,6 @@ import Foundation
 
 private typealias SeveralChaptersWrapper = ArrayWrapper<Chapter>
 
-private let MAXIMUM_CHAPTER_ID_BATCH_SIZE = 50
-
 /// A service for fetching Spotify Chapter resources.
 ///
 /// Chapters are individual components of an audiobook.
@@ -15,7 +13,7 @@ public struct ChaptersService<Capability: Sendable>: Sendable {
 // MARK: - Helpers
 extension ChaptersService {
     private func validateChapterIDs(_ ids: [String]) throws {
-        try validateMaxIdCount(MAXIMUM_CHAPTER_ID_BATCH_SIZE, for: Set(ids))
+        try validateMaxIdCount(SpotifyAPILimits.Chapters.batchSize, for: Set(ids))
     }
 }
 
