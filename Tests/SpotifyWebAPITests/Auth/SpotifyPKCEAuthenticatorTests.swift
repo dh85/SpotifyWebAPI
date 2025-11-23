@@ -8,13 +8,18 @@ struct SpotifyPKCEAuthenticatorTests {
 
     // MARK: - Shared helpers
 
+    private func makeHarness(
+        response: SimpleMockHTTPClient.Response = .success(
+            data: Data(),
+            statusCode: 200
+        ),
+        tokens: SpotifyTokens? = nil
+    ) -> AuthenticatorTestHarness {
+        AuthenticatorTestHarness(response: response, tokens: tokens)
+    }
+
     private func makeConfig() -> SpotifyAuthConfig {
-        .pkce(
-            clientID: "TEST_CLIENT_ID",
-            redirectURI: URL(string: "myapp://callback")!,
-            scopes: [.userReadEmail, .playlistReadPrivate],
-            showDialog: true
-        )
+        AuthTestFixtures.pkceConfig()
     }
 
     // MARK: - SpotifyAuthError Equatable
@@ -42,16 +47,9 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let config = makeConfig()
-        let dummyHTTP = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-
-        let auth = SpotifyPKCEAuthenticator(
-            config: config,
-            pkceProvider: FixedPKCEProvider(pair: fixedPKCE),
-            httpClient: dummyHTTP,
-            tokenStore: InMemoryTokenStore()
+        let harness = makeHarness()
+        let auth = harness.makePKCEAuthenticator(
+            pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         let url = try await auth.makeAuthorizationURL()
@@ -83,21 +81,16 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let tokenJSON = makeTokenJSON(
+        let tokenJSON = AuthTestFixtures.tokenResponse(
             accessToken: "ACCESS123",
             refreshToken: "REFRESH123"
         )
 
-        let mockHTTP = SimpleMockHTTPClient(
+        let harness = makeHarness(
             response: .success(data: tokenJSON, statusCode: 200)
         )
-
-        let tokenStore = InMemoryTokenStore()
-        let auth = SpotifyPKCEAuthenticator(
-            config: makeConfig(),
-            pkceProvider: FixedPKCEProvider(pair: fixedPKCE),
-            httpClient: mockHTTP,
-            tokenStore: tokenStore
+        let auth = harness.makePKCEAuthenticator(
+            pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         _ = try await auth.makeAuthorizationURL()
@@ -114,10 +107,10 @@ struct SpotifyPKCEAuthenticatorTests {
         #expect(tokens.scope == "user-read-email playlist-read-private")
         #expect(tokens.isExpired == false)
 
-        let stored = try await tokenStore.load()
+        let stored = try await harness.tokenStore.load()
         #expect(stored == tokens)
 
-        #expect(mockHTTP.recordedRequests.count == 1)
+        #expect(harness.httpClient.recordedRequests.count == 1)
     }
 
     @Test
@@ -128,19 +121,15 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let mockHTTP = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-
+        let url = URL(string: "myapp://callback?code=AUTH&state=STATE123")!
+        let harness = makeHarness()
         let auth = SpotifyPKCEAuthenticator(
             config: makeConfig(),
             pkceProvider: FixedPKCEProvider(pair: fixedPKCE),
-            httpClient: mockHTTP,
-            tokenStore: InMemoryTokenStore(),
+            httpClient: harness.httpClient,
+            tokenStore: harness.tokenStore,
             componentsBuilder: { _ in nil }
         )
-
-        let url = URL(string: "myapp://callback?code=AUTH&state=STATE123")!
 
         await #expect(throws: SpotifyAuthError.missingCode) {
             _ = try await auth.handleCallback(url)
@@ -155,15 +144,9 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let mockHTTP = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-
-        let auth = SpotifyPKCEAuthenticator(
-            config: makeConfig(),
-            pkceProvider: FixedPKCEProvider(pair: fixedPKCE),
-            httpClient: mockHTTP,
-            tokenStore: InMemoryTokenStore()
+        let harness = makeHarness()
+        let auth = harness.makePKCEAuthenticator(
+            pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         _ = try! await auth.makeAuthorizationURL()
@@ -183,15 +166,9 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let mockHTTP = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-
-        let auth = SpotifyPKCEAuthenticator(
-            config: makeConfig(),
-            pkceProvider: FixedPKCEProvider(pair: fixedPKCE),
-            httpClient: mockHTTP,
-            tokenStore: InMemoryTokenStore()
+        let harness = makeHarness()
+        let auth = harness.makePKCEAuthenticator(
+            pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         _ = try! await auth.makeAuthorizationURL()
@@ -333,7 +310,7 @@ struct SpotifyPKCEAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let newJSON = makeTokenJSON(
+        let newJSON = AuthTestFixtures.tokenResponse(
             accessToken: "NEW_ACCESS",
             refreshToken: nil
         )
@@ -387,7 +364,7 @@ struct SpotifyPKCEAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let newJSON = makeTokenJSON(
+        let newJSON = AuthTestFixtures.tokenResponse(
             accessToken: "NEW_FROM_REFRESH",
             refreshToken: "REFRESH_NEW"
         )
@@ -429,7 +406,7 @@ struct SpotifyPKCEAuthenticatorTests {
         refreshAccessToken_successUsesExistingRefreshTokenWhenMissingInResponse()
         async throws
     {
-        let json = makeTokenJSON(
+        let json = AuthTestFixtures.tokenResponse(
             accessToken: "NEW_ACCESS",
             refreshToken: nil
         )

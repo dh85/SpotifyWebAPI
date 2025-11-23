@@ -11,11 +11,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
     private func makeConfig(
         scopes: Set<SpotifyScope> = []
     ) -> SpotifyAuthConfig {
-        .clientCredentials(
-            clientID: "TEST_CLIENT_ID",
-            clientSecret: "TEST_SECRET",
-            scopes: scopes
-        )
+        AuthTestFixtures.clientCredentialsConfig(scopes: scopes)
     }
 
     private func makeTokenJSON(
@@ -24,15 +20,23 @@ struct SpotifyClientCredentialsAuthenticatorTests {
         scope: String? = nil,
         tokenType: String = "Bearer"
     ) -> Data {
-        var dict: [String: Any] = [
-            "access_token": accessToken,
-            "token_type": tokenType,
-            "expires_in": expiresIn,
-        ]
-        if let scope {
-            dict["scope"] = scope
-        }
-        return try! JSONSerialization.data(withJSONObject: dict, options: [])
+        AuthTestFixtures.tokenResponse(
+            accessToken: accessToken,
+            refreshToken: nil,
+            expiresIn: expiresIn,
+            scope: scope,
+            tokenType: tokenType
+        )
+    }
+
+    private func makeHarness(
+        response: SimpleMockHTTPClient.Response = .success(
+            data: Data(),
+            statusCode: 200
+        ),
+        tokens: SpotifyTokens? = nil
+    ) -> AuthenticatorTestHarness {
+        AuthenticatorTestHarness(response: response, tokens: tokens)
     }
 
     // MARK: - appAccessToken happy paths
@@ -96,17 +100,8 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let store = InMemoryTokenStore(tokens: stored)
-
-        let http = SimpleMockHTTPClient(
-            response: .success(data: Data(), statusCode: 200)
-        )
-
-        let auth = SpotifyClientCredentialsAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
+        let harness = makeHarness(tokens: stored)
+        let auth = harness.makeClientCredentialsAuthenticator()
 
         let token = try await auth.appAccessToken()
         #expect(token.accessToken == "STORED_ACCESS")
@@ -122,25 +117,18 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let store = InMemoryTokenStore(tokens: expired)
-
         let json = makeTokenJSON(accessToken: "NEW_ACCESS", expiresIn: 3600)
-
-        let http = SimpleMockHTTPClient(
-            response: .success(data: json, statusCode: 200)
+        let harness = makeHarness(
+            response: .success(data: json, statusCode: 200),
+            tokens: expired
         )
-
-        let auth = SpotifyClientCredentialsAuthenticator(
-            config: makeConfig(),
-            httpClient: http,
-            tokenStore: store
-        )
+        let auth = harness.makeClientCredentialsAuthenticator()
 
         let token = try await auth.appAccessToken()
         #expect(token.accessToken == "NEW_ACCESS")
 
         // It should have persisted back
-        let persisted = try await store.load()
+        let persisted = try await harness.tokenStore.load()
         #expect(persisted?.accessToken == "NEW_ACCESS")
     }
 
@@ -263,20 +251,13 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             scope: nil,
             tokenType: "Bearer"
         )
-        
-        let store = InMemoryTokenStore(tokens: stored)
-        
-        let auth = SpotifyClientCredentialsAuthenticator(
-            config: makeConfig(),
-            httpClient: SimpleMockHTTPClient(
-                response: .success(data: Data(), statusCode: 200)
-            ),
-            tokenStore: store
-        )
+
+        let harness = makeHarness(tokens: stored)
+        let auth = harness.makeClientCredentialsAuthenticator()
         
         let loaded = try await auth.loadPersistedTokens()
         #expect(loaded?.accessToken == "STORED")
-        
+
         // Second call should return cached
         let cached = try await auth.loadPersistedTokens()
         #expect(cached?.accessToken == "STORED")
