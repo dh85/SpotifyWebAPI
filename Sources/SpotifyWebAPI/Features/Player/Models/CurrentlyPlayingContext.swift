@@ -10,31 +10,31 @@ import Foundation
 public struct CurrentlyPlayingContext: Decodable, Sendable, Equatable {
     /// The device that is currently active. May be `nil` in some contexts.
     public let device: SpotifyDevice?
-    
+
     /// The repeat mode. May be `nil` in some contexts.
     public let repeatState: RepeatMode?
-    
+
     /// Whether shuffle is on. May be `nil` in some contexts.
     public let shuffleState: Bool?
-    
+
     /// The context from which the track is playing (e.g., playlist, album).
     public let context: PlaybackContext?
-    
+
     /// Unix timestamp (in seconds) when the data was fetched.
     public let timestamp: Date
-    
+
     /// Progress into the currently playing track or episode in milliseconds.
     public let progressMs: Int?
-    
+
     /// Whether something is currently playing.
     public let isPlaying: Bool
-    
+
     /// The currently playing track or episode.
     public let item: PlayableItem?
-    
+
     /// The type of the currently playing item (e.g., "track", "episode", "ad").
     public let currentlyPlayingType: String
-    
+
     /// Actions that are currently disallowed.
     public let actions: Actions
 
@@ -79,15 +79,10 @@ public struct CurrentlyPlayingContext: Decodable, Sendable, Equatable {
         self.actions = try container.decode(Actions.self, forKey: .actions)
 
         // Handle the polymorphic 'item' based on 'currentlyPlayingType'
-        switch self.currentlyPlayingType {
-        case "track":
-            self.item = .track(try container.decode(Track.self, forKey: .item))
-        case "episode":
-            self.item = .episode(
-                try container.decode(Episode.self, forKey: .item)
-            )
-        default:
-            self.item = nil
-        }
+        self.item = try PlayableItem.decode(
+            from: container,
+            forKey: .item,
+            typeString: currentlyPlayingType
+        )
     }
 }

@@ -29,16 +29,6 @@ struct SpotifyClientCredentialsAuthenticatorTests {
         )
     }
 
-    private func makeHarness(
-        response: SimpleMockHTTPClient.Response = .success(
-            data: Data(),
-            statusCode: 200
-        ),
-        tokens: SpotifyTokens? = nil
-    ) -> AuthenticatorTestHarness {
-        AuthenticatorTestHarness(response: response, tokens: tokens)
-    }
-
     // MARK: - appAccessToken happy paths
 
     @Test
@@ -100,7 +90,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let harness = makeHarness(tokens: stored)
+        let harness = AuthenticatorTestHarness.makeHarness(tokens: stored)
         let auth = harness.makeClientCredentialsAuthenticator()
 
         let token = try await auth.appAccessToken()
@@ -118,7 +108,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
         )
 
         let json = makeTokenJSON(accessToken: "NEW_ACCESS", expiresIn: 3600)
-        let harness = makeHarness(
+        let harness = AuthenticatorTestHarness.makeHarness(
             response: .success(data: json, statusCode: 200),
             tokens: expired
         )
@@ -163,7 +153,8 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             #expect(authHeader.hasPrefix("Basic "))
             let base64 = String(authHeader.dropFirst("Basic ".count))
             if let decoded = Data(base64Encoded: base64),
-               let credentials = String(data: decoded, encoding: .utf8) {
+                let credentials = String(data: decoded, encoding: .utf8)
+            {
                 #expect(credentials == "TEST_CLIENT_ID:TEST_SECRET")
             } else {
                 Issue.record("Failed to decode Basic Auth credentials")
@@ -171,7 +162,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
         } else {
             Issue.record("Expected Authorization header")
         }
-        
+
         if let bodyData = request.httpBody,
             let body = String(data: bodyData, encoding: .utf8)
         {
@@ -200,34 +191,34 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             tokenStore: nil
         )
 
-        let data = auth.__test_formURLEncodedBody(items: [])
+        let data = __test_formURLEncodedBody(items: [])
         let string = String(data: data, encoding: .utf8)
         #expect(string == "")
     }
-    
+
     // MARK: - loadPersistedTokens Tests
-    
+
     @Test
     func loadPersistedTokens_returnsCachedTokens() async throws {
         let json = makeTokenJSON(accessToken: "CACHED", expiresIn: 3600)
         let http = SimpleMockHTTPClient(
             response: .success(data: json, statusCode: 200)
         )
-        
+
         let auth = SpotifyClientCredentialsAuthenticator(
             config: makeConfig(),
             httpClient: http,
             tokenStore: nil
         )
-        
+
         // First call to populate cache
         _ = try await auth.appAccessToken()
-        
+
         // loadPersistedTokens should return cached
         let loaded = try await auth.loadPersistedTokens()
         #expect(loaded?.accessToken == "CACHED")
     }
-    
+
     @Test
     func loadPersistedTokens_returnsNilWhenNoStore() async throws {
         let auth = SpotifyClientCredentialsAuthenticator(
@@ -237,11 +228,11 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             ),
             tokenStore: nil
         )
-        
+
         let loaded = try await auth.loadPersistedTokens()
         #expect(loaded == nil)
     }
-    
+
     @Test
     func loadPersistedTokens_loadsFromStoreAndCaches() async throws {
         let stored = SpotifyTokens(
@@ -252,9 +243,9 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             tokenType: "Bearer"
         )
 
-        let harness = makeHarness(tokens: stored)
+        let harness = AuthenticatorTestHarness.makeHarness(tokens: stored)
         let auth = harness.makeClientCredentialsAuthenticator()
-        
+
         let loaded = try await auth.loadPersistedTokens()
         #expect(loaded?.accessToken == "STORED")
 
@@ -262,7 +253,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
         let cached = try await auth.loadPersistedTokens()
         #expect(cached?.accessToken == "STORED")
     }
-    
+
     @Test
     func requestNewAccessToken_throwsWhenNoClientSecret() async throws {
         // Use PKCE config which has no clientSecret
@@ -271,7 +262,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             redirectURI: URL(string: "test://callback")!,
             scopes: []
         )
-        
+
         let auth = SpotifyClientCredentialsAuthenticator(
             config: configWithoutSecret,
             httpClient: SimpleMockHTTPClient(
@@ -279,7 +270,7 @@ struct SpotifyClientCredentialsAuthenticatorTests {
             ),
             tokenStore: nil
         )
-        
+
         await #expect(throws: SpotifyAuthError.unexpectedResponse) {
             _ = try await auth.appAccessToken()
         }

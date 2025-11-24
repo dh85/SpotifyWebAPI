@@ -256,8 +256,10 @@ extension AlbumsService where Capability == UserAuthCapability {
 
 // MARK: - Helper Methods
 
-extension AlbumsService {
+extension AlbumsService: ServiceIDValidating {
+    static var maxBatchSize: Int { SpotifyAPILimits.Albums.batchSize }
+
     fileprivate func validateAlbumIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(SpotifyAPILimits.Albums.batchSize, for: ids)
+        try validateIDs(ids)
     }
 }

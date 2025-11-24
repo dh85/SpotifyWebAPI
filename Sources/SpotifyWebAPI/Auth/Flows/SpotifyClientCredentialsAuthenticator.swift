@@ -41,7 +41,7 @@ public actor SpotifyClientCredentialsAuthenticator {
     }
 
     // MARK: - Token persistence
-    
+
     /// Load tokens from persistent storage if available.
     ///
     /// - Returns: The stored tokens, or nil if no token store is configured or no tokens exist.
@@ -98,7 +98,7 @@ public actor SpotifyClientCredentialsAuthenticator {
             throw SpotifyAuthError.unexpectedResponse
         }
         var items: [URLQueryItem] = [
-            URLQueryItem(name: "grant_type", value: "client_credentials"),
+            URLQueryItem(name: "grant_type", value: "client_credentials")
         ]
         if !config.scopes.isEmpty {
             items.append(
@@ -130,10 +130,4 @@ public actor SpotifyClientCredentialsAuthenticator {
             tokenType: tokens.tokenType
         )
     }
-
-    #if DEBUG
-        nonisolated func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
-            SpotifyAuthHTTP.formURLEncodedBody(from: items)
-        }
-    #endif
 }

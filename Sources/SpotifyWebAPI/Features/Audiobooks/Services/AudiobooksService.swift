@@ -9,9 +9,11 @@ public struct AudiobooksService<Capability: Sendable>: Sendable {
 }
 
 // MARK: - Helpers
-extension AudiobooksService {
+extension AudiobooksService: ServiceIDValidating {
+    static var maxBatchSize: Int { SpotifyAPILimits.Audiobooks.batchSize }
+
     private func validateAudiobookIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(SpotifyAPILimits.Audiobooks.batchSize, for: ids)
+        try validateIDs(ids)
     }
 }
 

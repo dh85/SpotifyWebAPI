@@ -9,9 +9,11 @@ public struct ShowsService<Capability: Sendable>: Sendable {
 }
 
 // MARK: - Helpers
-extension ShowsService {
+extension ShowsService: ServiceIDValidating {
+    static var maxBatchSize: Int { SpotifyAPILimits.Shows.batchSize }
+
     private func validateShowIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(SpotifyAPILimits.Shows.batchSize, for: ids)
+        try validateIDs(ids)
     }
 }
 

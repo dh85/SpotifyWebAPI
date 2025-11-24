@@ -60,16 +60,11 @@ public struct PlaybackState: Decodable, Sendable, Equatable {
         self.timestamp = dateFromUnixMilliseconds(timestampMs)
 
         // Handle the polymorphic 'item' based on 'currentlyPlayingType'
-        switch self.currentlyPlayingType {
-        case .track:
-            self.item = .track(try container.decode(Track.self, forKey: .item))
-        case .episode:
-            self.item = .episode(
-                try container.decode(Episode.self, forKey: .item)
-            )
-        default:
-            self.item = nil
-        }
+        self.item = try PlayableItem.decode(
+            from: container,
+            forKey: .item,
+            typeString: currentlyPlayingType.rawValue
+        )
     }
 }
 

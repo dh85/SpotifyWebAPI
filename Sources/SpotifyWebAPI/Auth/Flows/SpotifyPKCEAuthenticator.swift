@@ -166,10 +166,4 @@ public actor SpotifyPKCEAuthenticator: TokenRefreshing {
             existingRefreshToken: nil
         )
     }
-
-    #if DEBUG
-        func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
-            SpotifyAuthHTTP.formURLEncodedBody(from: items)
-        }
-    #endif
 }

@@ -3,7 +3,7 @@ import Foundation
 /// A full album object.
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-album)
-public struct Album: Codable, Sendable, Equatable, SpotifyResource {
+public struct Album: Codable, Sendable, Equatable, StandardSpotifyResource {
     /// Album type (e.g., "album", "single", "compilation").
     public let albumType: AlbumType?
     /// Total number of tracks.

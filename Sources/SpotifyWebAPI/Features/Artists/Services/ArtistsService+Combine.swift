@@ -48,9 +48,7 @@
             market: String,
             priority: TaskPriority? = nil
         ) -> AnyPublisher<[Track], Error> {
-            publisher(priority: priority) { service in
-                try await service.topTracks(for: id, market: market)
-            }
+            makePublisher(id, market, priority: priority, operation: Self.topTracks)
         }
     }
 

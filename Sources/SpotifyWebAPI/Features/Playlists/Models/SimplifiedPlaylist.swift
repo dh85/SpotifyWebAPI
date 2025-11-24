@@ -3,7 +3,7 @@ import Foundation
 /// A simplified playlist object.
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
-public struct SimplifiedPlaylist: Codable, Sendable, Equatable {
+public struct SimplifiedPlaylist: Codable, Sendable, Equatable, SpotifyResource {
     /// Whether the playlist is collaborative.
     public let collaborative: Bool
     /// The playlist description. Can be null.

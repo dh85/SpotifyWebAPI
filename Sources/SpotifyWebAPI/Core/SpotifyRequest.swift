@@ -2,14 +2,14 @@ import Foundation
 
 /// A description of an API request and its expected response type.
 public struct SpotifyRequest<Response: Decodable>: Sendable {
-    public let method: String
+    public let method: HTTPMethod
     public let path: String
     public let query: [URLQueryItem]
     public let body: (any Encodable & Sendable)?
     public let requiresAuth: Bool  // Implied: all Spotify API calls require auth
 
     public init(
-        method: String,
+        method: HTTPMethod,
         path: String,
         query: [URLQueryItem],
         body: (any Encodable & Sendable)?
@@ -25,7 +25,7 @@ public struct SpotifyRequest<Response: Decodable>: Sendable {
 
     /// Creates a GET request.
     public static func get(_ path: String, query: [URLQueryItem] = []) -> Self {
-        Self(method: "GET", path: path, query: query, body: nil)
+        Self(method: .get, path: path, query: query, body: nil)
     }
 
     /// Creates a PUT request.
@@ -34,7 +34,7 @@ public struct SpotifyRequest<Response: Decodable>: Sendable {
         query: [URLQueryItem] = [],
         body: (any Encodable & Sendable)? = nil
     ) -> Self {
-        Self(method: "PUT", path: path, query: query, body: body)
+        Self(method: .put, path: path, query: query, body: body)
     }
 
     /// Creates a POST request.
@@ -43,7 +43,7 @@ public struct SpotifyRequest<Response: Decodable>: Sendable {
         query: [URLQueryItem] = [],
         body: (any Encodable & Sendable)? = nil
     ) -> Self {
-        Self(method: "POST", path: path, query: query, body: body)
+        Self(method: .post, path: path, query: query, body: body)
     }
 
     /// Creates a DELETE request.
@@ -52,6 +52,6 @@ public struct SpotifyRequest<Response: Decodable>: Sendable {
         query: [URLQueryItem] = [],
         body: (any Encodable & Sendable)? = nil
     ) -> Self {
-        Self(method: "DELETE", path: path, query: query, body: body)
+        Self(method: .delete, path: path, query: query, body: body)
     }
 }

@@ -25,7 +25,7 @@ public struct DefaultPKCEProvider: PKCEProvider {
     public func generatePKCE() throws -> PKCEPair {
         let verifier = try Self.randomString(length: 64)
         let challenge = Self.makeCodeChallenge(for: verifier)
-        let state = try Self.randomString(length: 32)
+        let state = generateState()
         return PKCEPair(verifier: verifier, challenge: challenge, state: state)
     }
 

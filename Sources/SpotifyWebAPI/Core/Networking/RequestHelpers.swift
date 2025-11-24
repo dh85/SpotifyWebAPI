@@ -37,14 +37,14 @@ extension SpotifyClient {
     ) throws -> PreparedRequest<RequestType> {
         let bodyData: Data?
         if let body = request.body {
-            bodyData = try JSONEncoder().encode(body)
+            bodyData = try JSONCoding.encoder.encode(body)
         } else {
             bodyData = nil
         }
 
         let url = apiURL(path: request.path, queryItems: request.query)
         var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = request.method
+        urlRequest.httpMethod = request.method.rawValue
         urlRequest.httpBody = bodyData
         if bodyData != nil {
             urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -144,10 +144,7 @@ extension SpotifyClient {
     // MARK: - JSON decoding
 
     func decodeJSON<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(T.self, from: data)
+        return try JSONCoding.decoder.decode(T.self, from: data)
     }
 
     /// Executes a request and decodes the response into the specified type.
@@ -252,7 +249,7 @@ extension SpotifyClient {
     }
 
     private func generateRequestKey<T: Decodable>(_ prepared: PreparedRequest<T>) -> String {
-        var components = [prepared.request.method, prepared.request.path]
+        var components = [prepared.request.method.rawValue, prepared.request.path]
 
         if !prepared.request.query.isEmpty {
             let queryString = prepared.request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(
