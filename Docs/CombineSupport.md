@@ -2,7 +2,7 @@
 
 SpotifyWebAPI exposes optional Combine publisher variants that mirror the async/await APIs. Everything is wrapped in `#if canImport(Combine)` so Linux builds remain untouched, while Apple platforms running macOS 10.15+/iOS 13+/tvOS 13+/watchOS 6+ can opt into Combine.
 
-## Usage
+## Usage Patterns
 
 ```swift
 import Combine
@@ -34,7 +34,23 @@ let artistsCancellable = client.users.topArtistsPublisher(range: .longTerm, limi
     )
 ```
 
-Every `*Publisher` method internally calls the async implementation, so behavior stays identical regardless of which concurrency model you choose.
+Every `*Publisher` method internally calls the async implementation via `Publishers.SpotifyRequest`, so behavior stays identical regardless of which concurrency model you choose.
+
+## Cancellation & Backpressure
+
+- Cancelling the returned `AnyCancellable` cancels the underlying `Task`, so long-running pagination streams stop immediately.
+- All publishers emit on the call site scheduler; add `receive(on:)` to hop to the main actor.
+- Errors are surfaced as `SpotifyClientError`, making it easy to switch between async and Combine flows without new error handling branches.
+
+## Testing Publishers
+
+Use the helpers in `Tests/Support/TestHelpers.swift`:
+
+- `awaitFirstValue` bridges an `AnyPublisher` into async tests.
+- `assertAggregatesPages` verifies pagination helpers aggregate items correctly.
+- `assertIDsMutationPublisher`, `assertLimitOutOfRange`, and `assertIDBatchTooLarge` keep validation tests concise.
+
+Combine-focused suites live under `Tests/SpotifyWebAPITests/**/CombineTests.swift`; they double as reference implementations for your own publisher extensions.
 
 ## Platform Availability
 

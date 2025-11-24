@@ -15,16 +15,31 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// try await client.playlists.addTracks(trackURIs, to: "playlist-id")
     /// ```
     ///
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.playlists.addTracks(trackURIs, to: playlistID) { progress in
+    ///     print("Added \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
     /// - Parameters:
     ///   - trackURIs: Track/episode URIs to add (e.g., "spotify:track:abc123").
     ///   - playlistID: The Spotify ID for the playlist.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func addTracks(_ trackURIs: [String], to playlistID: String) async throws {
-        for batch in chunkedArrays(
+    public func addTracks(
+        _ trackURIs: [String],
+        to playlistID: String,
+        progress: BatchProgressCallback? = nil
+    ) async throws {
+        let batches = chunkedArrays(
             from: trackURIs,
             chunkSize: SpotifyAPILimits.Playlists.itemMutationBatchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
             try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             _ = try await add(to: playlistID, uris: batch)
         }
     }
@@ -39,16 +54,31 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// try await client.playlists.removeTracks(trackURIs, from: "playlist-id")
     /// ```
     ///
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.playlists.removeTracks(trackURIs, from: playlistID) { progress in
+    ///     print("Removed \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
     /// - Parameters:
     ///   - trackURIs: Track/episode URIs to remove (e.g., "spotify:track:abc123").
     ///   - playlistID: The Spotify ID for the playlist.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func removeTracks(_ trackURIs: [String], from playlistID: String) async throws {
-        for batch in chunkedArrays(
+    public func removeTracks(
+        _ trackURIs: [String],
+        from playlistID: String,
+        progress: BatchProgressCallback? = nil
+    ) async throws {
+        let batches = chunkedArrays(
             from: trackURIs,
             chunkSize: SpotifyAPILimits.Playlists.itemMutationBatchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
             try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             _ = try await remove(from: playlistID, uris: batch)
         }
     }

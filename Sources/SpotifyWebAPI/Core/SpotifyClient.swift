@@ -57,16 +57,84 @@ import Foundation
 /// ## Advanced Features
 ///
 /// - Request interceptors for logging and analytics
-/// - Token expiration callbacks for proactive refresh
-/// - Automatic rate limit handling
+/// - Token expiration and refresh event callbacks for monitoring auth lifecycle
+/// - Rate limit monitoring for proactive throttling
+/// - Automatic rate limit handling with retry-after support
 /// - Thread-safe token management
+/// - Request deduplication for concurrent identical calls
+/// - Offline mode for cache-only data access
+///
+/// ### Token Refresh Events
+///
+/// Monitor the complete token refresh lifecycle with three callback types:
+///
+/// ```swift
+/// // Called before refresh starts - useful for showing loading indicators
+/// client.onTokenRefreshWillStart { info in
+///     print("🔄 Refreshing token (reason: \(info.reason))")
+///     if info.secondsUntilExpiration < 0 {
+///         print("Token expired \(-info.secondsUntilExpiration)s ago")
+///     }
+/// }
+///
+/// // Called after successful refresh - persist new tokens or update UI
+/// client.onTokenRefreshDidSucceed { newTokens in
+///     print("✅ Token refreshed, expires at \(newTokens.expiresAt)")
+///     Task {
+///         await keychain.save(newTokens)
+///     }
+/// }
+///
+/// // Called when refresh fails - handle re-authentication
+/// client.onTokenRefreshDidFail { error in
+///     print("❌ Refresh failed: \(error)")
+///     if case SpotifyAuthError.missingRefreshToken = error {
+///         Task { @MainActor in
+///             showLoginScreen()
+///         }
+///     }
+/// }
+/// ```
+///
+/// ### Offline Mode
+///
+/// Enable offline mode to block network requests and force cache-only data access:
+///
+/// ```swift
+/// // Enable offline mode
+/// await client.setOffline(true)
+///
+/// // Attempting requests will throw SpotifyClientError.offline
+/// do {
+///     let album = try await client.albums.get("album-id")
+/// } catch SpotifyClientError.offline {
+///     print("Cannot fetch - showing cached data only")
+///     // Fall back to cached data from your persistence layer
+/// }
+///
+/// // Check offline status
+/// if await client.isOffline() {
+///     // Show "Offline Mode" indicator in UI
+/// }
+///
+/// // Re-enable network requests
+/// await client.setOffline(false)
+/// ```
 ///
 /// ## Token Storage
 ///
-/// Provide a custom ``TokenStore`` to integrate with Keychain, databases, or any
-/// persistence layer suitable for your platform:
+/// By default, tokens are stored securely:
+/// - **Apple platforms (iOS, macOS, tvOS, watchOS)**: Keychain via ``KeychainTokenStore``
+/// - **Linux and other platforms**: Restricted file with 0600 permissions via ``RestrictedFileTokenStore``
+///
+/// The default store is accessed via ``TokenStoreFactory/defaultStore(service:account:)``.
+///
+/// ### Custom Token Storage
+///
+/// Override the default by providing a custom ``TokenStore`` implementation:
 ///
 /// ```swift
+/// // Example: In-memory store for testing
 /// actor MemoryStore: TokenStore {
 ///     private var tokens: SpotifyTokens?
 ///
@@ -83,15 +151,25 @@ import Foundation
 /// )
 /// ```
 ///
-/// - SeeAlso: ``SpotifyClientConfiguration``, ``RequestInterceptor``, ``TokenExpirationCallback``
+/// Common custom implementations include:
+/// - App Groups for sharing tokens between extensions
+/// - CloudKit or iCloud for multi-device sync
+/// - Server-side storage for web apps
+///
+/// - SeeAlso: ``SpotifyClientConfiguration``, ``RequestInterceptor``, ``TokenExpirationCallback``, ``TokenRefreshCallbacks``
 public actor SpotifyClient<Capability: Sendable> {
     let httpClient: HTTPClient
     private let backend: TokenGrantAuthenticator
     let configuration: SpotifyClientConfiguration
     var interceptors: [RequestInterceptor] = []
     private var tokenExpirationCallback: TokenExpirationCallback?
+    var rateLimitInfoCallback: RateLimitInfoCallback?
+    private var tokenRefreshWillStartCallback: TokenRefreshWillStartCallback?
+    private var tokenRefreshDidSucceedCallback: TokenRefreshDidSucceedCallback?
+    private var tokenRefreshDidFailCallback: TokenRefreshDidFailCallback?
     let networkRecovery: NetworkRecoveryHandler
     var ongoingRequests: [String: Task<(any Sendable), Error>] = [:]
+    var _isOffline: Bool = false
 
     init(
         backend: TokenGrantAuthenticator,
@@ -147,23 +225,203 @@ public actor SpotifyClient<Capability: Sendable> {
         tokenExpirationCallback = callback
     }
 
+    /// Set a callback to be notified before a token refresh begins.
+    ///
+    /// The callback receives information about why the refresh is happening and when
+    /// the current token expires.
+    ///
+    /// ```swift
+    /// client.onTokenRefreshWillStart { info in
+    ///     if info.reason == .automatic {
+    ///         print("🔄 Auto-refreshing token (expires in \(info.secondsUntilExpiration)s)")
+    ///     }
+    /// }
+    /// ```
+    public func onTokenRefreshWillStart(_ callback: @escaping TokenRefreshWillStartCallback) {
+        tokenRefreshWillStartCallback = callback
+    }
+
+    /// Set a callback to be notified when a token refresh succeeds.
+    ///
+    /// The callback receives the new tokens, including the refreshed access token
+    /// and its expiration date.
+    ///
+    /// ```swift
+    /// client.onTokenRefreshDidSucceed { newTokens in
+    ///     print("✅ Token refreshed, expires at \(newTokens.expiresAt)")
+    ///     await keychain.save(newTokens)
+    /// }
+    /// ```
+    public func onTokenRefreshDidSucceed(_ callback: @escaping TokenRefreshDidSucceedCallback) {
+        tokenRefreshDidSucceedCallback = callback
+    }
+
+    /// Set a callback to be notified when a token refresh fails.
+    ///
+    /// Use this to handle authentication failures, such as showing a login screen
+    /// when the refresh token is invalid or expired.
+    ///
+    /// ```swift
+    /// client.onTokenRefreshDidFail { error in
+    ///     if case SpotifyAuthError.missingRefreshToken = error {
+    ///         Task { @MainActor in
+    ///             showLoginScreen()
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    public func onTokenRefreshDidFail(_ callback: @escaping TokenRefreshDidFailCallback) {
+        tokenRefreshDidFailCallback = callback
+    }
+
+    /// Set a callback to receive rate limit information from API responses.
+    ///
+    /// The callback receives rate limit headers from each API response, allowing you to
+    /// implement proactive throttling or display usage warnings.
+    ///
+    /// ```swift
+    /// client.onRateLimitInfo { info in
+    ///     if let remaining = info.remaining, remaining < 10 {
+    ///         print("⚠️ Only \(remaining) requests remaining!")
+    ///     }
+    ///
+    ///     if let resetDate = info.resetDate {
+    ///         let secondsUntilReset = resetDate.timeIntervalSinceNow
+    ///         print("Rate limit resets in \(Int(secondsUntilReset))s")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameter callback: A closure called with rate limit info from each response.
+    public nonisolated func onRateLimitInfo(_ callback: @escaping RateLimitInfoCallback) {
+        Task { await setRateLimitInfoCallback(callback) }
+    }
+
+    private func setRateLimitInfoCallback(_ callback: @escaping RateLimitInfoCallback) {
+        rateLimitInfoCallback = callback
+    }
+
+    /// Check when the current access token expires.
+    ///
+    /// Returns the number of seconds until the cached token expires, or `nil` if no token is cached.
+    /// Use this to display "session expires in..." messaging or to proactively refresh tokens.
+    ///
+    /// ```swift
+    /// if let expiresIn = await client.tokenExpiresIn() {
+    ///     if expiresIn < 300 {
+    ///         print("⚠️ Token expires in \(Int(expiresIn)) seconds")
+    ///         // Optionally refresh proactively
+    ///         _ = try? await client.accessToken()
+    ///     }
+    /// } else {
+    ///     print("No token cached yet")
+    /// }
+    /// ```
+    ///
+    /// - Returns: Seconds until token expiration, or `nil` if no token is available.
+    public func tokenExpiresIn() async -> TimeInterval? {
+        guard let tokens = try? await backend.loadPersistedTokens() else {
+            return nil
+        }
+        return tokens.expiresAt.timeIntervalSinceNow
+    }
+
+    /// Enable offline mode to prevent network requests.
+    ///
+    /// When offline mode is enabled, all API requests will throw ``SpotifyClientError/offline``.
+    /// This is useful for implementing cache-only functionality or handling network unavailability.
+    ///
+    /// ```swift
+    /// // Enable offline mode
+    /// await client.setOffline(true)
+    ///
+    /// // Attempting requests will now throw
+    /// do {
+    ///     let album = try await client.albums.get("album-id")
+    /// } catch SpotifyClientError.offline {
+    ///     print("Cannot fetch - offline mode enabled")
+    ///     // Fall back to cached data
+    /// }
+    ///
+    /// // Re-enable network requests
+    /// await client.setOffline(false)
+    /// ```
+    ///
+    /// - Parameter offline: `true` to enable offline mode, `false` to allow network requests.
+    public func setOffline(_ offline: Bool) {
+        _isOffline = offline
+    }
+
+    /// Check if the client is in offline mode.
+    ///
+    /// Returns `true` if offline mode is enabled and network requests will be blocked.
+    ///
+    /// ```swift
+    /// if await client.isOffline() {
+    ///     // Show cached data only
+    /// } else {
+    ///     // Can make network requests
+    /// }
+    /// ```
+    ///
+    /// - Returns: `true` if offline mode is enabled, `false` otherwise.
+    public func isOffline() -> Bool {
+        _isOffline
+    }
+
     // MARK: - Internal auth helper
 
     /// Helper to get the string token from the backend.
     /// - Parameter invalidatingPrevious: If true, force a refresh/invalidate cache.
     func accessToken(invalidatingPrevious: Bool = false) async throws -> String {
-        // Pass the flag through to the backend
-        let tokens = try await backend.accessToken(
-            invalidatingPrevious: invalidatingPrevious
-        )
+        // Get the old tokens (if any) to detect if a refresh occurred
+        let oldTokens = try? await backend.loadPersistedTokens()
+        let oldAccessToken = oldTokens?.accessToken
 
-        // Notify callback of expiration
-        if let callback = tokenExpirationCallback {
-            let expiresIn = tokens.expiresAt.timeIntervalSinceNow
-            callback(expiresIn)
+        // Determine refresh reason
+        let reason: TokenRefreshInfo.RefreshReason = invalidatingPrevious ? .manual : .automatic
+        let secondsUntilExpiration = oldTokens?.expiresAt.timeIntervalSinceNow ?? 0
+
+        // Check if a refresh will happen
+        let willRefresh = oldTokens == nil || oldTokens!.isExpired || invalidatingPrevious
+
+        // Notify before refresh (if refresh is about to happen)
+        if willRefresh, let callback = tokenRefreshWillStartCallback {
+            let info = TokenRefreshInfo(
+                reason: reason,
+                secondsUntilExpiration: secondsUntilExpiration
+            )
+            callback(info)
         }
 
-        return tokens.accessToken
+        // Attempt to get tokens (may trigger refresh internally)
+        do {
+            let tokens = try await backend.accessToken(
+                invalidatingPrevious: invalidatingPrevious
+            )
+
+            // Check if the access token changed (indicating a refresh occurred)
+            let didRefresh = oldAccessToken != tokens.accessToken
+
+            // Notify of successful refresh
+            if didRefresh, let callback = tokenRefreshDidSucceedCallback {
+                callback(tokens)
+            }
+
+            // Always notify token expiration callback
+            if let callback = tokenExpirationCallback {
+                let expiresIn = tokens.expiresAt.timeIntervalSinceNow
+                callback(expiresIn)
+            }
+
+            return tokens.accessToken
+        } catch {
+            // Notify of refresh failure (if refresh was attempted)
+            if willRefresh, let callback = tokenRefreshDidFailCallback {
+                callback(error)
+            }
+            throw error
+        }
     }
 }
 

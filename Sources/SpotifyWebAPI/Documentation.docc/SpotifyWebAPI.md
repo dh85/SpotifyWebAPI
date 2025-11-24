@@ -1,0 +1,34 @@
+# ``SpotifyWebAPI``
+
+A strongly typed Swift toolkit for calling the Spotify Web API from your apps and services. It gives you async/await and Combine APIs, ready-made models, and pluggable authentication so you can focus on product features instead of HTTP plumbing.
+
+## Overview
+
+You interact with ``SpotifyClient`` plus the service namespaces you need (for example ``SpotifyClient/albums`` or ``SpotifyClient/player``). All operations are available as async methods, and Apple platforms automatically gain Combine publishers for the same endpoints.
+
+### What You Get
+
+- **Predictable networking**: Built-in validation for limits, paging, and ID batches before the request leaves your app.
+- **End-to-end models**: Codable types for every Spotify entity so you can decode responses or seed previews without writing JSON glue.
+- **Flexible auth**: Authorization Code, PKCE, and Client Credentials flows share the same client, making it easy to target mobile, desktop, and server deployments.
+- **Production-ready tooling**: Configurable retries, logging hooks, and token storage strategies help you deploy safely.
+
+## Topics
+
+### Getting Started
+
+- <doc:AuthGuide>
+- <doc:SecurityGuide>
+
+### Consuming the API
+
+- <doc:EndpointsGuide>
+- <doc:CombineGuide>
+
+### Data & Modeling
+
+- <doc:ModelsGuide>
+
+### Testing & Tooling
+
+- <doc:TestingGuide>
