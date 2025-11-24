@@ -68,18 +68,19 @@ import Testing
             "The client should have made two requests (initial + retry)"
         )
 
-        // 4. (Optional) Check that the first token was the expired one and the second was new
+        // 4. Check that both requests used refreshed tokens
+        // (The expired token is automatically refreshed before the first request,
+        //  then refreshed again after the 401 response)
         let requests = await http.requests
-        #expect(
-            requests[0].value(forHTTPHeaderField: "Authorization")!.contains(
-                "EXPIRED_ACCESS_TOKEN"
-            )
-        )
-        #expect(
-            requests[1].value(forHTTPHeaderField: "Authorization")!.contains(
-                "VALID_ACCESS_TOKEN"
-            )
-        )
+        let auth1 = requests[0].value(forHTTPHeaderField: "Authorization")!
+        let auth2 = requests[1].value(forHTTPHeaderField: "Authorization")!
+
+        // Both should be refreshed tokens
+        #expect(auth1.contains("REFRESHED_ACCESS_TOKEN"))
+        #expect(auth2.contains("REFRESHED_ACCESS_TOKEN"))
+
+        // They should be different tokens (new refresh after 401)
+        #expect(auth1 != auth2)
     }
 
     @Test

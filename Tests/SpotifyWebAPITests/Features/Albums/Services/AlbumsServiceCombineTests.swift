@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US"]
             ) { client in
-                let albums = await client.albums
+                let albums = client.albums
                 return albums.getPublisher("album123", market: "US")
             }
 
@@ -40,7 +40,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let albumsService = await client.albums
+                let albumsService = client.albums
                 return albumsService.severalPublisher(ids: ids, market: "SE")
             }
 
@@ -50,7 +50,7 @@
         @Test("severalPublisher validates ID limits")
         func severalPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let albums = await client.albums
+            let albums = client.albums
             let ids = makeIDs(count: 21)
 
             await expectInvalidRequest(reasonContains: "Maximum of 20") {
@@ -69,7 +69,7 @@
                     expectMarketParameter(request, market: "GB")
                 }
             ) { client in
-                let albums = await client.albums
+                let albums = client.albums
                 return albums.tracksPublisher("album123", market: "GB", limit: 15, offset: 2)
             }
 
@@ -84,7 +84,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=5"]
             ) { client in
-                let albumsService = await client.albums
+                let albumsService = client.albums
                 return albumsService.savedPublisher(limit: 10, offset: 5)
             }
 
@@ -94,7 +94,7 @@
         @Test("savedPublisher validates limits")
         func savedPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let albums = await client.albums
+            let albums = client.albums
 
             await assertLimitOutOfRange { limit in
                 _ = try await awaitFirstValue(albums.savedPublisher(limit: limit))
@@ -107,7 +107,7 @@
                 fixture: "albums_saved.json",
                 of: SavedAlbum.self
             ) { client in
-                let albumsService = await client.albums
+                let albumsService = client.albums
                 return albumsService.allSavedAlbumsPublisher()
             }
         }
@@ -120,7 +120,7 @@
                 method: "PUT",
                 ids: ids
             ) { client, ids in
-                let albumsService = await client.albums
+                let albumsService = client.albums
                 return albumsService.savePublisher(ids)
             }
         }
@@ -128,7 +128,7 @@
         @Test("savePublisher propagates validation errors")
         func savePublisherValidationErrors() async {
             let (client, _) = makeUserAuthClient()
-            let albumsService = await client.albums
+            let albumsService = client.albums
 
             await assertIDBatchTooLarge(
                 maxAllowed: 20,
@@ -146,7 +146,7 @@
                 method: "DELETE",
                 ids: ids
             ) { client, ids in
-                let albums = await client.albums
+                let albums = client.albums
                 return albums.removePublisher(ids)
             }
         }
@@ -162,7 +162,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let albums = await client.albums
+                let albums = client.albums
                 return albums.checkSavedPublisher(ids)
             }
 

@@ -180,6 +180,11 @@ extension SpotifyClient {
     }
 
     private func performInternal<T: Decodable>(_ prepared: PreparedRequest<T>) async throws -> T {
+        // Check if offline mode is enabled
+        if _isOffline {
+            throw SpotifyClientError.offline
+        }
+
         #if DEBUG
             let logger =
                 ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -203,6 +208,13 @@ extension SpotifyClient {
         }
 
         await logger.logResponse(response, data: data, error: nil, token: requestToken)
+
+        // Extract and notify rate limit info if callback is set
+        if let rateLimitCallback = rateLimitInfoCallback,
+            let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path)
+        {
+            rateLimitCallback(rateLimitInfo)
+        }
 
         // Handle 204 No Content
         if response.statusCode == 204 {

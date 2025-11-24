@@ -26,15 +26,21 @@ actor MockTokenAuthenticator: TokenGrantAuthenticator {
         self.didInvalidatePrevious = invalidatingPrevious
 
         // 1. If the client is telling us the last token was bad (401),
-        //    then we must return a fresh one.
-        if invalidatingPrevious {
-            let refreshedToken = SpotifyTokens.mockValid
+        //    then we must return a fresh one with a different access token.
+        if invalidatingPrevious || token.isExpired {
+            let refreshedToken = SpotifyTokens(
+                accessToken: "REFRESHED_ACCESS_TOKEN_\(UUID().uuidString)",
+                refreshToken: token.refreshToken ?? "REFRESH_TOKEN",
+                expiresAt: Date().addingTimeInterval(3600),
+                scope: token.scope,
+                tokenType: "Bearer"
+            )
             self.token = refreshedToken  // Update internal state
             return refreshedToken
         }
 
-        // 2. Otherwise (if invalidatingPrevious is false), we just return
-        //    whatever token we're currently holding, even if it's expired.
+        // 2. Otherwise (if invalidatingPrevious is false and not expired),
+        //    we just return whatever token we're currently holding.
         //    This simulates returning a cached token.
         return token
     }

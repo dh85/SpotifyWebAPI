@@ -349,6 +349,25 @@ func makeUserAuthClient(
     return (client, http)
 }
 
+/// Helper to create a user auth client with access to the auth object for testing.
+func makeUserAuthClientWithAuth(
+    initialToken: SpotifyTokens = .mockValid,
+    configuration: SpotifyClientConfiguration = .default
+) -> (
+    client: SpotifyClient<UserAuthCapability>,
+    http: MockHTTPClient,
+    auth: MockTokenAuthenticator
+) {
+    let http = MockHTTPClient()
+    let auth = MockTokenAuthenticator(token: initialToken)
+    let client = SpotifyClient<UserAuthCapability>(
+        backend: auth,
+        httpClient: http,
+        configuration: configuration
+    )
+    return (client, http, auth)
+}
+
 /// Helper to create a predictable set of IDs like "id_1", "id_2", ...
 func makeIDs(prefix: String = "id_", count: Int) -> Set<String> {
     Set((1...count).map { "\(prefix)\($0)" })

@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US"]
             ) { client in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.getPublisher("7iHfbu1YPACw6oZPAFJtqe", market: "US")
             }
 
@@ -44,7 +44,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.severalPublisher(ids: ids, market: "ES")
             }
 
@@ -54,7 +54,7 @@
         @Test("severalPublisher validates ID limits")
         func severalPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let audiobooks = await client.audiobooks
+            let audiobooks = client.audiobooks
 
             await assertIDBatchTooLarge(maxAllowed: 50, reasonContains: "Maximum of 50") { ids in
                 _ = try await awaitFirstValue(audiobooks.severalPublisher(ids: ids))
@@ -72,7 +72,7 @@
                     expectMarketParameter(request, market: "GB")
                 }
             ) { client in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.chaptersPublisher(
                     for: "audiobook123",
                     limit: 15,
@@ -87,7 +87,7 @@
         @Test("chaptersPublisher validates limit")
         func chaptersPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let audiobooks = await client.audiobooks
+            let audiobooks = client.audiobooks
 
             await assertLimitOutOfRange { limit in
                 _ = try await awaitFirstValue(

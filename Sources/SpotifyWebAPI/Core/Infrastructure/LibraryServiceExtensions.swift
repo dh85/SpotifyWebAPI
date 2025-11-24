@@ -14,10 +14,23 @@ extension AlbumsService where Capability == UserAuthCapability {
     /// try await client.albums.saveAll(["album1", "album2", ...])
     /// ```
     ///
-    /// - Parameter ids: Album IDs to save.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.albums.saveAll(albumIDs) { progress in
+    ///     print("Saved \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Album IDs to save.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize) {
+    public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize)
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await save(batch)
         }
     }
@@ -31,10 +44,23 @@ extension AlbumsService where Capability == UserAuthCapability {
     /// try await client.albums.removeAll(["album1", "album2", ...])
     /// ```
     ///
-    /// - Parameter ids: Album IDs to remove.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.albums.removeAll(albumIDs) { progress in
+    ///     print("Removed \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Album IDs to remove.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize) {
+    public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize)
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await remove(batch)
         }
     }
@@ -53,13 +79,26 @@ extension TracksService where Capability == UserAuthCapability {
     /// try await client.tracks.saveAll(["track1", "track2", ...])
     /// ```
     ///
-    /// - Parameter ids: Track IDs to save.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.tracks.saveAll(trackIDs) { progress in
+    ///     print("Saved \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Track IDs to save.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(
+    public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(
             from: ids,
             chunkSize: SpotifyAPILimits.Tracks.libraryBatchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await save(batch)
         }
     }
@@ -73,13 +112,26 @@ extension TracksService where Capability == UserAuthCapability {
     /// try await client.tracks.removeAll(["track1", "track2", ...])
     /// ```
     ///
-    /// - Parameter ids: Track IDs to remove.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.tracks.removeAll(trackIDs) { progress in
+    ///     print("Removed \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Track IDs to remove.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(
+    public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(
             from: ids,
             chunkSize: SpotifyAPILimits.Tracks.libraryBatchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await remove(batch)
         }
     }
@@ -98,13 +150,26 @@ extension ShowsService where Capability == UserAuthCapability {
     /// try await client.shows.saveAll(["show1", "show2", ...])
     /// ```
     ///
-    /// - Parameter ids: Show IDs to save.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.shows.saveAll(showIDs) { progress in
+    ///     print("Saved \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Show IDs to save.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(
+    public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(
             from: ids,
             chunkSize: SpotifyAPILimits.Shows.batchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await save(batch)
         }
     }
@@ -118,13 +183,26 @@ extension ShowsService where Capability == UserAuthCapability {
     /// try await client.shows.removeAll(["show1", "show2", ...])
     /// ```
     ///
-    /// - Parameter ids: Show IDs to remove.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.shows.removeAll(showIDs) { progress in
+    ///     print("Removed \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Show IDs to remove.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(
+    public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(
             from: ids,
             chunkSize: SpotifyAPILimits.Shows.batchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await remove(batch)
         }
     }
@@ -143,13 +221,26 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// try await client.episodes.saveAll(["episode1", "episode2", ...])
     /// ```
     ///
-    /// - Parameter ids: Episode IDs to save.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.episodes.saveAll(episodeIDs) { progress in
+    ///     print("Saved \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Episode IDs to save.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func saveAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(
+    public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(
             from: ids,
             chunkSize: SpotifyAPILimits.Episodes.batchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await save(batch)
         }
     }
@@ -163,13 +254,26 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// try await client.episodes.removeAll(["episode1", "episode2", ...])
     /// ```
     ///
-    /// - Parameter ids: Episode IDs to remove.
+    /// Optionally track progress:
+    /// ```swift
+    /// try await client.episodes.removeAll(episodeIDs) { progress in
+    ///     print("Removed \(progress.completed)/\(progress.total) batches")
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - ids: Episode IDs to remove.
+    ///   - progress: Optional callback invoked before processing each batch.
     /// - Throws: ``SpotifyError`` if any request fails.
-    public func removeAll(_ ids: [String]) async throws {
-        for batch in chunkedUniqueSets(
+    public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
+        let batches = chunkedUniqueSets(
             from: ids,
             chunkSize: SpotifyAPILimits.Episodes.batchSize
-        ) {
+        )
+        let total = batches.count
+        for (index, batch) in batches.enumerated() {
+            try Task.checkCancellation()
+            progress?(BatchProgress(completed: index, total: total, currentBatchSize: batch.count))
             try await remove(batch)
         }
     }
