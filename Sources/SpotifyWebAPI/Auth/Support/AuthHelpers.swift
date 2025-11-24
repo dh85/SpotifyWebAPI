@@ -83,3 +83,15 @@ func makeTokenRequest(
     request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: bodyItems)
     return request
 }
+
+/// Generate a random state string for CSRF protection.
+func generateState() -> String {
+    UUID().uuidString.replacingOccurrences(of: "-", with: "")
+}
+
+#if DEBUG
+    /// Test helper to expose form URL encoding logic.
+    func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
+        SpotifyAuthHTTP.formURLEncodedBody(from: items)
+    }
+#endif

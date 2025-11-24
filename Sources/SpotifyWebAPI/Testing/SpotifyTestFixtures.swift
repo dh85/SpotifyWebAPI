@@ -140,11 +140,35 @@ public enum SpotifyTestFixtures {
             href: href,
             items: items,
             limit: resolvedLimit,
-            next: nextOffset < resolvedTotal ? makePageURL(base: href, limit: resolvedLimit, offset: nextOffset) : nil,
+            next: nextOffset < resolvedTotal
+                ? SpotifyTestFixtures.makePageURL(
+                    base: href, limit: resolvedLimit, offset: nextOffset) : nil,
             offset: offset,
-            previous: offset > 0 ? makePageURL(base: href, limit: resolvedLimit, offset: previousOffset) : nil,
+            previous: offset > 0
+                ? SpotifyTestFixtures.makePageURL(
+                    base: href, limit: resolvedLimit, offset: previousOffset) : nil,
             total: resolvedTotal
         )
+    }
+
+    /// Builds a page URL with limit and offset query parameters.
+    ///
+    /// This helper is useful for constructing paginated API URLs in tests.
+    ///
+    /// - Parameters:
+    ///   - base: The base URL for the page
+    ///   - limit: The maximum number of items per page
+    ///   - offset: The offset into the collection
+    /// - Returns: A URL with limit and offset query parameters, or nil if limit is invalid
+    public static func makePageURL(base: URL, limit: Int, offset: Int) -> URL? {
+        guard limit > 0 else { return nil }
+        var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
+        var queryItems =
+            components?.queryItems?.filter { $0.name != "limit" && $0.name != "offset" } ?? []
+        queryItems.append(URLQueryItem(name: "limit", value: String(limit)))
+        queryItems.append(URLQueryItem(name: "offset", value: String(offset)))
+        components?.queryItems = queryItems
+        return components?.url
     }
 }
 
@@ -174,14 +198,4 @@ private struct PlaybackStateFixturePayload: Encodable {
             fatalError("Failed to build PlaybackState fixture: \(error)")
         }
     }
-}
-
-private func makePageURL(base: URL, limit: Int, offset: Int) -> URL? {
-    guard limit > 0 else { return nil }
-    var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
-    var queryItems = components?.queryItems?.filter { $0.name != "limit" && $0.name != "offset" } ?? []
-    queryItems.append(URLQueryItem(name: "limit", value: String(limit)))
-    queryItems.append(URLQueryItem(name: "offset", value: String(offset)))
-    components?.queryItems = queryItems
-    return components?.url
 }

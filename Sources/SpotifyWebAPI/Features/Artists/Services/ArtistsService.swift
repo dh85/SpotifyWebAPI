@@ -218,8 +218,10 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
 
 // MARK: - Helper Methods
 
-extension ArtistsService {
+extension ArtistsService: ServiceIDValidating {
+    static var maxBatchSize: Int { SpotifyAPILimits.Artists.batchSize }
+
     fileprivate func validateArtistIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(SpotifyAPILimits.Artists.batchSize, for: ids)
+        try validateIDs(ids)
     }
 }

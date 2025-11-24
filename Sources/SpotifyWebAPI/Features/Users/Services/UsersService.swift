@@ -104,9 +104,13 @@ public struct UsersService<Capability: Sendable>: Sendable {
     init(client: SpotifyClient<Capability>) {
         self.client = client
     }
+}
+
+extension UsersService: ServiceIDValidating {
+    static var maxBatchSize: Int { SpotifyAPILimits.Users.followBatchSize }
 
     private func validateUserIDs(_ ids: Set<String>) throws {
-        try validateMaxIdCount(SpotifyAPILimits.Users.followBatchSize, for: ids)
+        try validateIDs(ids)
     }
 
     private func validatePlaylistFollowUserIDs(_ ids: Set<String>) throws {

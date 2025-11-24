@@ -80,9 +80,7 @@
             id: String,
             priority: TaskPriority? = nil
         ) -> AnyPublisher<[SpotifyImage], Error> {
-            publisher(priority: priority) { service in
-                try await service.coverImage(id: id)
-            }
+            makePublisher(id, priority: priority, operation: Self.coverImage)
         }
     }
 

@@ -25,8 +25,8 @@ public protocol SpotifyPlaylistsAPI: Sendable {
     func myPlaylists(limit: Int, offset: Int) async throws -> Page<SimplifiedPlaylist>
 }
 
-public extension SpotifyPlaylistsAPI {
-    func myPlaylists() async throws -> Page<SimplifiedPlaylist> {
+extension SpotifyPlaylistsAPI {
+    public func myPlaylists() async throws -> Page<SimplifiedPlaylist> {
         try await myPlaylists(limit: 20, offset: 0)
     }
 }
@@ -41,16 +41,16 @@ public protocol SpotifyPlayerAPI: Sendable {
     ) async throws -> PlaybackState?
 }
 
-public extension SpotifyPlayerAPI {
-    func pause() async throws {
+extension SpotifyPlayerAPI {
+    public func pause() async throws {
         try await pause(deviceID: nil)
     }
 
-    func resume() async throws {
+    public func resume() async throws {
         try await resume(deviceID: nil)
     }
 
-    func state() async throws -> PlaybackState? {
+    public func state() async throws -> PlaybackState? {
         try await state(market: nil, additionalTypes: nil)
     }
 }
@@ -72,13 +72,13 @@ public protocol SpotifyClientProtocol: Sendable {
     var playerAPI: any SpotifyPlayerAPI { get }
 }
 
-public extension SpotifyClientProtocol {
+extension SpotifyClientProtocol {
     /// Mirrors ``SpotifyClient/users`` so consumers can keep writing `client.users.me()`.
-    var users: any SpotifyUsersAPI { usersAPI }
-    var albums: any SpotifyAlbumsAPI { albumsAPI }
-    var tracks: any SpotifyTracksAPI { tracksAPI }
-    var playlists: any SpotifyPlaylistsAPI { playlistsAPI }
-    var player: any SpotifyPlayerAPI { playerAPI }
+    public var users: any SpotifyUsersAPI { usersAPI }
+    public var albums: any SpotifyAlbumsAPI { albumsAPI }
+    public var tracks: any SpotifyTracksAPI { tracksAPI }
+    public var playlists: any SpotifyPlaylistsAPI { playlistsAPI }
+    public var player: any SpotifyPlayerAPI { playerAPI }
 }
 
 extension SpotifyClient: SpotifyClientProtocol where Capability == UserAuthCapability {
@@ -103,7 +103,16 @@ extension SpotifyClient: SpotifyClientProtocol where Capability == UserAuthCapab
     }
 }
 
-private struct LiveUsersAPI: SpotifyUsersAPI {
+// MARK: - Live API Base
+
+/// Base protocol for Live API wrappers that forward to SpotifyClient.
+private protocol LiveAPIWrapper {
+    var client: SpotifyClient<UserAuthCapability> { get }
+}
+
+// MARK: - Live API Implementations
+
+private struct LiveUsersAPI: SpotifyUsersAPI, LiveAPIWrapper {
     let client: SpotifyClient<UserAuthCapability>
 
     func me() async throws -> CurrentUserProfile {
@@ -111,7 +120,7 @@ private struct LiveUsersAPI: SpotifyUsersAPI {
     }
 }
 
-private struct LiveAlbumsAPI: SpotifyAlbumsAPI {
+private struct LiveAlbumsAPI: SpotifyAlbumsAPI, LiveAPIWrapper {
     let client: SpotifyClient<UserAuthCapability>
 
     func get(_ id: String) async throws -> Album {
@@ -119,7 +128,7 @@ private struct LiveAlbumsAPI: SpotifyAlbumsAPI {
     }
 }
 
-private struct LiveTracksAPI: SpotifyTracksAPI {
+private struct LiveTracksAPI: SpotifyTracksAPI, LiveAPIWrapper {
     let client: SpotifyClient<UserAuthCapability>
 
     func get(_ id: String) async throws -> Track {
@@ -127,7 +136,7 @@ private struct LiveTracksAPI: SpotifyTracksAPI {
     }
 }
 
-private struct LivePlaylistsAPI: SpotifyPlaylistsAPI {
+private struct LivePlaylistsAPI: SpotifyPlaylistsAPI, LiveAPIWrapper {
     let client: SpotifyClient<UserAuthCapability>
 
     func get(_ id: String) async throws -> Playlist {
@@ -142,7 +151,7 @@ private struct LivePlaylistsAPI: SpotifyPlaylistsAPI {
     }
 }
 
-private struct LivePlayerAPI: SpotifyPlayerAPI {
+private struct LivePlayerAPI: SpotifyPlayerAPI, LiveAPIWrapper {
     let client: SpotifyClient<UserAuthCapability>
 
     func pause(deviceID: String?) async throws {

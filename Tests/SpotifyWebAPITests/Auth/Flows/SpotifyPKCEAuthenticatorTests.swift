@@ -8,16 +8,6 @@ struct SpotifyPKCEAuthenticatorTests {
 
     // MARK: - Shared helpers
 
-    private func makeHarness(
-        response: SimpleMockHTTPClient.Response = .success(
-            data: Data(),
-            statusCode: 200
-        ),
-        tokens: SpotifyTokens? = nil
-    ) -> AuthenticatorTestHarness {
-        AuthenticatorTestHarness(response: response, tokens: tokens)
-    }
-
     private func makeConfig() -> SpotifyAuthConfig {
         AuthTestFixtures.pkceConfig()
     }
@@ -47,28 +37,24 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = harness.makePKCEAuthenticator(
             pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         let url = try await auth.makeAuthorizationURL()
-        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        let items = components?.queryItems ?? []
 
-        func value(_ name: String) -> String? {
-            items.first(where: { $0.name == name })?.value
-        }
-
-        #expect(value("client_id") == "TEST_CLIENT_ID")
-        #expect(value("response_type") == "code")
-        #expect(value("redirect_uri") == "myapp://callback")
-        #expect(value("code_challenge_method") == "S256")
-        #expect(value("code_challenge") == "CHALLENGE")
-        #expect(value("state") == "STATE123")
-        #expect(value("scope")!.contains("user-read-email"))
-        #expect(value("scope")!.contains("playlist-read-private"))
-        #expect(value("show_dialog") == "true")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "client_id") == "TEST_CLIENT_ID")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "response_type") == "code")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "redirect_uri") == "myapp://callback")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "code_challenge_method") == "S256")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "code_challenge") == "CHALLENGE")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "state") == "STATE123")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "scope")!.contains("user-read-email"))
+        #expect(
+            AuthTestFixtures.queryValue(from: url, name: "scope")!.contains("playlist-read-private")
+        )
+        #expect(AuthTestFixtures.queryValue(from: url, name: "show_dialog") == "true")
     }
 
     // MARK: - handleCallback success + error paths
@@ -86,7 +72,7 @@ struct SpotifyPKCEAuthenticatorTests {
             refreshToken: "REFRESH123"
         )
 
-        let harness = makeHarness(
+        let harness = AuthenticatorTestHarness.makeHarness(
             response: .success(data: tokenJSON, statusCode: 200)
         )
         let auth = harness.makePKCEAuthenticator(
@@ -95,9 +81,7 @@ struct SpotifyPKCEAuthenticatorTests {
 
         _ = try await auth.makeAuthorizationURL()
 
-        let callback = URL(
-            string: "myapp://callback?code=AUTH_CODE&state=STATE123"
-        )!
+        let callback = AuthTestFixtures.callbackURL(code: "AUTH_CODE", state: "STATE123")
 
         let tokens = try await auth.handleCallback(callback)
 
@@ -122,7 +106,7 @@ struct SpotifyPKCEAuthenticatorTests {
         )
 
         let url = URL(string: "myapp://callback?code=AUTH&state=STATE123")!
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = SpotifyPKCEAuthenticator(
             config: makeConfig(),
             pkceProvider: FixedPKCEProvider(pair: fixedPKCE),
@@ -144,14 +128,14 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = harness.makePKCEAuthenticator(
             pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         _ = try! await auth.makeAuthorizationURL()
 
-        let url = URL(string: "myapp://callback")!
+        let url = AuthTestFixtures.callbackURL()
 
         await #expect(throws: SpotifyAuthError.missingCode) {
             _ = try await auth.handleCallback(url)
@@ -166,14 +150,14 @@ struct SpotifyPKCEAuthenticatorTests {
             state: "STATE123"
         )
 
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = harness.makePKCEAuthenticator(
             pkceProvider: FixedPKCEProvider(pair: fixedPKCE)
         )
 
         _ = try! await auth.makeAuthorizationURL()
 
-        let url = URL(string: "myapp://callback?state=STATE123")!
+        let url = AuthTestFixtures.callbackURL(state: "STATE123")
 
         await #expect(throws: SpotifyAuthError.missingCode) {
             _ = try await auth.handleCallback(url)
@@ -201,7 +185,7 @@ struct SpotifyPKCEAuthenticatorTests {
 
         _ = try! await auth.makeAuthorizationURL()
 
-        let url = URL(string: "myapp://callback?code=AUTH_CODE")!
+        let url = AuthTestFixtures.callbackURL(code: "AUTH_CODE")
 
         await #expect(throws: SpotifyAuthError.missingState) {
             _ = try await auth.handleCallback(url)
@@ -229,7 +213,7 @@ struct SpotifyPKCEAuthenticatorTests {
 
         _ = try! await auth.makeAuthorizationURL()
 
-        let badURL = URL(string: "myapp://callback?code=AUTH_CODE&state=OTHER")!
+        let badURL = AuthTestFixtures.callbackURL(code: "AUTH_CODE", state: "OTHER")
 
         await #expect(throws: SpotifyAuthError.stateMismatch) {
             _ = try await auth.handleCallback(badURL)
@@ -245,7 +229,7 @@ struct SpotifyPKCEAuthenticatorTests {
             tokenStore: InMemoryTokenStore()
         )
 
-        let data = await auth.__test_formURLEncodedBody(items: [])
+        let data = __test_formURLEncodedBody(items: [])
         let string = String(data: data, encoding: .utf8)
 
         #expect(string == "")

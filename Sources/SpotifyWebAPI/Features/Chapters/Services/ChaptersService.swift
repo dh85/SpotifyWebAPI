@@ -11,9 +11,11 @@ public struct ChaptersService<Capability: Sendable>: Sendable {
 }
 
 // MARK: - Helpers
-extension ChaptersService {
+extension ChaptersService: ServiceIDValidating {
+    static var maxBatchSize: Int { SpotifyAPILimits.Chapters.batchSize }
+
     private func validateChapterIDs(_ ids: [String]) throws {
-        try validateMaxIdCount(SpotifyAPILimits.Chapters.batchSize, for: Set(ids))
+        try validateIDs(ids)
     }
 }
 

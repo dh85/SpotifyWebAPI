@@ -63,7 +63,7 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
     ///
     /// - Returns: The authorization URL.
     public func makeAuthorizationURL() throws -> URL {
-        let state = Self.generateState()
+        let state = generateState()
         currentState = state
 
         var components = URLComponents(
@@ -159,14 +159,4 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
             existingRefreshToken: nil
         )
     }
-
-    private static func generateState() -> String {
-        UUID().uuidString.replacingOccurrences(of: "-", with: "")
-    }
-
-    #if DEBUG
-        func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
-            SpotifyAuthHTTP.formURLEncodedBody(from: items)
-        }
-    #endif
 }

@@ -36,16 +36,6 @@ struct RestrictedFileTokenStoreTests {
         return (store, fileURL)
     }
 
-    private func sampleTokens(label: String = "ACCESS") -> SpotifyTokens {
-        SpotifyTokens(
-            accessToken: label,
-            refreshToken: "REFRESH",
-            expiresAt: Date().addingTimeInterval(3600),
-            scope: "playlist-read",
-            tokenType: "Bearer"
-        )
-    }
-
     @Test
     func roundTripSaveLoadAndClear() async throws {
         let (store, fileURL) = makeStore()
@@ -53,7 +43,7 @@ struct RestrictedFileTokenStoreTests {
         try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent())
         #expect(try await store.load() == nil)
 
-        let tokens = sampleTokens()
+        let tokens = AuthTestFixtures.sampleTokens()
         try await store.save(tokens)
 
         let loaded = try await store.load()
@@ -69,7 +59,7 @@ struct RestrictedFileTokenStoreTests {
     @Test
     func enforcesPosixPermissions() async throws {
         let (store, fileURL) = makeStore()
-        let tokens = sampleTokens(label: "PERMS")
+        let tokens = AuthTestFixtures.sampleTokens(accessToken: "PERMS")
         try await store.save(tokens)
 
         let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
@@ -125,7 +115,7 @@ struct RestrictedFileTokenStoreTests {
         )
 
         do {
-            try await store.save(sampleTokens(label: "FAIL"))
+            try await store.save(AuthTestFixtures.sampleTokens(accessToken: "FAIL"))
             Issue.record("Expected save() to throw fileAccessFailed")
         } catch TokenStoreError.fileAccessFailed {
             // expected
@@ -149,7 +139,7 @@ struct RestrictedFileTokenStoreTests {
         )
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        try await store.save(sampleTokens(label: "CLEAR"))
+        try await store.save(AuthTestFixtures.sampleTokens(accessToken: "CLEAR"))
 
         do {
             try await store.clear()
@@ -207,7 +197,7 @@ struct RestrictedFileTokenStoreTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         do {
-            try await store.save(sampleTokens(label: "ENC"))
+            try await store.save(AuthTestFixtures.sampleTokens(accessToken: "ENC"))
             Issue.record("Expected save() to throw encodingFailed")
         } catch TokenStoreError.encodingFailed(let error as FailingEncoder.Failure) {
             #expect(error == .encodeFailed)

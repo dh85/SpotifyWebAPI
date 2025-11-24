@@ -6,7 +6,7 @@ import Foundation
 /// where complete album details are not needed (e.g., within tracks, search results).
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-album)
-public struct SimplifiedAlbum: Codable, Sendable, Equatable, SpotifyResource {
+public struct SimplifiedAlbum: Codable, Sendable, Equatable, StandardSpotifyResource {
     /// The type of the album (album, single, or compilation).
     public let albumType: AlbumType?
     /// The number of tracks in the album.

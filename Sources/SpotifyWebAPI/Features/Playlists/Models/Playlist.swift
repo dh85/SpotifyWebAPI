@@ -3,7 +3,7 @@ import Foundation
 /// A full playlist object.
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist)
-public struct Playlist: Codable, Sendable, Equatable {
+public struct Playlist: Codable, Sendable, Equatable, SpotifyResource {
     /// Whether the playlist is collaborative.
     public let collaborative: Bool
     /// Playlist description. Can be null.

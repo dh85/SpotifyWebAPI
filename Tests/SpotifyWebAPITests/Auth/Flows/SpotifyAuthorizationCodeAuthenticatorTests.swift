@@ -8,23 +8,13 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     // MARK: - Shared helpers
 
-    private func makeHarness(
-        response: SimpleMockHTTPClient.Response = .success(
-            data: Data(),
-            statusCode: 200
-        ),
-        tokens: SpotifyTokens? = nil
-    ) -> AuthenticatorTestHarness {
-        AuthenticatorTestHarness(response: response, tokens: tokens)
-    }
-
     private func expectHandleCallback(
         url: URL,
         expectedError: SpotifyAuthError,
         preloadAuthorization: Bool = true
     ) async {
 
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = harness.makeAuthorizationCodeAuthenticator()
 
         if preloadAuthorization {
@@ -40,29 +30,25 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     @Test
     func makeAuthorizationURL_buildsCorrectQuery() async throws {
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = harness.makeAuthorizationCodeAuthenticator()
 
         let url = try await auth.makeAuthorizationURL()
-        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        let items = components?.queryItems ?? []
 
-        func value(_ name: String) -> String? {
-            items.first(where: { $0.name == name })?.value
-        }
+        #expect(AuthTestFixtures.queryValue(from: url, name: "client_id") == "TEST_CLIENT_ID")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "response_type") == "code")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "redirect_uri") == "myapp://callback")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "state") != nil)
 
-        #expect(value("client_id") == "TEST_CLIENT_ID")
-        #expect(value("response_type") == "code")
-        #expect(value("redirect_uri") == "myapp://callback")
-        #expect(value("state") != nil)
+        let scope = AuthTestFixtures.queryValue(from: url, name: "scope")
         #expect(
-            value("scope") == "playlist-read-private user-read-email"
-                || value("scope") == "user-read-email playlist-read-private"
+            scope == "playlist-read-private user-read-email"
+                || scope == "user-read-email playlist-read-private"
         )
-        #expect(value("show_dialog") == "true")
+        #expect(AuthTestFixtures.queryValue(from: url, name: "show_dialog") == "true")
 
         // Check state looks like our generateState output: no '-'
-        let state = value("state")!
+        let state = AuthTestFixtures.queryValue(from: url, name: "state")!
         #expect(!state.contains("-"))
     }
 
@@ -75,7 +61,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
             refreshToken: "REFRESH123"
         )
 
-        let harness = makeHarness(
+        let harness = AuthenticatorTestHarness.makeHarness(
             response: .success(data: tokenJSON, statusCode: 200)
         )
         let auth = harness.makeAuthorizationCodeAuthenticator()
@@ -104,7 +90,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     @Test
     func handleCallback_componentsBuilderNilThrowsMissingCode() async {
-        let harness = makeHarness()
+        let harness = AuthenticatorTestHarness.makeHarness()
         let auth = SpotifyAuthorizationCodeAuthenticator(
             config: AuthTestFixtures.authCodeConfig(),
             httpClient: harness.httpClient,
@@ -122,27 +108,29 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
     @Test
     func handleCallback_noQueryItemsTriggersNilQueryItemsBranch() async {
         // No `?` → queryItems == nil → [] and then missingCode
-        let callback = URL(string: "myapp://callback")!
+        let callback = AuthTestFixtures.callbackURL()
 
         await expectHandleCallback(
             url: callback,
-            expectedError: .missingCode
+            expectedError: .missingCode,
+            preloadAuthorization: false
         )
     }
 
     @Test
     func handleCallback_missingCodeThrows() async {
-        let callback = URL(string: "myapp://callback?state=STATE123")!
+        let callback = AuthTestFixtures.callbackURL(state: "STATE123")
 
         await expectHandleCallback(
             url: callback,
-            expectedError: .missingCode
+            expectedError: .missingCode,
+            preloadAuthorization: false
         )
     }
 
     @Test
     func handleCallback_missingStateThrows() async {
-        let callback = URL(string: "myapp://callback?code=AUTH_CODE")!
+        let callback = AuthTestFixtures.callbackURL(code: "AUTH_CODE")
 
         await expectHandleCallback(
             url: callback,
@@ -152,9 +140,10 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
 
     @Test
     func handleCallback_stateMismatchThrows() async {
-        let callback = URL(
-            string: "myapp://callback?code=AUTH_CODE&state=OTHER"
-        )!
+        let callback = AuthTestFixtures.callbackURL(
+            code: "AUTH_CODE",
+            state: "OTHER"
+        )
 
         await expectHandleCallback(
             url: callback,
@@ -165,7 +154,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
     @Test
     func handleCallback_throwsWhenClientSecretMissing() async {
         let pkceConfig = AuthTestFixtures.pkceConfig()
-        let harness = makeHarness(
+        let harness = AuthenticatorTestHarness.makeHarness(
             response: .success(
                 data: AuthTestFixtures.tokenResponse(accessToken: "TOKEN"),
                 statusCode: 200
@@ -200,7 +189,7 @@ struct SpotifyAuthorizationCodeAuthenticatorTests {
         )
 
         // Empty items → percentEncodedQuery == nil → "" used
-        let data = await auth.__test_formURLEncodedBody(items: [])
+        let data = __test_formURLEncodedBody(items: [])
         let string = String(data: data, encoding: .utf8)
 
         #expect(string == "")

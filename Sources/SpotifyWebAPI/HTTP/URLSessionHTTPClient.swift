@@ -27,6 +27,52 @@ public struct URLSessionHTTPClientConfiguration: Sendable {
     }
 }
 
+// MARK: - Builder Pattern Methods
+
+extension URLSessionHTTPClientConfiguration {
+    /// Returns a new configuration with the specified request timeout.
+    public func withRequestTimeout(_ interval: TimeInterval) -> Self {
+        var config = self
+        config.timeoutIntervalForRequest = interval
+        return config
+    }
+
+    /// Returns a new configuration with the specified resource timeout.
+    public func withResourceTimeout(_ interval: TimeInterval) -> Self {
+        var config = self
+        config.timeoutIntervalForResource = interval
+        return config
+    }
+
+    /// Returns a new configuration with the specified cellular access setting.
+    public func withCellularAccess(_ allowed: Bool) -> Self {
+        var config = self
+        config.allowsCellularAccess = allowed
+        return config
+    }
+
+    /// Returns a new configuration with the specified cache policy.
+    public func withCachePolicy(_ policy: NSURLRequest.CachePolicy) -> Self {
+        var config = self
+        config.cachePolicy = policy
+        return config
+    }
+
+    /// Returns a new configuration with the specified additional headers.
+    public func withHeaders(_ headers: [String: String]) -> Self {
+        var config = self
+        config.httpAdditionalHeaders = headers
+        return config
+    }
+
+    /// Returns a new configuration with an additional header added.
+    public func withHeader(name: String, value: String) -> Self {
+        var config = self
+        config.httpAdditionalHeaders[name] = value
+        return config
+    }
+}
+
 /// Default HTTP client backed by URLSession.
 public struct URLSessionHTTPClient: HTTPClient {
     private let session: URLSession

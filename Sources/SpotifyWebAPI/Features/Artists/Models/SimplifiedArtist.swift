@@ -6,7 +6,7 @@ import Foundation
 /// where complete artist details are not needed (e.g., within tracks, albums).
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artist)
-public struct SimplifiedArtist: Codable, Sendable, Equatable, SpotifyResource {
+public struct SimplifiedArtist: Codable, Sendable, Equatable, StandardSpotifyResource {
     /// Known external URLs for this artist.
     public let externalUrls: SpotifyExternalUrls?
     /// A link to the Web API endpoint providing full details of the artist.
