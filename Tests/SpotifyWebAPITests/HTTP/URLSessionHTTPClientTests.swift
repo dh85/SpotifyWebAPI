@@ -155,6 +155,34 @@ struct URLSessionHTTPClientTests {
                 $0 == MockURLProtocol.self
             }) == true)
     }
+
+        @Test
+        func pinnedCertificateLoadsFromFileURL() throws {
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+            let certificateData = Data([0x01, 0x02, 0x03])
+            try certificateData.write(to: tempURL)
+            defer { try? FileManager.default.removeItem(at: tempURL) }
+
+            let certificate = try URLSessionHTTPClient.PinnedCertificate(fileURL: tempURL)
+            #expect(certificate.data == certificateData)
+        }
+
+        @Test
+        func pinnedCertificateResourceInitializerThrowsWhenMissing() {
+            #expect(throws: URLSessionHTTPClientPinningError.self) {
+                _ = try URLSessionHTTPClient.PinnedCertificate(resource: "missing_cert", fileExtension: "der")
+            }
+        }
+
+        #if canImport(Security)
+            @Test
+            func makePinnedSessionThrowsWithoutCertificates() async {
+                await #expect(throws: URLSessionHTTPClientPinningError.self) {
+                    _ = try URLSessionHTTPClient.makePinnedSession(pinnedCertificates: [])
+                }
+            }
+        #endif
 }
 
 // MARK: - Helpers

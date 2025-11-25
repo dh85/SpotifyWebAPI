@@ -167,6 +167,39 @@ struct SpotifyClientConfigurationTests {
         }
     }
 
+    @Test("validate rejects protected custom headers")
+    func validateRejectsProtectedHeaders() {
+        let config = SpotifyClientConfiguration(customHeaders: ["Authorization": "Bearer 123"])
+
+        expectValidationError(config) { error in
+            guard case .restrictedCustomHeader(let name) = error else {
+                Issue.record("Expected restrictedCustomHeader, received \(error)")
+                return
+            }
+            #expect(name == "Authorization")
+        }
+    }
+
+    @Test("settingCustomHeader enforces restrictions")
+    func settingCustomHeaderEnforcesRestrictions() throws {
+        let config = SpotifyClientConfiguration.default
+        let updated = try config.settingCustomHeader(name: "X-App-Instance", value: "staging")
+
+        #expect(updated.customHeaders["X-App-Instance"] == "staging")
+        #expect(updated.requestTimeout == config.requestTimeout)
+
+        do {
+            _ = try config.settingCustomHeader(name: "Authorization", value: "Bearer 123")
+            Issue.record("Expected settingCustomHeader to throw for protected header")
+        } catch let error as SpotifyClientConfigurationError {
+            guard case .restrictedCustomHeader(let name) = error else {
+                Issue.record("Expected restrictedCustomHeader error, received \(error)")
+                return
+            }
+            #expect(name == "Authorization")
+        }
+    }
+
     @Test("validate rejects base URLs without scheme")
     func validateRejectsMissingScheme() {
         let config = SpotifyClientConfiguration(
@@ -241,6 +274,10 @@ struct SpotifyClientConfigurationTests {
             (.negativeRateLimitRetries(-1), "maxRateLimitRetries must be >= 0 (received -1)"),
             (.invalidCustomHeader("X-Invalid"), "Custom header name is invalid: X-Invalid"),
             (
+                .restrictedCustomHeader("Authorization"),
+                "Custom header cannot override protected header: Authorization"
+            ),
+            (
                 .insecureAPIBaseURL(baseURL),
                 "apiBaseURL must use HTTPS unless targeting localhost (received http://example.com/v1)"
             ),
@@ -253,6 +290,40 @@ struct SpotifyClientConfigurationTests {
         for (error, expected) in cases {
             #expect(error.description == expected)
         }
+    }
+
+    @Test("Fluent modifiers create derived configurations")
+    func fluentModifiersProduceCopies() {
+        let base = SpotifyClientConfiguration.default
+        let recovery = NetworkRecoveryConfiguration(
+            maxNetworkRetries: 4,
+            baseRetryDelay: 1.25
+        )
+        let customURL = URL(string: "https://example.com/mock")!
+
+        let derived = base
+            .withRequestTimeout(42)
+            .withMaxRateLimitRetries(5)
+            .withNetworkRecovery(recovery)
+            .withDebug(.verbose)
+            .withAPIBaseURL(customURL)
+            .withCustomHeaders(["X-App": "Test", "X-Env": "staging"])
+            .mergingCustomHeaders(["X-Trace": "abc123"])
+
+        #expect(derived.requestTimeout == 42)
+        #expect(derived.maxRateLimitRetries == 5)
+        #expect(derived.networkRecovery.baseRetryDelay == 1.25)
+        #expect(derived.debug.logLevel == DebugLogLevel.verbose)
+        #expect(derived.apiBaseURL == customURL)
+        #expect(derived.customHeaders.count == 3)
+        #expect(derived.customHeaders["X-Trace"] == "abc123")
+        #expect(derived.customHeaders["X-App"] == "Test")
+
+        // Ensure immutability: the base configuration must remain unchanged
+        #expect(base.requestTimeout == 30)
+        #expect(base.maxRateLimitRetries == 1)
+        #expect(base.customHeaders.isEmpty)
+        #expect(base.apiBaseURL == URL(string: "https://api.spotify.com/v1")!)
     }
 }
 

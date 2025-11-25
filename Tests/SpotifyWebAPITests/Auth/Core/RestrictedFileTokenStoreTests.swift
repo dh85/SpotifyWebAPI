@@ -205,6 +205,90 @@ struct RestrictedFileTokenStoreTests {
             Issue.record("Expected encodingFailed, received: \(error)")
         }
     }
+
+    @Test
+    func usesDefaultDirectoryWhenNoneProvided() async throws {
+        let directoryName = "SpotifyWebAPITest_\(UUID().uuidString)"
+        let store = RestrictedFileTokenStore(
+            filename: "default_dir_test.json",
+            directory: nil,
+            directoryName: directoryName
+        )
+
+        let tokens = AuthTestFixtures.sampleTokens(accessToken: "default_dir")
+        try await store.save(tokens)
+
+        let loaded = try await store.load()
+        #expect(loaded?.accessToken == "default_dir")
+
+        try await store.clear()
+
+        // Clean up the directory
+        #if os(Linux)
+            let expectedBase = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".config", isDirectory: true)
+        #else
+            let expectedBase =
+                FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? FileManager.default.temporaryDirectory
+        #endif
+        let expectedDir = expectedBase.appendingPathComponent(directoryName, isDirectory: true)
+        try? FileManager.default.removeItem(at: expectedDir)
+    }
+
+    @Test
+    func defaultDirectoryCreatesIntermediateDirectories() async throws {
+        let directoryName = "SpotifyWebAPITestNested_\(UUID().uuidString)"
+        let store = RestrictedFileTokenStore(
+            filename: "nested_test.json",
+            directory: nil,
+            directoryName: directoryName
+        )
+
+        // Verify directory is created by saving
+        let tokens = AuthTestFixtures.sampleTokens(accessToken: "nested")
+        try await store.save(tokens)
+
+        #if os(Linux)
+            let expectedBase = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".config", isDirectory: true)
+        #else
+            let expectedBase =
+                FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? FileManager.default.temporaryDirectory
+        #endif
+        let expectedDir = expectedBase.appendingPathComponent(directoryName, isDirectory: true)
+
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: expectedDir.path, isDirectory: &isDirectory)
+        #expect(exists)
+        #expect(isDirectory.boolValue)
+
+        try await store.clear()
+        try? FileManager.default.removeItem(at: expectedDir)
+    }
+
+    @Test
+    func explicitDirectoryTakesPrecedenceOverDefault() async throws {
+        let explicitDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "explicit_\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let store = RestrictedFileTokenStore(
+            filename: "explicit_test.json",
+            directory: explicitDir,
+            directoryName: "should_be_ignored"
+        )
+        defer { try? FileManager.default.removeItem(at: explicitDir) }
+
+        let tokens = AuthTestFixtures.sampleTokens(accessToken: "explicit")
+        try await store.save(tokens)
+
+        let fileURL = explicitDir.appendingPathComponent("explicit_test.json")
+        #expect(FileManager.default.fileExists(atPath: fileURL.path))
+
+        try await store.clear()
+    }
 }
 
 @Suite

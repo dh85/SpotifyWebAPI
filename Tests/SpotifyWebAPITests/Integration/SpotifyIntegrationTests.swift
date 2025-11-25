@@ -11,7 +11,7 @@ struct SpotifyIntegrationTests {
         let server = SpotifyMockAPIServer()
         try await server.withRunningServer { info in
             let client = makeUserClient(for: info)
-            let userService = await client.users
+            let userService = client.users
             let profile = try await userService.me()
             #expect(profile.id == "test-user")
             #expect(profile.displayName == "Test User")
@@ -24,7 +24,7 @@ struct SpotifyIntegrationTests {
         let server = SpotifyMockAPIServer()
         try await server.withRunningServer { info in
             let client = makeUserClient(for: info)
-            let playlistsService = await client.playlists
+            let playlistsService = client.playlists
             let page = try await playlistsService.myPlaylists(limit: 3, offset: 2)
 
             #expect(page.limit == 3)
@@ -48,7 +48,7 @@ struct SpotifyIntegrationTests {
 
         try await server.withRunningServer { info in
             let client = makeUserClient(for: info)
-            let playlistsService = await client.playlists
+            let playlistsService = client.playlists
             let fetched = try await playlistsService.allMyPlaylists()
 
             #expect(fetched.count == playlists.count)
@@ -62,7 +62,7 @@ struct SpotifyIntegrationTests {
         let server = SpotifyMockAPIServer()
         try await server.withRunningServer { info in
             let client = makeUserClient(for: info)
-            let playlistsService = await client.playlists
+            let playlistsService = client.playlists
             var collected: [SimplifiedPlaylist] = []
 
             for try await playlist in playlistsService.streamMyPlaylists(maxItems: 4) {
@@ -91,7 +91,7 @@ struct SpotifyIntegrationTests {
 
         try await server.withRunningServer { info in
             let client = makeUserClient(for: info)
-            let playlistsService = await client.playlists
+            let playlistsService = client.playlists
             let playlistID = playlist.id
 
             let snapshot = try await playlistsService.add(
@@ -133,7 +133,7 @@ struct SpotifyIntegrationTests {
 
         try await server.withRunningServer { info in
             let client = makeUserClient(for: info)
-            let playlistsService = await client.playlists
+            let playlistsService = client.playlists
 
             let firstSnapshot = try await playlistsService.remove(
                 from: playlist.id,

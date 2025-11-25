@@ -141,7 +141,6 @@ public enum TokenStoreError: Error, Sendable {
             if let accessGroup {
                 query[kSecAttrAccessGroup as String] = accessGroup
             }
-
             let status = SecItemDelete(query as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else {
                 throw TokenStoreError.keychain(status)
@@ -176,7 +175,11 @@ public actor RestrictedFileTokenStore: TokenStore {
                 fileManager: fileManager
             )
         }
-        Self.ensureDirectory(resolvedDirectory, fileManager: fileManager)
+        do {
+            try Self.ensureDirectory(resolvedDirectory, fileManager: fileManager)
+        } catch {
+            Self.logDirectoryHardeningFailure(error, directoryURL: resolvedDirectory)
+        }
         self.fileURL = resolvedDirectory.appendingPathComponent(filename, isDirectory: false)
 
         self.encoder = encoder
@@ -206,7 +209,7 @@ public actor RestrictedFileTokenStore: TokenStore {
         }
 
         do {
-            Self.ensureDirectory(fileURL.deletingLastPathComponent(), fileManager: fileManager)
+            try Self.ensureDirectory(fileURL.deletingLastPathComponent(), fileManager: fileManager)
             try data.write(to: fileURL, options: .atomic)
             try Self.applyRestrictedPermissions(to: fileURL)
         } catch {
@@ -239,16 +242,20 @@ public actor RestrictedFileTokenStore: TokenStore {
         #endif
     }
 
-    private static func ensureDirectory(_ url: URL, fileManager: FileManager) {
+    private static func ensureDirectory(_ url: URL, fileManager: FileManager) throws {
         var isDir: ObjCBool = false
         if fileManager.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
             return
         }
-        try? fileManager.createDirectory(
-            at: url,
-            withIntermediateDirectories: true,
-            attributes: [.posixPermissions: NSNumber(value: Int16(0o700))]
-        )
+        do {
+            try fileManager.createDirectory(
+                at: url,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: NSNumber(value: Int16(0o700))]
+            )
+        } catch {
+            throw DirectoryHardeningError.directoryCreationFailed(url: url, underlyingError: error)
+        }
     }
 
     @usableFromInline
@@ -276,54 +283,24 @@ public actor RestrictedFileTokenStore: TokenStore {
 
         try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
     }
-}
 
-/// Simple filesystem-based token store kept for samples and local testing.
-/// Prefer ``TokenStoreFactory/defaultStore(service:account:)`` for production apps.
-public actor FileTokenStore: TokenStore {
-    private let fileURL: URL
-
-    public init(
-        filename: String = "spotify_tokens.json",
-        directory: URL? = nil,
-        documentsDirectory: () -> URL? = {
-            FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        }
-    ) {
-        if let directory {
-            self.fileURL = directory.appendingPathComponent(filename)
-        } else {
-            let base: URL
-            if let documentsURL = documentsDirectory(),
-                FileManager.default.fileExists(atPath: documentsURL.path)
-            {
-                base = documentsURL
-            } else {
-                base = URL(fileURLWithPath: NSTemporaryDirectory())
-            }
-            self.fileURL = base.appendingPathComponent(filename)
+    private static func logDirectoryHardeningFailure(_ error: Error, directoryURL: URL) {
+        let message = "[RestrictedFileTokenStore] Failed to create directory with POSIX 0700 permissions at \(directoryURL.path): \(error)"
+        if let data = (message + "\n").data(using: .utf8) {
+            try? FileHandle.standardError.write(contentsOf: data)
         }
     }
 
-    public func load() async throws -> SpotifyTokens? {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            return nil
+    private struct DirectoryHardeningError: Error, Sendable, LocalizedError {
+        let url: URL
+        let underlyingError: Error
+
+        static func directoryCreationFailed(url: URL, underlyingError: Error) -> DirectoryHardeningError {
+            DirectoryHardeningError(url: url, underlyingError: underlyingError)
         }
 
-        let data = try Data(contentsOf: fileURL)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(SpotifyTokens.self, from: data)
-    }
-
-    public func save(_ tokens: SpotifyTokens) async throws {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(tokens)
-        try data.write(to: fileURL, options: .atomic)
-    }
-
-    public func clear() async throws {
-        try? FileManager.default.removeItem(at: fileURL)
+        var errorDescription: String? {
+            "Failed to create directory at \(url.path) with POSIX 0700 permissions: \(underlyingError.localizedDescription)"
+        }
     }
 }

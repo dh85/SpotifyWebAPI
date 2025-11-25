@@ -18,4 +18,14 @@ import Testing
         formatter.formatOptions = [.withInternetDateTime]
         #expect(item.addedAt == formatter.date(from: "2023-01-01T12:00:00Z"))
     }
+    
+    @Test
+    func contentPropertyReturnsAudiobook() throws {
+        let data = try TestDataLoader.load("audiobooks_saved")
+        let page: Page<SavedAudiobook> = try decodeModel(from: data)
+        let saved = try #require(page.items.first)
+        
+        #expect(saved.content.id == saved.audiobook.id)
+        #expect(saved.content.name == saved.audiobook.name)
+    }
 }

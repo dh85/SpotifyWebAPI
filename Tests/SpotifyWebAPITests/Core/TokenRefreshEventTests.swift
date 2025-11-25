@@ -313,4 +313,79 @@ struct TokenRefreshEventTests {
         // Sendable and Equatable enforced by compiler
         let _: any Sendable = automatic
     }
+
+    @Test("Token refresh emits instrumentation events")
+    func tokenRefreshEmitsInstrumentationEvents() async throws {
+        let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
+        let collector = InstrumentationEventCollector()
+        let handle = await client.addObserver(InstrumentationObserver(collector: collector))
+        defer { Task { await client.removeObserver(handle) } }
+
+        await http.addMockResponse(
+            data: try TestDataLoader.load("current_user_profile"),
+            statusCode: 200
+        )
+
+        _ = try await client.users.me()
+
+        let events = await collector.waitForEvents(count: 2, timeout: .milliseconds(500))
+        let didEmitWillStart = events.contains {
+            guard case .tokenRefreshWillStart = $0 else { return false }
+            return true
+        }
+        let didEmitDidSucceed = events.contains {
+            guard case .tokenRefreshDidSucceed = $0 else { return false }
+            return true
+        }
+
+        #expect(didEmitWillStart == true)
+        #expect(didEmitDidSucceed == true)
+    }
+
+    @Test("Token refresh failures emit instrumentation events")
+    func tokenRefreshFailuresEmitInstrumentationEvents() async {
+        let collector = InstrumentationEventCollector()
+        let observer = InstrumentationObserver(collector: collector)
+        let authenticator = ThrowingTokenAuthenticator(error: SpotifyAuthError.missingRefreshToken)
+        let client = SpotifyClient<UserAuthCapability>(
+            backend: authenticator,
+            httpClient: SimpleMockHTTPClient(response: .success(data: Data(), statusCode: 200))
+        )
+
+        let handle = await client.addObserver(observer)
+        defer { Task { await client.removeObserver(handle) } }
+
+        do {
+            _ = try await client.accessToken()
+            Issue.record("Expected accessToken() to throw for failing authenticator")
+        } catch {
+            // Expected
+        }
+
+        let events = await collector.waitForEvents(count: 1, timeout: .milliseconds(500))
+        let didEmitFailure = events.contains {
+            guard case .tokenRefreshDidFail(let context) = $0 else { return false }
+            return !context.errorDescription.isEmpty
+        }
+
+        #expect(didEmitFailure == true)
+    }
+}
+
+private actor ThrowingTokenAuthenticator: TokenGrantAuthenticator {
+    private let error: Error
+    private let persisted: SpotifyTokens
+
+    init(error: Error, persisted: SpotifyTokens = .mockExpired) {
+        self.error = error
+        self.persisted = persisted
+    }
+
+    func accessToken(invalidatingPrevious: Bool) async throws -> SpotifyTokens {
+        throw error
+    }
+
+    func loadPersistedTokens() async throws -> SpotifyTokens? {
+        persisted
+    }
 }

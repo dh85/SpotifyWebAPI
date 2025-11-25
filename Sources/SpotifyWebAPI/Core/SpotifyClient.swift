@@ -47,10 +47,9 @@ import Foundation
 /// Customize client behavior with ``SpotifyClientConfiguration``:
 ///
 /// ```swift
-/// let config = SpotifyClientConfiguration(
-///     requestTimeout: 60,
-///     maxRateLimitRetries: 3
-/// )
+/// let config = SpotifyClientConfiguration.default
+///     .withRequestTimeout(60)
+///     .withMaxRateLimitRetries(3)
 /// let client = SpotifyClient.pkce(..., configuration: config)
 /// ```
 ///
@@ -208,6 +207,19 @@ public actor SpotifyClient<Capability: Sendable> {
     /// Remove all interceptors.
     public func removeAllInterceptors() {
         interceptors.removeAll()
+    }
+
+    /// Register a ``SpotifyClientObserver`` to receive instrumentation events.
+    @discardableResult
+    public func addObserver(_ observer: SpotifyClientObserver) async -> DebugLogObserver {
+        let logger = DebugLogger.telemetryLogger()
+        return await logger.addObserver(observer)
+    }
+
+    /// Remove a previously registered instrumentation observer.
+    public func removeObserver(_ token: DebugLogObserver) async {
+        let logger = DebugLogger.telemetryLogger()
+        await logger.removeObserver(token)
     }
 
     /// Set a callback to be notified of token expiration.
@@ -384,14 +396,18 @@ public actor SpotifyClient<Capability: Sendable> {
 
         // Check if a refresh will happen
         let willRefresh = oldTokens == nil || oldTokens!.isExpired || invalidatingPrevious
+        let instrumentationLogger = DebugLogger.telemetryLogger()
 
         // Notify before refresh (if refresh is about to happen)
-        if willRefresh, let callback = tokenRefreshWillStartCallback {
+        if willRefresh {
             let info = TokenRefreshInfo(
                 reason: reason,
                 secondsUntilExpiration: secondsUntilExpiration
             )
-            callback(info)
+            if let callback = tokenRefreshWillStartCallback {
+                callback(info)
+            }
+            await instrumentationLogger.emit(.tokenRefreshWillStart(info))
         }
 
         // Attempt to get tokens (may trigger refresh internally)
@@ -404,8 +420,11 @@ public actor SpotifyClient<Capability: Sendable> {
             let didRefresh = oldAccessToken != tokens.accessToken
 
             // Notify of successful refresh
-            if didRefresh, let callback = tokenRefreshDidSucceedCallback {
-                callback(tokens)
+            if didRefresh {
+                if let callback = tokenRefreshDidSucceedCallback {
+                    callback(tokens)
+                }
+                await instrumentationLogger.emit(.tokenRefreshDidSucceed(tokens))
             }
 
             // Always notify token expiration callback
@@ -417,8 +436,13 @@ public actor SpotifyClient<Capability: Sendable> {
             return tokens.accessToken
         } catch {
             // Notify of refresh failure (if refresh was attempted)
-            if willRefresh, let callback = tokenRefreshDidFailCallback {
-                callback(error)
+            if willRefresh {
+                if let callback = tokenRefreshDidFailCallback {
+                    callback(error)
+                }
+                await instrumentationLogger.emit(
+                    .tokenRefreshDidFail(TokenRefreshFailureContext(error: error))
+                )
             }
             throw error
         }
@@ -429,7 +453,209 @@ public actor SpotifyClient<Capability: Sendable> {
 public typealias UserSpotifyClient = SpotifyClient<UserAuthCapability>
 public typealias AppSpotifyClient = SpotifyClient<AppOnlyAuthCapability>
 
+/// Builder that composes a user-auth capable ``SpotifyClient`` without repeating HTTP client,
+/// token store, or configuration plumbing.
+public struct SpotifyUserClientBuilder {
+    private enum Flow {
+        struct PKCEParameters {
+            let clientID: String
+            let redirectURI: URL
+            let scopes: Set<SpotifyScope>
+            let showDialog: Bool
+            let pkceProvider: PKCEProvider
+        }
+
+        struct AuthorizationCodeParameters {
+            let clientID: String
+            let clientSecret: String
+            let redirectURI: URL
+            let scopes: Set<SpotifyScope>
+            let showDialog: Bool
+        }
+
+        case pkce(PKCEParameters)
+        case authorizationCode(AuthorizationCodeParameters)
+    }
+
+    private var flow: Flow?
+    private var tokenStore: TokenStore = TokenStoreFactory.defaultStore()
+    private var httpClient: HTTPClient = URLSessionHTTPClient()
+    private var configuration: SpotifyClientConfiguration = .default
+
+    public init() {}
+
+    /// Configure the builder for the PKCE flow.
+    public func withPKCE(
+        clientID: String,
+        redirectURI: URL,
+        scopes: Set<SpotifyScope>,
+        showDialog: Bool = false,
+        pkceProvider: PKCEProvider = DefaultPKCEProvider()
+    ) -> SpotifyUserClientBuilder {
+        var copy = self
+        copy.flow = .pkce(
+            Flow.PKCEParameters(
+                clientID: clientID,
+                redirectURI: redirectURI,
+                scopes: scopes,
+                showDialog: showDialog,
+                pkceProvider: pkceProvider
+            )
+        )
+        return copy
+    }
+
+    /// Configure the builder for the authorization code flow.
+    public func withAuthorizationCode(
+        clientID: String,
+        clientSecret: String,
+        redirectURI: URL,
+        scopes: Set<SpotifyScope>,
+        showDialog: Bool = false
+    ) -> SpotifyUserClientBuilder {
+        var copy = self
+        copy.flow = .authorizationCode(
+            Flow.AuthorizationCodeParameters(
+                clientID: clientID,
+                clientSecret: clientSecret,
+                redirectURI: redirectURI,
+                scopes: scopes,
+                showDialog: showDialog
+            )
+        )
+        return copy
+    }
+
+    /// Override the token store (defaults to ``TokenStoreFactory/defaultStore``).
+    public func withTokenStore(_ store: TokenStore) -> SpotifyUserClientBuilder {
+        var copy = self
+        copy.tokenStore = store
+        return copy
+    }
+
+    /// Override the HTTP client shared by all requests.
+    public func withHTTPClient(_ client: HTTPClient) -> SpotifyUserClientBuilder {
+        var copy = self
+        copy.httpClient = client
+        return copy
+    }
+
+    /// Override the client configuration (request timeouts, retries, debug logging, ...).
+    public func withConfiguration(_ configuration: SpotifyClientConfiguration) -> SpotifyUserClientBuilder {
+        var copy = self
+        copy.configuration = configuration
+        return copy
+    }
+
+    /// Build the configured client. A flow (PKCE or authorization code) must be selected first.
+    public func build() -> UserSpotifyClient {
+        guard let flow else {
+            preconditionFailure(
+                "SpotifyUserClientBuilder requires selecting an auth flow via withPKCE(...) or withAuthorizationCode(...)."
+            )
+        }
+
+        switch flow {
+        case .pkce(let params):
+            return UserSpotifyClient.pkce(
+                clientID: params.clientID,
+                redirectURI: params.redirectURI,
+                scopes: params.scopes,
+                showDialog: params.showDialog,
+                tokenStore: tokenStore,
+                httpClient: httpClient,
+                pkceProvider: params.pkceProvider,
+                configuration: configuration
+            )
+        case .authorizationCode(let params):
+            return UserSpotifyClient.authorizationCode(
+                clientID: params.clientID,
+                clientSecret: params.clientSecret,
+                redirectURI: params.redirectURI,
+                scopes: params.scopes,
+                showDialog: params.showDialog,
+                tokenStore: tokenStore,
+                httpClient: httpClient,
+                configuration: configuration
+            )
+        }
+    }
+}
+
+/// Builder that configures an app-only ``SpotifyClient`` using fluent modifiers.
+public struct SpotifyAppClientBuilder {
+    private struct ClientCredentialsParameters {
+        let clientID: String
+        let clientSecret: String
+        let scopes: Set<SpotifyScope>
+    }
+
+    private var flow: ClientCredentialsParameters?
+    private var tokenStore: TokenStore?
+    private var httpClient: HTTPClient = URLSessionHTTPClient()
+    private var configuration: SpotifyClientConfiguration = .default
+
+    public init() {}
+
+    /// Configure the builder for the Client Credentials flow.
+    public func withClientCredentials(
+        clientID: String,
+        clientSecret: String,
+        scopes: Set<SpotifyScope> = []
+    ) -> SpotifyAppClientBuilder {
+        var copy = self
+        copy.flow = ClientCredentialsParameters(
+            clientID: clientID,
+            clientSecret: clientSecret,
+            scopes: scopes
+        )
+        return copy
+    }
+
+    /// Override the optional token store backing the authenticator.
+    public func withTokenStore(_ store: TokenStore?) -> SpotifyAppClientBuilder {
+        var copy = self
+        copy.tokenStore = store
+        return copy
+    }
+
+    /// Override the HTTP client shared by all requests.
+    public func withHTTPClient(_ client: HTTPClient) -> SpotifyAppClientBuilder {
+        var copy = self
+        copy.httpClient = client
+        return copy
+    }
+
+    /// Override the client configuration (timeouts, retries, logging, ...).
+    public func withConfiguration(_ configuration: SpotifyClientConfiguration) -> SpotifyAppClientBuilder {
+        var copy = self
+        copy.configuration = configuration
+        return copy
+    }
+
+    /// Build the configured client. ``withClientCredentials`` must be called first.
+    public func build() -> AppSpotifyClient {
+        guard let flow else {
+            preconditionFailure("SpotifyAppClientBuilder requires client credentials parameters before build().")
+        }
+
+        return AppSpotifyClient.clientCredentials(
+            clientID: flow.clientID,
+            clientSecret: flow.clientSecret,
+            scopes: flow.scopes,
+            httpClient: httpClient,
+            tokenStore: tokenStore,
+            configuration: configuration
+        )
+    }
+}
+
 extension SpotifyClient where Capability == UserAuthCapability {
+
+    /// Returns a builder for composing a user-auth capable ``SpotifyClient``.
+    public static func builder() -> SpotifyUserClientBuilder {
+        SpotifyUserClientBuilder()
+    }
 
     /// Create a PKCE client for public/mobile apps.
     ///
@@ -516,6 +742,11 @@ extension SpotifyClient where Capability == UserAuthCapability {
 }
 
 extension SpotifyClient where Capability == AppOnlyAuthCapability {
+
+    /// Returns a builder for composing an app-only ``SpotifyClient``.
+    public static func builder() -> SpotifyAppClientBuilder {
+        SpotifyAppClientBuilder()
+    }
 
     /// Create a Client Credentials client for app-only access.
     ///

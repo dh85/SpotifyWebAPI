@@ -79,7 +79,7 @@ private actor DebugEventCollector {
 
         while true {
             let tokens = events.compactMap { event -> TokenOperationContext? in
-                guard case .token(let context) = event else { return nil }
+                guard case .tokenOperation(let context) = event else { return nil }
                 return context
             }
             if tokens.count >= count {
@@ -98,7 +98,7 @@ private actor DebugEventCollector {
     }
 }
 
-@Suite("Debug Tooling Tests")
+@Suite("Debug Tooling Tests", .serialized)
 @MainActor
 struct DebugToolingTests {
 
@@ -337,6 +337,29 @@ struct DebugToolingTests {
         #expect(exchange.success == false)
     }
 
+    @Test("SpotifyClientObserver protocol receives events")
+    func spotifyClientObserverProtocolReceivesEvents() async {
+        await TestEnvironment.logger.configure(.disabled)
+
+        let collector = DebugEventCollector()
+        struct CollectingObserver: SpotifyClientObserver {
+            let collector: DebugEventCollector
+            func receive(_ event: SpotifyClientEvent) {
+                Task { await collector.append(event) }
+            }
+        }
+
+        let observerToken = await TestEnvironment.logger.addObserver(
+            CollectingObserver(collector: collector)
+        )
+        defer { Task { await TestEnvironment.logger.removeObserver(observerToken) } }
+
+        await TestEnvironment.logger.logTokenOperation("observer-protocol", success: true)
+
+        let events = await collector.waitForTokenEvents(count: 1)
+        #expect(events.contains { $0.operation == "observer-protocol" })
+    }
+
     @Test("Debug logger logs network retries when enabled")
     func debugLoggerLogsNetworkRetriesWhenEnabled() async {
         let config = DebugConfiguration(
@@ -459,6 +482,7 @@ struct DebugToolingTests {
             #expect(sanitized.logLevel == .info)
             #expect(sanitized.logRequests == false)
             #expect(sanitized.logResponses == false)
+            #expect(sanitized.allowSensitivePayloads == false)
             #expect(await TestEnvironment.logger.didLogProductionRestrictionWarningForTests())
 
             await TestEnvironment.logger.overrideIsDebugBuildForTests(nil)
@@ -499,7 +523,7 @@ struct DebugToolingTests {
         }
 
         #expect(requestContext.headers["Authorization"] == "Bearer <redacted>")
-        #expect(requestContext.bodyPreview == "<redacted>")
+        #expect(requestContext.bodyPreview == DebugLogger.redactedBodyPlaceholder)
         #expect(requestContext.bodyBytes == request.httpBody?.count)
 
         let response = HTTPURLResponse(
@@ -528,6 +552,310 @@ struct DebugToolingTests {
         }
 
         #expect(responseContext.headers["Set-Cookie"] == "<redacted>")
-        #expect(responseContext.bodyPreview == "<redacted>")
+        #expect(responseContext.bodyPreview == DebugLogger.redactedBodyPlaceholder)
+    }
+
+    @Test("Debug logger redacts bodies even when verbose logging is enabled")
+    func debugLoggerRedactsBodiesWhenSensitiveLoggingDisabled() async {
+        await TestEnvironment.logger.configure(
+            DebugConfiguration(
+                logLevel: .verbose,
+                logRequests: true,
+                logResponses: true,
+                allowSensitivePayloads: false
+            )
+        )
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        let url = URL(string: "https://api.spotify.com/v1/tokens")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data("{\"access_token\":\"secret\"}".utf8)
+
+        let token = await TestEnvironment.logger.logRequest(request)
+        let requestContext = await collector.waitForEvent { event -> RequestLogContext? in
+            guard case .request(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let requestContext else {
+            Issue.record("Missing request context for sensitive payload test")
+            return
+        }
+
+        #expect(requestContext.bodyPreview == DebugLogger.redactedBodyPlaceholder)
+
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )
+        let responseData = Data("{\"refresh_token\":\"secret\"}".utf8)
+        await TestEnvironment.logger.logResponse(response, data: responseData, error: nil, token: token)
+
+        let responseContext = await collector.waitForEvent { event -> ResponseLogContext? in
+            guard case .response(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let responseContext else {
+            Issue.record("Missing response context for sensitive payload test")
+            return
+        }
+
+        #expect(responseContext.bodyPreview == DebugLogger.redactedBodyPlaceholder)
+    }
+
+    @Test("Debug logger never logs access tokens in plain text")
+    func debugLoggerNeverLogsAccessTokensInPlainText() async {
+        await TestEnvironment.logger.configure(
+            DebugConfiguration(
+                logLevel: .verbose,
+                logRequests: true,
+                logResponses: true,
+                logPerformance: true,
+                logNetworkRetries: true,
+                logTokenOperations: true,
+                allowSensitivePayloads: true
+            )
+        )
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        // Simulate a request with Authorization header
+        let requestURL = URL(string: "https://api.spotify.com/v1/me/player")!
+        var request = URLRequest(url: requestURL)
+        request.setValue("Bearer my-super-secret-access-token-12345", forHTTPHeaderField: "Authorization")
+
+        let token = await TestEnvironment.logger.logRequest(request)
+
+        let requestContext = await collector.waitForEvent { event -> RequestLogContext? in
+            guard case .request(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let requestContext else {
+            Issue.record("Missing request context for access token test")
+            return
+        }
+
+        // Verify the Authorization header is redacted
+        let authHeader = requestContext.headers["Authorization"]
+        #expect(authHeader == "Bearer <redacted>", "Authorization header must be redacted")
+        #expect(!authHeader!.contains("my-super-secret-access-token-12345"), 
+                "Plain text access token must never appear in logs")
+    }
+
+    @Test("Debug logger never logs refresh tokens in response bodies")
+    func debugLoggerNeverLogsRefreshTokensInResponseBodies() async {
+        await TestEnvironment.logger.configure(.verbose)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        // Simulate OAuth token response
+        let responseURL = URL(string: "https://accounts.spotify.com/api/token")!
+        let response = HTTPURLResponse(
+            url: responseURL,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )
+
+        let tokenResponse = """
+        {
+            "access_token": "NgCXRK...MzYjw",
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "refresh_token": "NgAagA...Um_SHo",
+            "scope": "user-read-private user-read-email"
+        }
+        """
+        let responseData = Data(tokenResponse.utf8)
+
+        let token = await TestEnvironment.logger.logRequest(URLRequest(url: responseURL))
+        await TestEnvironment.logger.logResponse(response, data: responseData, error: nil, token: token)
+
+        let responseContext = await collector.waitForEvent { event -> ResponseLogContext? in
+            guard case .response(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let responseContext else {
+            Issue.record("Missing response context for refresh token test")
+            return
+        }
+
+        // Verify response body containing tokens is redacted
+        let expectedPlaceholder = DebugLogger.redactedBodyPlaceholder
+        #expect(responseContext.bodyPreview == expectedPlaceholder, "Token response body must be redacted")
+        #expect(!responseContext.bodyPreview!.contains("NgCXRK"), "Access token must not appear in logs")
+        #expect(!responseContext.bodyPreview!.contains("NgAagA"), "Refresh token must not appear in logs")
+    }
+
+    @Test("Debug logger redacts all sensitive header types")
+    func debugLoggerRedactsAllSensitiveHeaders() async {
+        await TestEnvironment.logger.configure(.verbose)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        // Test all sensitive header types
+        let sensitiveHeaders: [String: String] = [
+            "Authorization": "Bearer token123",
+            "Proxy-Authorization": "Basic abc123",
+            "Cookie": "session=xyz789",
+            "Set-Cookie": "auth=def456; HttpOnly",
+            "X-Spotify-Authorization": "Custom token999",
+            "X-API-Key": "apikey888"
+        ]
+
+        let requestURL = URL(string: "https://api.spotify.com/v1/test")!
+        var request = URLRequest(url: requestURL)
+        for (header, value) in sensitiveHeaders {
+            request.setValue(value, forHTTPHeaderField: header)
+        }
+
+        let token = await TestEnvironment.logger.logRequest(request)
+
+        let requestContext = await collector.waitForEvent { event -> RequestLogContext? in
+            guard case .request(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let requestContext else {
+            Issue.record("Missing request context for sensitive headers test")
+            return
+        }
+
+        // Verify all sensitive headers are redacted
+        for (headerName, originalValue) in sensitiveHeaders {
+            let loggedValue = requestContext.headers[headerName]
+            #expect(loggedValue != originalValue, "\(headerName) must be redacted")
+            #expect(loggedValue?.contains("<redacted>") == true || 
+                    loggedValue?.contains("Bearer <redacted>") == true ||
+                    loggedValue?.contains("Basic <redacted>") == true,
+                    "\(headerName) must show <redacted> placeholder")
+        }
+    }
+
+    @Test("Debug logger preserves URLs for debugging context")
+    func debugLoggerPreservesURLsForDebugging() async {
+        await TestEnvironment.logger.configure(.verbose)
+
+        let collector = DebugEventCollector()
+        let observer = await TestEnvironment.logger.addObserver { event in
+            Task { await collector.append(event) }
+        }
+        defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+        // URL with token in query parameter (bad practice, but logger preserves URL for debugging)
+        let requestURL = URL(string: "https://api.spotify.com/v1/tracks?access_token=secret123")!
+        let request = URLRequest(url: requestURL)
+
+        let token = await TestEnvironment.logger.logRequest(request)
+
+        let requestContext = await collector.waitForEvent { event -> RequestLogContext? in
+            guard case .request(let context) = event else { return nil }
+            guard context.token == token else { return nil }
+            return context
+        }
+
+        guard let requestContext else {
+            Issue.record("Missing request context for URL preservation test")
+            return
+        }
+
+        // URLs are preserved for debugging context (developers need full URL to reproduce issues)
+        // Security best practice: never put tokens in URLs in the first place
+        let loggedURL = requestContext.url?.absoluteString ?? ""
+        #expect(loggedURL == "https://api.spotify.com/v1/tracks?access_token=secret123",
+                "URLs are preserved for debugging (tokens should never be in URLs)")
+    }
+
+    @Test("Debug logger is disabled by default in production")
+    func debugLoggerDisabledByDefaultInProduction() async {
+        #if DEBUG
+            await TestEnvironment.logger.resetWarningFlagsForTests()
+            await TestEnvironment.logger.overrideIsDebugBuildForTests(false)
+
+            let collector = DebugEventCollector()
+            let observer = await TestEnvironment.logger.addObserver { event in
+                Task { await collector.append(event) }
+            }
+            defer { Task { await TestEnvironment.logger.removeObserver(observer) } }
+
+            // Try to enable verbose logging with sensitive features
+            let productionConfig = DebugConfiguration(
+                logLevel: .verbose,
+                logRequests: true,
+                logResponses: true,
+                logTokenOperations: true
+            )
+
+            await TestEnvironment.logger.configure(productionConfig)
+
+            // Make a request
+            let requestURL = URL(string: "https://api.spotify.com/v1/me")!
+            var request = URLRequest(url: requestURL)
+            request.setValue("Bearer production-token", forHTTPHeaderField: "Authorization")
+
+            let _ = await TestEnvironment.logger.logRequest(request)
+
+            // Wait briefly for any events
+                let events = await collector.waitForEvents(minCount: 1, timeout: .milliseconds(100))
+
+                // Observers still receive instrumentation even in production builds so they can
+                // surface telemetry without enabling verbose logging. However, the configuration
+                // must be sanitized to ensure nothing is actually written to logs.
+                #expect(events.contains { if case .request = $0 { true } else { false } })
+
+                let config = await TestEnvironment.logger.configurationSnapshotForTests()
+                #expect(config.logRequests == false, "Request logging must be disabled in production builds")
+                #expect(config.logResponses == false, "Response logging must be disabled in production builds")
+                #expect(config.logLevel.rawValue <= DebugLogLevel.info.rawValue,
+                    "Verbose log levels must be clamped in production builds")
+
+                let didWarn = await TestEnvironment.logger.didLogProductionRestrictionWarningForTests()
+                #expect(didWarn == true, "Production restriction warning must be emitted")
+
+            await TestEnvironment.logger.overrideIsDebugBuildForTests(nil)
+        #else
+            // In actual production builds, just verify the configuration sanitization works
+            let productionConfig = DebugConfiguration(
+                logLevel: .verbose,
+                logRequests: true,
+                logResponses: true
+            )
+
+            await TestEnvironment.logger.configure(productionConfig)
+            let actual = await TestEnvironment.logger.configurationSnapshotForTests()
+
+            #expect(actual.logRequests == false, "Sensitive logging must be disabled in production")
+            #expect(actual.logResponses == false, "Sensitive logging must be disabled in production")
+        #endif
     }
 }
+

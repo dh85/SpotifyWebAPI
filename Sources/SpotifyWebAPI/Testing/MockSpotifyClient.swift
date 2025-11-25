@@ -114,11 +114,50 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
 
     // MARK: - Protocol Surfaces
 
-    public var usersAPI: any SpotifyUsersAPI { usersService }
-    public var albumsAPI: any SpotifyAlbumsAPI { albumsService }
-    public var tracksAPI: any SpotifyTracksAPI { tracksService }
-    public var playlistsAPI: any SpotifyPlaylistsAPI { playlistsService }
-    public var playerAPI: any SpotifyPlayerAPI { playerService }
+    public var usersAPI: any SpotifyUsersAPI {
+        services.withValue { services in
+            if services.usersService == nil {
+                services.usersService = UsersAPI(client: self)
+            }
+            return services.usersService!
+        }
+    }
+    
+    public var albumsAPI: any SpotifyAlbumsAPI {
+        services.withValue { services in
+            if services.albumsService == nil {
+                services.albumsService = AlbumsAPI(client: self)
+            }
+            return services.albumsService!
+        }
+    }
+    
+    public var tracksAPI: any SpotifyTracksAPI {
+        services.withValue { services in
+            if services.tracksService == nil {
+                services.tracksService = TracksAPI(client: self)
+            }
+            return services.tracksService!
+        }
+    }
+    
+    public var playlistsAPI: any SpotifyPlaylistsAPI {
+        services.withValue { services in
+            if services.playlistsService == nil {
+                services.playlistsService = PlaylistsAPI(client: self)
+            }
+            return services.playlistsService!
+        }
+    }
+    
+    public var playerAPI: any SpotifyPlayerAPI {
+        services.withValue { services in
+            if services.playerService == nil {
+                services.playerService = PlayerAPI(client: self)
+            }
+            return services.playerService!
+        }
+    }
 
     // MARK: - Call Tracking
 
@@ -133,11 +172,17 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
     public var pauseCalled: Bool { state.withValue { $0.pauseCalled } }
     public var playCalled: Bool { state.withValue { $0.playCalled } }
 
-    private lazy var usersService = UsersAPI(client: self)
-    private lazy var albumsService = AlbumsAPI(client: self)
-    private lazy var tracksService = TracksAPI(client: self)
-    private lazy var playlistsService = PlaylistsAPI(client: self)
-    private lazy var playerService = PlayerAPI(client: self)
+    // MARK: - Service Storage
+    
+    private struct Services {
+        var usersService: UsersAPI?
+        var albumsService: AlbumsAPI?
+        var tracksService: TracksAPI?
+        var playlistsService: PlaylistsAPI?
+        var playerService: PlayerAPI?
+    }
+    
+    private let services = LockIsolated(Services())
 
     public init(playlistsHref: URL = URL(string: "https://api.spotify.com/v1/me/playlists")!) {
         self.state = LockIsolated(MockState(playlistsHref: playlistsHref))

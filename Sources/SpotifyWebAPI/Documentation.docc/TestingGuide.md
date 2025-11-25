@@ -35,6 +35,29 @@ Need to drive a UI against the real networking stack without Spotify's servers? 
 
 Combine pipelines are easy to verify by returning `Just` values from your mocks, while async code can be exercised with `async let`/`await` inside XCTest. Because everything funnels through ``SpotifyClientProtocol``, you rarely need to spin up real HTTP traffic for unit tests.
 
+## Instrumentation
+
+Hook into observability once via ``SpotifyClientObserver`` instead of wiring multiple callbacks. Observers receive ``SpotifyClientEvent`` values that cover requests, responses, retries, token lifecycle, and rate limits:
+
+```swift
+struct LoggingObserver: SpotifyClientObserver {
+	func receive(_ event: SpotifyClientEvent) {
+		switch event {
+		case .tokenRefreshDidFail(let context):
+			logger.error("Token refresh failed: \(context.errorDescription)")
+		case .rateLimit(let info):
+			logger.info("Remaining requests: \(info.remaining ?? -1)")
+		default:
+			break
+		}
+	}
+}
+
+let observer = await client.addObserver(LoggingObserver())
+```
+
+Remove observers with ``SpotifyClient/removeObserver(_:)`` when you no longer need the events (for example, when a view disappears).
+
 ## Continuous Integration Tips
 
 1. Create a shared test target that owns your mock client implementations so apps and frameworks reuse them.

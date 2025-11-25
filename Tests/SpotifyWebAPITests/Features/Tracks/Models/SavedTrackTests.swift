@@ -18,4 +18,14 @@ import Testing
         formatter.formatOptions = [.withInternetDateTime]
         #expect(saved.addedAt == formatter.date(from: "2024-01-01T12:00:00Z"))
     }
+    
+    @Test
+    func contentPropertyReturnsTrack() throws {
+        let data = try TestDataLoader.load("tracks_saved")
+        let page: Page<SavedTrack> = try decodeModel(from: data)
+        let saved = try #require(page.items.first)
+        
+        #expect(saved.content.id == saved.track.id)
+        #expect(saved.content.name == saved.track.name)
+    }
 }

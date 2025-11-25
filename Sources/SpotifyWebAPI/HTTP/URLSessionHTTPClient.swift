@@ -4,6 +4,10 @@ import Foundation
     import FoundationNetworking
 #endif
 
+#if canImport(Security)
+    import Security
+#endif
+
 /// Tunable configuration for ``URLSessionHTTPClient``.
 public struct URLSessionHTTPClientConfiguration: Sendable {
     public var timeoutIntervalForRequest: TimeInterval
@@ -110,3 +114,129 @@ public struct URLSessionHTTPClient: HTTPClient {
         return URLSession(configuration: configuration)
     }
 }
+
+public enum URLSessionHTTPClientPinningError: Error, LocalizedError, Sendable {
+    case certificateResourceMissing(name: String, fileExtension: String?)
+    case emptyCertificateList
+
+    public var errorDescription: String? {
+        switch self {
+        case let .certificateResourceMissing(name, fileExtension):
+            if let fileExtension {
+                return "Certificate resource \(name).\(fileExtension) could not be located."
+            }
+            return "Certificate resource \(name) could not be located."
+        case .emptyCertificateList:
+            return "At least one pinned certificate is required to enable TLS pinning."
+        }
+    }
+}
+
+extension URLSessionHTTPClient {
+    /// Container for certificate data used when configuring TLS pinning.
+    public struct PinnedCertificate: Sendable, Hashable {
+        public let data: Data
+
+        public init(data: Data) {
+            self.data = data
+        }
+
+        public init(fileURL: URL) throws {
+            self.init(data: try Data(contentsOf: fileURL))
+        }
+
+        public init(resource name: String, fileExtension: String?, bundle: Bundle = .main) throws {
+            guard let url = bundle.url(forResource: name, withExtension: fileExtension) else {
+                throw URLSessionHTTPClientPinningError.certificateResourceMissing(
+                    name: name,
+                    fileExtension: fileExtension
+                )
+            }
+            try self.init(fileURL: url)
+        }
+    }
+}
+
+#if canImport(Security)
+extension URLSessionHTTPClient {
+    /// Creates a URLSession configured with certificate pinning enforced by ``URLSessionHTTPClient``.
+    /// - Parameters:
+    ///   - configuration: Base HTTP client configuration to apply to the session.
+    ///   - pinnedCertificates: Certificates (DER data) that should be accepted during TLS validation.
+    ///   - allowsSelfSignedCertificates: When true, skips default trust chain evaluation to allow
+    ///     self-signed certificates that still match one of the pinned entries.
+    ///   - delegateQueue: Optional queue for URLSession delegate callbacks.
+    /// - Returns: A URLSession instance wired up with pinning enforcement.
+    /// - Throws: ``URLSessionHTTPClientPinningError`` when certificates are missing or invalid.
+    public static func makePinnedSession(
+        configuration: URLSessionHTTPClientConfiguration = .init(),
+        pinnedCertificates: [PinnedCertificate],
+        allowsSelfSignedCertificates: Bool = false,
+        delegateQueue: OperationQueue? = nil
+    ) throws -> URLSession {
+        guard !pinnedCertificates.isEmpty else {
+            throw URLSessionHTTPClientPinningError.emptyCertificateList
+        }
+
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
+        sessionConfiguration.timeoutIntervalForRequest = configuration.timeoutIntervalForRequest
+        sessionConfiguration.timeoutIntervalForResource = configuration.timeoutIntervalForResource
+        sessionConfiguration.allowsCellularAccess = configuration.allowsCellularAccess
+        sessionConfiguration.requestCachePolicy = configuration.cachePolicy
+        if !configuration.httpAdditionalHeaders.isEmpty {
+            sessionConfiguration.httpAdditionalHeaders = configuration.httpAdditionalHeaders
+        }
+
+        let delegate = PinnedCertificateSessionDelegate(
+            pinnedCertificates: Set(pinnedCertificates.map(\.data)),
+            evaluateSystemTrust: !allowsSelfSignedCertificates
+        )
+
+        return URLSession(configuration: sessionConfiguration, delegate: delegate, delegateQueue: delegateQueue)
+    }
+}
+
+private final class PinnedCertificateSessionDelegate: NSObject, URLSessionDelegate {
+    private let pinnedCertificates: Set<Data>
+    private let evaluateSystemTrust: Bool
+
+    init(pinnedCertificates: Set<Data>, evaluateSystemTrust: Bool) {
+        self.pinnedCertificates = pinnedCertificates
+        self.evaluateSystemTrust = evaluateSystemTrust
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard
+            challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+            let serverTrust = challenge.protectionSpace.serverTrust
+        else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        if evaluateSystemTrust {
+            var evaluateError: CFError?
+            guard SecTrustEvaluateWithError(serverTrust, &evaluateError) else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
+        }
+
+        let certificateCount = SecTrustGetCertificateCount(serverTrust)
+        for index in 0..<certificateCount {
+            guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, index) else { continue }
+            let certificateData = SecCertificateCopyData(certificate) as Data
+            if pinnedCertificates.contains(certificateData) {
+                completionHandler(.useCredential, URLCredential(trust: serverTrust))
+                return
+            }
+        }
+
+        completionHandler(.cancelAuthenticationChallenge, nil)
+    }
+}
+#endif
