@@ -3,18 +3,6 @@ import Testing
 
 @testable import SpotifyWebAPI
 
-private actor OffsetRecorder {
-    private var offsets: [Int] = []
-
-    func record(_ offset: Int) {
-        offsets.append(offset)
-    }
-
-    func snapshot() -> [Int] {
-        offsets
-    }
-}
-
 @Suite
 struct ConcurrencyTests {
 

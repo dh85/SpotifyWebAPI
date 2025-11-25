@@ -50,8 +50,8 @@
             let (client, _) = makeUserAuthClient()
             let artistsService = await client.artists
 
-            await assertIDBatchTooLarge(maxAllowed: 50, reasonContains: "Maximum of 50") { ids in
-                _ = try await awaitFirstValue(artistsService.severalPublisher(ids: ids))
+            await expectPublisherIDBatchLimit(max: 50) { ids in
+                artistsService.severalPublisher(ids: ids)
             }
         }
 
@@ -107,10 +107,8 @@
             let (client, _) = makeUserAuthClient()
             let artists = await client.artists
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(
-                    artists.albumsPublisher(for: "artist123", limit: limit)
-                )
+            await expectPublisherLimitValidation { limit in
+                artists.albumsPublisher(for: "artist123", limit: limit)
             }
         }
 

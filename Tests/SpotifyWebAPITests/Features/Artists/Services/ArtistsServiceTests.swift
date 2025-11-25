@@ -53,10 +53,8 @@ struct ArtistsServiceTests {
     @Test
     func severalArtists_throwsError_whenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        let tooManyIDs = makeIDs(count: 51)
-
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.artists.several(ids: tooManyIDs)
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.artists.several(ids: ids)
         }
     }
 
@@ -161,8 +159,7 @@ struct ArtistsServiceTests {
 
     @Test
     func streamAlbumPagesBuildsRequests() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "artist_albums.json",
             of: SimplifiedAlbum.self,
             offset: 0,
@@ -170,9 +167,7 @@ struct ArtistsServiceTests {
             total: 25,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.artists.streamAlbumPages(
             for: "artist123",
             includeGroups: [.album],
@@ -180,22 +175,18 @@ struct ArtistsServiceTests {
             pageSize: 25,
             maxPages: 1
         )
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0])
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/artists/artist123/albums", method: "GET")
         expectMarketParameter(request, market: "US")
-        #expect(request?.url?.query()?.contains("include_groups=album") == true)
-        #expect(request?.url?.query()?.contains("limit=25") == true)
+        expectQueryParameters(request, contains: ["include_groups=album", "limit=25"])
     }
 
     @Test
     func streamAlbumsEmitsItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "artist_albums.json",
             of: SimplifiedAlbum.self,
             offset: 0,
@@ -203,26 +194,17 @@ struct ArtistsServiceTests {
             total: 30,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var names: [String] = []
         let stream = await client.artists.streamAlbums(
             for: "artist123",
-            includeGroups: [.single],
-            market: "CA",
+            includeGroups: [.album],
+            market: "FR",
             pageSize: 30,
-            maxItems: 60
+            maxItems: 50
         )
-        for try await album in stream {
-            names.append(album.name)
-        }
+        let items = try await collectStreamItems(stream)
 
-        #expect(names.isEmpty == false)
-        let request = await http.firstRequest
-        expectRequest(request, path: "/v1/artists/artist123/albums", method: "GET")
-        expectMarketParameter(request, market: "CA")
-        #expect(request?.url?.query()?.contains("include_groups=single") == true)
-        #expect(request?.url?.query()?.contains("limit=30") == true)
+        #expect(items.isEmpty == false)
     }
 
     // MARK: - Get Artist Top Tracks

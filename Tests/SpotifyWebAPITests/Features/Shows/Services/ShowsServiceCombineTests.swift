@@ -72,10 +72,8 @@
             let (client, _) = makeUserAuthClient()
             let shows = await client.shows
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(
-                    shows.episodesPublisher(for: "showid", limit: limit)
-                )
+            await expectPublisherLimitValidation { limit in
+                shows.episodesPublisher(for: "showid", limit: limit)
             }
         }
 
@@ -99,8 +97,8 @@
             let (client, _) = makeUserAuthClient()
             let shows = await client.shows
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(shows.savedPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                shows.savedPublisher(limit: limit)
             }
         }
 

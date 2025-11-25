@@ -75,8 +75,8 @@ struct AudiobooksServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.audiobooks.several(ids: makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.audiobooks.several(ids: ids)
         }
     }
 
@@ -114,8 +114,7 @@ struct AudiobooksServiceTests {
 
     @Test
     func streamChapterPagesBuildsRequests() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "audiobook_chapters.json",
             of: SimplifiedChapter.self,
             offset: 0,
@@ -123,18 +122,14 @@ struct AudiobooksServiceTests {
             total: 40,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.audiobooks.streamChapterPages(
             for: "audiobook123",
             market: "GB",
             pageSize: 40,
             maxPages: 1
         )
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0])
         let request = await http.firstRequest
@@ -145,8 +140,7 @@ struct AudiobooksServiceTests {
 
     @Test
     func streamChaptersEmitsItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "audiobook_chapters.json",
             of: SimplifiedChapter.self,
             offset: 0,
@@ -154,20 +148,16 @@ struct AudiobooksServiceTests {
             total: 35,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var ids: [String] = []
         let stream = await client.audiobooks.streamChapters(
             for: "audiobook123",
             market: "DE",
             pageSize: 35,
             maxItems: 35
         )
-        for try await chapter in stream {
-            ids.append(chapter.id)
-        }
+        let items = try await collectStreamItems(stream)
 
-        #expect(ids.isEmpty == false)
+        #expect(items.isEmpty == false)
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/audiobooks/audiobook123/chapters", method: "GET")
         expectMarketParameter(request, market: "DE")
@@ -277,8 +267,8 @@ struct AudiobooksServiceTests {
     @Test
     func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.audiobooks.save(makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.audiobooks.save(ids)
         }
     }
 
@@ -297,8 +287,8 @@ struct AudiobooksServiceTests {
     @Test
     func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.audiobooks.remove(makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.audiobooks.remove(ids)
         }
     }
 
@@ -320,8 +310,8 @@ struct AudiobooksServiceTests {
     @Test
     func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.audiobooks.checkSaved(makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.audiobooks.checkSaved(ids)
         }
     }
 

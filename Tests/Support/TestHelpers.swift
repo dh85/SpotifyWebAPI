@@ -461,10 +461,13 @@ func enqueueTwoPageResponses<Item: Codable & Sendable & Equatable>(
     return (firstData, secondData)
 }
 
-func collectStreamItems<Item>(
-    _ stream: AsyncThrowingStream<Item, Error>
-) async throws -> [Item] {
-    var items: [Item] = []
+/// Collects all items from an async stream.
+///
+/// Reduces boilerplate for stream collection tests.
+func collectStreamItems<T>(
+    _ stream: AsyncThrowingStream<T, any Error>
+) async throws -> [T] {
+    var items: [T] = []
     for try await item in stream {
         items.append(item)
     }
@@ -577,6 +580,13 @@ func expectLocaleParameter(_ request: URLRequest?, locale: String?) {
         #expect(request?.url?.query()?.contains("locale=\(locale)") == true)
     } else {
         #expect(request?.url?.query()?.contains("locale=") == false)
+    }
+}
+
+/// Assert that a request contains multiple query parameters.
+func expectQueryParameters(_ request: URLRequest?, contains parameters: [String]) {
+    for parameter in parameters {
+        #expect(request?.url?.query()?.contains(parameter) == true)
     }
 }
 
@@ -823,3 +833,624 @@ private func expectInvalidRequest(
         )
     }
 }
+
+// MARK: - Concurrency Test Helpers
+
+/// Actor for recording async operations in concurrency tests.
+actor OffsetRecorder {
+    private var offsets: [Int] = []
+
+    func record(_ offset: Int) {
+        offsets.append(offset)
+    }
+
+    func snapshot() -> [Int] {
+        offsets
+    }
+}
+
+/// Creates a test token with configurable parameters.
+///
+/// Useful for concurrency tests that need to create many tokens quickly.
+func makeTestToken(
+    accessToken: String = "TEST_ACCESS",
+    refreshToken: String? = "TEST_REFRESH",
+    expiresIn: TimeInterval = 3600,
+    scope: String? = nil
+) -> SpotifyTokens {
+    SpotifyTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresAt: Date().addingTimeInterval(expiresIn),
+        scope: scope,
+        tokenType: "Bearer"
+    )
+}
+
+/// Generates multiple paginated response pages for testing pagination.
+///
+/// - Parameters:
+///   - fixture: The JSON fixture file to use for items
+///   - type: The item type to decode
+///   - pageSize: Number of items per page
+///   - pageCount: Number of pages to generate
+///   - totalItems: Total number of items across all pages
+/// - Returns: Array of encoded page data
+func makeMultiplePaginatedPages<Item: Codable & Sendable & Equatable>(
+    fixture: String,
+    of type: Item.Type,
+    pageSize: Int,
+    pageCount: Int,
+    totalItems: Int
+) throws -> [Data] {
+    var pages: [Data] = []
+    for pageIndex in 0..<pageCount {
+        let offset = pageIndex * pageSize
+        let hasNext = (pageIndex + 1) < pageCount
+        let page = try makePaginatedResponse(
+            fixture: fixture,
+            of: type,
+            offset: offset,
+            limit: pageSize,
+            total: totalItems,
+            hasNext: hasNext
+        )
+        pages.append(page)
+    }
+    return pages
+}
+
+/// Executes a task, waits briefly, cancels it, and asserts cancellation behavior.
+///
+/// - Parameters:
+///   - delayBeforeCancel: How long to wait before canceling (default: 50ms)
+///   - task: The task to test for cancellation
+///   - expectation: What to expect from the cancelled task
+func assertTaskCancellation<T: Sendable>(
+    delayBeforeCancel: Duration = .milliseconds(50),
+    task: Task<T, Error>,
+    expectation: @escaping @Sendable (Result<T, Error>) -> Bool,
+    sourceLocation: SourceLocation = #_sourceLocation
+) async throws {
+    try await Task.sleep(for: delayBeforeCancel)
+    task.cancel()
+
+    let result = await task.result
+    #expect(expectation(result), sourceLocation: sourceLocation)
+}
+
+/// Asserts that a task result represents cancellation.
+func expectCancellation<T>(
+    _ result: Result<T, Error>,
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
+    switch result {
+    case .success:
+        Issue.record("Expected task to be cancelled", sourceLocation: sourceLocation)
+    case .failure(let error):
+        if !(error is CancellationError) {
+            Issue.record("Expected CancellationError, got \(error)", sourceLocation: sourceLocation)
+        }
+    }
+}
+
+/// Asserts that a task result is success with an optional value check.
+func expectTaskSuccess<T>(
+    _ result: Result<T, Error>,
+    where predicate: ((T) -> Bool)? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
+    switch result {
+    case .success(let value):
+        if let predicate, !predicate(value) {
+            Issue.record(
+                "Task succeeded but value didn't match predicate", sourceLocation: sourceLocation)
+        }
+    case .failure(let error):
+        Issue.record("Expected success, got error: \(error)", sourceLocation: sourceLocation)
+    }
+}
+
+/// Runs multiple concurrent tasks and collects their results.
+///
+/// - Parameters:
+///   - count: Number of concurrent tasks to run
+///   - operation: The operation to perform in each task
+/// - Returns: Array of results from all tasks
+func runConcurrentTasks<T: Sendable>(
+    count: Int,
+    operation: @escaping @Sendable () async throws -> T
+) async throws -> [T] {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        for _ in 0..<count {
+            group.addTask {
+                try await operation()
+            }
+        }
+
+        var results: [T] = []
+        for try await result in group {
+            results.append(result)
+        }
+        return results
+    }
+}
+
+// MARK: - Core Test Helpers
+
+/// Converts a JSON string to Data.
+func makeJSONData(_ string: String) -> Data {
+    string.data(using: .utf8)!
+}
+
+/// Creates a mock playlist snapshot response.
+func makeSnapshotResponse(_ id: String = "snapshot123") -> Data {
+    makeJSONData("{\"snapshot_id\": \"\(id)\"}")
+}
+
+/// Generates an array of test IDs with a given prefix.
+func makeTestIDs(_ prefix: String, count: Int) -> [String] {
+    (1...count).map { "\(prefix)\($0)" }
+}
+
+/// Creates a simple album JSON response for testing.
+func makeAlbumJSON(
+    id: String,
+    name: String,
+    artistName: String = "Test Artist",
+    totalTracks: Int = 10,
+    popularity: Int = 50
+) -> Data {
+    let json = """
+        {
+            "album_type": "album",
+            "total_tracks": \(totalTracks),
+            "available_markets": ["US", "CA"],
+            "external_urls": {"spotify": "https://open.spotify.com/album/\(id)"},
+            "href": "https://api.spotify.com/v1/albums/\(id)",
+            "id": "\(id)",
+            "images": [],
+            "name": "\(name)",
+            "release_date": "2023-01-01",
+            "release_date_precision": "day",
+            "type": "album",
+            "uri": "spotify:album:\(id)",
+            "artists": [{
+                "external_urls": {"spotify": "https://open.spotify.com/artist/artist1"},
+                "href": "https://api.spotify.com/v1/artists/artist1",
+                "id": "artist1",
+                "name": "\(artistName)",
+                "type": "artist",
+                "uri": "spotify:artist:artist1"
+            }],
+            "tracks": {
+                "href": "https://api.spotify.com/v1/albums/\(id)/tracks",
+                "limit": 50,
+                "next": null,
+                "offset": 0,
+                "previous": null,
+                "total": \(totalTracks),
+                "items": []
+            },
+            "copyrights": [],
+            "external_ids": {},
+            "genres": [],
+            "label": "Test Label",
+            "popularity": \(popularity)
+        }
+        """
+    return makeJSONData(json)
+}
+
+/// Creates a network recovery configuration for testing.
+func makeRecoveryConfig(
+    maxRetries: Int = 2,
+    baseDelay: TimeInterval = 0.1
+) -> SpotifyClientConfiguration {
+    SpotifyClientConfiguration(
+        networkRecovery: NetworkRecoveryConfiguration(
+            maxNetworkRetries: maxRetries,
+            baseRetryDelay: baseDelay
+        )
+    )
+}
+
+// MARK: - Reusable Test Actors
+
+/// Generic actor for tracking events in tests.
+actor EventCollector<T: Sendable> {
+    private(set) var events: [T] = []
+    private(set) var count: Int = 0
+
+    func record(_ event: T) {
+        events.append(event)
+        count += 1
+    }
+
+    func reset() {
+        events.removeAll()
+        count = 0
+    }
+}
+
+/// Actor for safely collecting progress reports from callbacks.
+actor ProgressHolder {
+    private(set) var progressReports: [BatchProgress] = []
+
+    func add(_ progress: BatchProgress) {
+        progressReports.append(progress)
+    }
+
+    func reset() {
+        progressReports.removeAll()
+    }
+}
+
+/// Actor for tracking token refresh events.
+actor TokenRefreshTracker {
+    var willStartCalled = false
+    var willStartInfo: TokenRefreshInfo?
+    var didSucceedCalled = false
+    var succeededTokens: SpotifyTokens?
+    var didFailCalled = false
+    var failedError: Error?
+    var callSequence: [String] = []
+
+    func recordWillStart(_ info: TokenRefreshInfo) {
+        willStartCalled = true
+        willStartInfo = info
+        callSequence.append("willStart")
+    }
+
+    func recordDidSucceed(_ tokens: SpotifyTokens) {
+        didSucceedCalled = true
+        succeededTokens = tokens
+        callSequence.append("didSucceed")
+    }
+
+    func recordDidFail(_ error: Error) {
+        didFailCalled = true
+        failedError = error
+        callSequence.append("didFail")
+    }
+
+    func reset() {
+        willStartCalled = false
+        willStartInfo = nil
+        didSucceedCalled = false
+        succeededTokens = nil
+        didFailCalled = false
+        failedError = nil
+        callSequence = []
+    }
+}
+
+/// Actor for tracking token expiration callbacks.
+actor TokenExpirationTracker {
+    var wasCalled = false
+    var expiresIn: TimeInterval?
+    var callCount = 0
+
+    func recordExpiration(_ time: TimeInterval) {
+        wasCalled = true
+        expiresIn = time
+        callCount += 1
+    }
+
+    func recordExpiration() {
+        wasCalled = true
+        callCount += 1
+    }
+
+    func reset() {
+        wasCalled = false
+        expiresIn = nil
+        callCount = 0
+    }
+}
+
+/// Actor for tracking cancellation in async operations.
+actor CancellationTracker {
+    private var started = false
+    private var cancelled = false
+
+    func markStarted() {
+        started = true
+    }
+
+    func markCancelled() {
+        cancelled = true
+    }
+
+    func waitForStart(timeout: Duration = .milliseconds(250)) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while started == false {
+            if clock.now >= deadline { break }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return started
+    }
+
+    func waitForCancellation(timeout: Duration = .milliseconds(250)) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while cancelled == false {
+            if clock.now >= deadline { break }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return cancelled
+    }
+}
+
+/// Actor for recording fetch operations in pagination tests.
+actor FetchRecorder {
+    private(set) var count: Int = 0
+    private var waiters: [CountWaiter] = []
+
+    private struct CountWaiter {
+        let target: Int
+        let continuation: CheckedContinuation<Int, Never>
+        let handler: (@Sendable (Int) -> Void)?
+    }
+
+    func record(offset: Int) {
+        _ = offset
+        count += 1
+        fulfillWaiters()
+    }
+
+    func waitForCount(
+        atLeast target: Int,
+        onSatisfy: (@Sendable (Int) -> Void)? = nil
+    ) async -> Int {
+        if count >= target {
+            onSatisfy?(count)
+            return count
+        }
+
+        return await withCheckedContinuation { continuation in
+            waiters.append(
+                CountWaiter(
+                    target: target,
+                    continuation: continuation,
+                    handler: onSatisfy
+                )
+            )
+        }
+    }
+
+    private func fulfillWaiters() {
+        guard !waiters.isEmpty else { return }
+
+        var remaining: [CountWaiter] = []
+        for waiter in waiters {
+            if count >= waiter.target {
+                waiter.continuation.resume(returning: count)
+                waiter.handler?(count)
+            } else {
+                remaining.append(waiter)
+            }
+        }
+
+        waiters = remaining
+    }
+}
+
+// MARK: - Test Timing Constants
+
+/// Standard short delay for test synchronization.
+let testShortDelay: Duration = .milliseconds(10)
+
+/// Standard medium delay for test operations.
+let testMediumDelay: Duration = .milliseconds(50)
+
+/// Standard long delay for test timeouts.
+let testLongDelay: Duration = .milliseconds(100)
+
+// MARK: - Progress Testing Helpers
+
+/// Executes a batch operation and collects progress reports.
+func withProgressTracking<T>(
+    operation: (@escaping (BatchProgress) -> Void) async throws -> T
+) async throws -> (result: T, progress: [BatchProgress]) {
+    let holder = ProgressHolder()
+    let result = try await operation { progress in
+        Task {
+            await holder.add(progress)
+        }
+    }
+    let progress = await holder.progressReports
+    return (result, progress)
+}
+
+// MARK: - Service Test Refactoring Helpers
+
+/// Verifies HTTP request after async service operation.
+///
+/// Consolidates the common pattern of fetching firstRequest and running multiple expectations.
+@MainActor
+func verifyRequest(
+    _ http: MockHTTPClient,
+    path: String,
+    method: String,
+    queryContains: [String] = [],
+    verifyMarket market: String? = nil,
+    additionalChecks: ((URLRequest?) -> Void)? = nil
+) async {
+    let request = await http.firstRequest
+    if queryContains.isEmpty {
+        expectRequest(request, path: path, method: method)
+    } else {
+        expectRequest(request, path: path, method: method, queryContains: queryContains[0])
+        for query in queryContains.dropFirst() {
+            #expect(request?.url?.query()?.contains(query) == true)
+        }
+    }
+    if let market {
+        expectMarketParameter(request, market: market)
+    }
+    additionalChecks?(request)
+}
+
+/// Sets up client with a paginated response ready to use.
+///
+/// Combines makeUserAuthClient + makePaginatedResponse + addMockResponse into one call.
+@MainActor
+func makeClientWithPaginatedResponse<T: Codable & Sendable & Equatable>(
+    fixture: String,
+    of type: T.Type,
+    offset: Int = 0,
+    limit: Int = 20,
+    total: Int,
+    hasNext: Bool = false,
+    configuration: SpotifyClientConfiguration = .default
+) async throws -> (SpotifyClient<UserAuthCapability>, MockHTTPClient) {
+    let (client, http) = makeUserAuthClient(configuration: configuration)
+    let response = try makePaginatedResponse(
+        fixture: fixture, of: type, offset: offset, limit: limit, total: total, hasNext: hasNext
+    )
+    await http.addMockResponse(data: response, statusCode: 200)
+    return (client, http)
+}
+
+/// Enqueues multiple paginated responses for multi-page tests.
+///
+/// Automatically calculates page count and sets up hasNext flags correctly.
+@MainActor
+func enqueuePaginatedPages<T: Codable & Sendable & Equatable>(
+    http: MockHTTPClient,
+    fixture: String,
+    of type: T.Type,
+    pageSize: Int,
+    totalItems: Int
+) async throws {
+    let pageCount = (totalItems + pageSize - 1) / pageSize
+    for page in 0..<pageCount {
+        let offset = page * pageSize
+        let hasNext = page < pageCount - 1
+        let response = try makePaginatedResponse(
+            fixture: fixture, of: type,
+            offset: offset, limit: pageSize, total: totalItems, hasNext: hasNext
+        )
+        await http.addMockResponse(data: response, statusCode: 200)
+    }
+}
+
+/// Tests that an operation validates and rejects oversized ID batches.
+///
+/// Standardizes ID limit validation tests across all services.
+@MainActor
+func expectIDBatchLimit(
+    max: Int,
+    reasonContains: String? = nil,
+    file: StaticString = #filePath,
+    line: UInt = #line,
+    operation: @escaping (Set<String>) async throws -> Void
+) async {
+    let reason = reasonContains ?? "Maximum of \(max)"
+    await expectInvalidRequest(
+        reasonContains: reason,
+        filePath: file,
+        line: line,
+        operation: {
+            try await operation(makeIDs(count: max + 1))
+        }
+    )
+}
+
+/// Tests operations that return no content (200/204 responses).
+///
+/// Reduces boilerplate for simple PUT/POST/DELETE operations.
+@MainActor
+func expectNoContentOperation(
+    path: String,
+    method: String,
+    queryContains: String...,
+    operation: () async throws -> Void
+) async throws {
+    let (_, http) = makeUserAuthClient()
+    await http.addMockResponse(statusCode: 200)
+
+    try await operation()
+
+    let request = await http.firstRequest
+    if queryContains.isEmpty {
+        expectRequest(request, path: path, method: method)
+    } else {
+        expectRequest(request, path: path, method: method, queryContains: queryContains[0])
+        for query in queryContains.dropFirst() {
+            #expect(request?.url?.query()?.contains(query) == true)
+        }
+    }
+}
+
+/// Tests that a service operation correctly includes/omits market parameter.
+///
+/// Consolidates parameterized market tests into a single helper.
+@MainActor
+func expectMarketParameterHandling(
+    fixture: String,
+    markets: [String?] = [nil, "US"],
+    operation: (SpotifyClient<UserAuthCapability>, String?) async throws -> Void
+) async throws {
+    for market in markets {
+        try await withMockServiceClient(fixture: fixture) { client, http in
+            try await operation(client, market)
+            expectMarketParameter(await http.firstRequest, market: market)
+        }
+    }
+}
+
+/// Tests library save/remove/check operations with ID body verification.
+///
+/// Common pattern for user library endpoints across albums, tracks, shows, etc.
+@MainActor
+func expectLibraryOperation(
+    path: String,
+    method: String,
+    ids: Set<String>,
+    operation: (Set<String>) async throws -> Void
+) async throws {
+    let (_, http) = makeUserAuthClient()
+    await http.addMockResponse(statusCode: 200)
+
+    try await operation(ids)
+
+    expectIDsInBody(
+        await http.firstRequest,
+        path: path,
+        method: method,
+        expectedIDs: ids
+    )
+}
+
+#if canImport(Combine)
+    import Combine
+
+    /// Tests that a Combine publisher validates pagination limits.
+    ///
+    /// Standardizes limit validation for all *Publisher methods.
+    @MainActor
+    func expectPublisherLimitValidation<T>(
+        makePublisher: @escaping (Int) -> AnyPublisher<T, Error>
+    ) async {
+        await assertLimitOutOfRange { limit in
+            _ = try await awaitFirstValue(makePublisher(limit))
+        }
+    }
+
+    /// Tests that a Combine publisher validates ID batch sizes.
+    ///
+    /// Standardizes ID limit validation for publisher methods.
+    @MainActor
+    func expectPublisherIDBatchLimit<T>(
+        max: Int,
+        makePublisher: @escaping (Set<String>) -> AnyPublisher<T, Error>
+    ) async {
+        let ids = makeIDs(count: max + 1)
+        await expectInvalidRequest(reasonContains: "Maximum of \(max)") {
+            _ = try await awaitFirstValue(makePublisher(ids))
+        }
+    }
+#endif

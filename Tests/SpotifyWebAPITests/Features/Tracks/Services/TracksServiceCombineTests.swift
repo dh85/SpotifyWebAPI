@@ -67,8 +67,8 @@
             let (client, _) = makeUserAuthClient()
             let tracks = await client.tracks
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(tracks.savedPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                tracks.savedPublisher(limit: limit)
             }
         }
 

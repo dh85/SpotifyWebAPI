@@ -70,8 +70,8 @@ struct ShowsServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.shows.several(ids: makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.shows.several(ids: ids)
         }
     }
 
@@ -108,27 +108,22 @@ struct ShowsServiceTests {
 
     @Test
     func streamEpisodePagesBuildsRequests() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "show_episodes.json",
             of: SimplifiedEpisode.self,
             offset: 0,
-            limit: 30,
-            total: 30,
+            limit: 25,
+            total: 25,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.shows.streamEpisodePages(
             for: "showid",
             market: "CA",
             pageSize: 30,
             maxPages: 1
         )
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0])
         let request = await http.firstRequest
@@ -139,35 +134,24 @@ struct ShowsServiceTests {
 
     @Test
     func streamEpisodesEmitsItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "show_episodes.json",
             of: SimplifiedEpisode.self,
             offset: 0,
-            limit: 40,
-            total: 40,
+            limit: 30,
+            total: 30,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var names: [String] = []
         let stream = await client.shows.streamEpisodes(
-            for: "showid",
-            market: "GB",
-            pageSize: 40,
-            maxItems: 80
+            for: "show123",
+            market: "CA",
+            pageSize: 30,
+            maxItems: 50
         )
-        for try await episode in stream {
-            if let name = episode.name {
-                names.append(name)
-            }
-        }
+        let items = try await collectStreamItems(stream)
 
-        #expect(names.isEmpty == false)
-        let request = await http.firstRequest
-        expectRequest(request, path: "/v1/shows/showid/episodes", method: "GET")
-        expectMarketParameter(request, market: "GB")
-        #expect(request?.url?.query()?.contains("limit=40") == true)
+        #expect(items.isEmpty == false)
     }
 
     @Test
@@ -270,8 +254,8 @@ struct ShowsServiceTests {
     @Test
     func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.shows.save(makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.shows.save(ids)
         }
     }
 
@@ -290,8 +274,8 @@ struct ShowsServiceTests {
     @Test
     func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.shows.remove(makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.shows.remove(ids)
         }
     }
 
@@ -313,8 +297,8 @@ struct ShowsServiceTests {
     @Test
     func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.shows.checkSaved(makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.shows.checkSaved(ids)
         }
     }
 

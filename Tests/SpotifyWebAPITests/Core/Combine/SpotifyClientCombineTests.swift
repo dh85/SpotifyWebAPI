@@ -75,37 +75,4 @@
         }
     }
 
-    private actor CancellationTracker {
-        private var started = false
-        private var cancelled = false
-
-        func markStarted() {
-            started = true
-        }
-
-        func markCancelled() {
-            cancelled = true
-        }
-
-        func waitForStart(timeout: Duration = .milliseconds(250)) async -> Bool {
-            let clock = ContinuousClock()
-            let deadline = clock.now.advanced(by: timeout)
-            while started == false {
-                if clock.now >= deadline { break }
-                try? await Task.sleep(for: .milliseconds(5))
-            }
-            return started
-        }
-
-        func waitForCancellation(timeout: Duration = .milliseconds(250)) async -> Bool {
-            let clock = ContinuousClock()
-            let deadline = clock.now.advanced(by: timeout)
-            while cancelled == false {
-                if clock.now >= deadline { break }
-                try? await Task.sleep(for: .milliseconds(5))
-            }
-            return cancelled
-        }
-    }
-
 #endif
