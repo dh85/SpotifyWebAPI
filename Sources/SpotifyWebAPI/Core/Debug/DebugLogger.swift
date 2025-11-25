@@ -37,6 +37,7 @@ public struct DebugConfiguration: Sendable {
     public let logPerformance: Bool
     public let logNetworkRetries: Bool
     public let logTokenOperations: Bool
+    public let allowSensitivePayloads: Bool
 
     public init(
         logLevel: DebugLogLevel = .off,
@@ -44,7 +45,8 @@ public struct DebugConfiguration: Sendable {
         logResponses: Bool = false,
         logPerformance: Bool = false,
         logNetworkRetries: Bool = false,
-        logTokenOperations: Bool = false
+        logTokenOperations: Bool = false,
+        allowSensitivePayloads: Bool = false
     ) {
         self.logLevel = logLevel
         self.logRequests = logRequests
@@ -52,6 +54,7 @@ public struct DebugConfiguration: Sendable {
         self.logPerformance = logPerformance
         self.logNetworkRetries = logNetworkRetries
         self.logTokenOperations = logTokenOperations
+        self.allowSensitivePayloads = allowSensitivePayloads
     }
 
     public static let disabled = DebugConfiguration()
@@ -62,7 +65,8 @@ public struct DebugConfiguration: Sendable {
         logResponses: true,
         logPerformance: true,
         logNetworkRetries: true,
-        logTokenOperations: true
+        logTokenOperations: true,
+        allowSensitivePayloads: true
     )
 }
 
@@ -192,17 +196,45 @@ public struct TokenOperationContext: Sendable {
     }
 }
 
+/// Lightweight payload emitted when token refresh fails.
+public struct TokenRefreshFailureContext: Sendable {
+    public let errorDescription: String
+
+    public init(errorDescription: String) {
+        self.errorDescription = errorDescription
+    }
+
+    public init(error: Error) {
+        self.errorDescription = String(describing: error)
+    }
+}
+
 /// Event payload emitted by the debug logger.
-public enum DebugEvent: Sendable {
+public enum SpotifyClientEvent: Sendable {
     case request(RequestLogContext)
     case response(ResponseLogContext)
     case networkRetry(NetworkRetryContext)
-    case token(TokenOperationContext)
+    case tokenOperation(TokenOperationContext)
     case performance(PerformanceMetrics)
+    case rateLimit(RateLimitInfo)
+    case tokenRefreshWillStart(TokenRefreshInfo)
+    case tokenRefreshDidSucceed(SpotifyTokens)
+    case tokenRefreshDidFail(TokenRefreshFailureContext)
 }
 
-/// Handler closure for receiving debug events.
-public typealias DebugEventHandler = @Sendable (DebugEvent) -> Void
+/// Backward-compatible alias for previously named DebugEvent.
+public typealias DebugEvent = SpotifyClientEvent
+
+/// Handler closure for receiving instrumentation events.
+public typealias SpotifyClientEventHandler = @Sendable (SpotifyClientEvent) -> Void
+
+/// Backward-compatible alias used by DebugLogger APIs.
+public typealias DebugEventHandler = SpotifyClientEventHandler
+
+/// Observer protocol that receives structured client events.
+public protocol SpotifyClientObserver: Sendable {
+    func receive(_ event: SpotifyClientEvent)
+}
 
 /// Token returned when registering a debug event observer.
 public struct DebugLogObserver: Hashable, Sendable {
@@ -217,6 +249,15 @@ public struct DebugLogObserver: Hashable, Sendable {
 @globalActor
 public actor DebugLogger {
     public static let shared = DebugLogger()
+
+    internal static func telemetryLogger() -> DebugLogger {
+        #if DEBUG
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+                return DebugLogger.testInstance
+            }
+        #endif
+        return DebugLogger.shared
+    }
 
     #if DEBUG
         private var debugBuildOverride: Bool?
@@ -279,6 +320,10 @@ public actor DebugLogger {
         {
             emitExposureWarning("Request/response logging or verbose level enabled")
         }
+
+        if sanitized.allowSensitivePayloads {
+            emitExposureWarning("Sensitive payload logging enabled")
+        }
     }
 
     /// Registers a handler that receives structured debug events.
@@ -290,9 +335,22 @@ public actor DebugLogger {
         return observer
     }
 
+    /// Registers a typed observer that conforms to ``SpotifyClientObserver``.
+    @discardableResult
+    public func addObserver(_ observer: SpotifyClientObserver) -> DebugLogObserver {
+        addObserver { event in
+            observer.receive(event)
+        }
+    }
+
     /// Removes a previously registered handler.
     public func removeObserver(_ observer: DebugLogObserver) {
         observers.removeValue(forKey: observer.id)
+    }
+
+    /// Emits an instrumentation event to all observers.
+    public func emit(_ event: SpotifyClientEvent) {
+        notifyObservers(event)
     }
 
     public func log(
@@ -420,7 +478,7 @@ public actor DebugLogger {
             log(.info, "Token operation: \(operation) - \(status)")
         }
 
-        notifyObservers(.token(context))
+        notifyObservers(.tokenOperation(context))
     }
 
     public func recordPerformance(_ metrics: PerformanceMetrics) {
@@ -450,7 +508,7 @@ public actor DebugLogger {
         performanceMetrics.removeAll()
     }
 
-    private func notifyObservers(_ event: DebugEvent) {
+    private func notifyObservers(_ event: SpotifyClientEvent) {
         guard !observers.isEmpty else { return }
         for handler in observers.values {
             handler(event)
@@ -472,7 +530,11 @@ public actor DebugLogger {
             url: request.url,
             headers: headers,
             bodyBytes: bodyData.count,
-            bodyPreview: makeBodyPreview(bodyData, contentType: contentType)
+            bodyPreview: makeBodyPreview(
+                bodyData,
+                contentType: contentType,
+                allowSensitive: configuration.allowSensitivePayloads
+            )
         )
     }
 
@@ -495,7 +557,11 @@ public actor DebugLogger {
         let headers = sanitizeHeaders(rawHeaders)
 
         let dataBytes = data?.count ?? 0
-        let bodyPreview = makeBodyPreview(data, contentType: findContentType(in: rawHeaders))
+        let bodyPreview = makeBodyPreview(
+            data,
+            contentType: findContentType(in: rawHeaders),
+            allowSensitive: configuration.allowSensitivePayloads
+        )
 
         return ResponseLogContext(
             token: token,
@@ -508,8 +574,26 @@ public actor DebugLogger {
         )
     }
 
-    private func makeBodyPreview(_ data: Data?, contentType: String?) -> String? {
+    private func makeBodyPreview(
+        _ data: Data?,
+        contentType: String?,
+        allowSensitive: Bool
+    ) -> String? {
         guard let data, !data.isEmpty else { return nil }
+
+        guard allowSensitive else {
+            return Self.redactedBodyPlaceholder
+        }
+
+        if isLikelyJSON(data: data, contentType: contentType),
+            let sanitizedJSON = sanitizeJSONPreview(data)
+        {
+            if shouldRedactBody(preview: sanitizedJSON, contentType: contentType) {
+                return Self.redactedBodyPlaceholder
+            }
+            return sanitizedJSON
+        }
+
         let limit = min(data.count, 1024)
         let previewData = data.prefix(limit)
         if let string = String(data: previewData, encoding: .utf8) {
@@ -519,6 +603,82 @@ public actor DebugLogger {
             return string
         }
         return "<binary data>"
+    }
+
+    private func sanitizeJSONPreview(_ data: Data) -> String? {
+        guard var jsonObject = try? JSONSerialization.jsonObject(with: data, options: []) else {
+            return nil
+        }
+
+        jsonObject = sanitizeJSONValue(jsonObject)
+
+        if let string = jsonObject as? String {
+            return string
+        }
+        if let number = jsonObject as? NSNumber {
+            return number.stringValue
+        }
+        if jsonObject is NSNull {
+            return "null"
+        }
+
+        guard JSONSerialization.isValidJSONObject(jsonObject),
+            let sanitizedData = try? JSONSerialization.data(
+                withJSONObject: jsonObject,
+                options: [.sortedKeys]
+            )
+        else {
+            return nil
+        }
+
+        let limit = min(sanitizedData.count, 1024)
+        var preview = String(data: sanitizedData.prefix(limit), encoding: .utf8)
+        if sanitizedData.count > limit {
+            preview? += "…"
+        }
+        return preview
+    }
+
+    private func sanitizeJSONValue(_ value: Any) -> Any {
+        if var dictionary = value as? [String: Any] {
+            for (key, nested) in dictionary {
+                let lowered = key.lowercased()
+                if lowered == "items" {
+                    dictionary[key] = [Self.redactedJSONValue]
+                    continue
+                }
+                if Self.sensitiveJSONKeys.contains(lowered) {
+                    dictionary[key] = Self.redactedJSONValue
+                } else {
+                    dictionary[key] = sanitizeJSONValue(nested)
+                }
+            }
+            return dictionary
+        } else if let array = value as? [Any] {
+            var sanitized: [Any] = []
+            sanitized.reserveCapacity(array.count)
+            for element in array {
+                sanitized.append(sanitizeJSONValue(element))
+            }
+            return sanitized
+        } else {
+            return value
+        }
+    }
+
+    private func isLikelyJSON(data: Data, contentType: String?) -> Bool {
+        if let contentType,
+            contentType.lowercased().contains("json")
+        {
+            return true
+        }
+        if let snippet = String(data: data.prefix(16), encoding: .utf8) {
+            let trimmed = snippet.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
+                return true
+            }
+        }
+        return false
     }
 
     private func sanitizeHeaders(_ headers: [String: String]) -> [String: String] {
@@ -606,6 +766,11 @@ public actor DebugLogger {
             wasModified = true
         }
 
+        if config.allowSensitivePayloads {
+            sanitized = sanitized.overriding(allowSensitivePayloads: false)
+            wasModified = true
+        }
+
         if wasModified {
             emitProductionRestrictionWarning()
         }
@@ -642,6 +807,16 @@ public actor DebugLogger {
         "secret",
         "authorization",
     ]
+
+    private static let sensitiveJSONKeys: Set<String> = [
+        "display_name",
+        "email",
+    ]
+
+    internal static let redactedBodyPlaceholder =
+        "<payload redacted – set DebugConfiguration.allowSensitivePayloads = true to log bodies>"
+
+    private static let redactedJSONValue = "<redacted>"
 }
 
 extension DebugConfiguration {
@@ -651,7 +826,8 @@ extension DebugConfiguration {
         logResponses: Bool? = nil,
         logPerformance: Bool? = nil,
         logNetworkRetries: Bool? = nil,
-        logTokenOperations: Bool? = nil
+        logTokenOperations: Bool? = nil,
+        allowSensitivePayloads: Bool? = nil
     ) -> DebugConfiguration {
         DebugConfiguration(
             logLevel: logLevel ?? self.logLevel,
@@ -659,7 +835,8 @@ extension DebugConfiguration {
             logResponses: logResponses ?? self.logResponses,
             logPerformance: logPerformance ?? self.logPerformance,
             logNetworkRetries: logNetworkRetries ?? self.logNetworkRetries,
-            logTokenOperations: logTokenOperations ?? self.logTokenOperations
+            logTokenOperations: logTokenOperations ?? self.logTokenOperations,
+            allowSensitivePayloads: allowSensitivePayloads ?? self.allowSensitivePayloads
         )
     }
 }

@@ -100,8 +100,67 @@ struct MyHTTPClient: HTTPClient {
 
 Inject that client into every `SpotifyClient` you create. This keeps all certificate logic inside your own networking stack while the rest of SpotifyWebAPI remains unchanged.
 
+### Pinning on Linux/Windows (No `Security` Framework)
+
+Platforms such as Linux do not expose `Security`/`SecTrust`, so `URLSessionHTTPClient.makePinnedSession` is unavailable. Instead, pin at the TLS-engine layer and expose it via a custom ``HTTPClient``:
+
+```swift
+#if canImport(NIOSSL)
+import NIO
+import NIOHTTP1
+import NIOSSL
+#endif
+
+struct NIOPinnedHTTPClient: HTTPClient {
+    private let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    private let pinnedFingerprints: Set<String>
+
+    init(pemFiles: [String]) throws {
+        pinnedFingerprints = try Set(pemFiles.map { path in
+            let cert = try NIOSSLCertificate(file: path, format: .pem)
+            return SHA256.hash(data: Data(cert.toDERBytes())).hexString
+        })
+    }
+
+    func data(for request: URLRequest) async throws -> HTTPResponse {
+        let bootstrap = ClientBootstrap(group: eventLoopGroup)
+            .channelInitializer { channel in
+                let sslContext = try! NIOSSLContext(configuration: .makeClientConfiguration())
+                let handler = try! NIOSSLClientHandler(context: sslContext, serverHostname: request.url?.host)
+                return channel.pipeline.addHandler(handler).flatMap {
+                    channel.pipeline.addHandler(PinnedCertificateHandler(pins: pinnedFingerprints))
+                }
+            }
+        // Issue request using swift-nio + HTTP1 handlers (omitted for brevity)
+        fatalError("Implement request/response bridging here")
+    }
+}
+
+final class PinnedCertificateHandler: ChannelInboundHandler {
+    typealias InboundIn = NIOAny
+    private let pins: Set<String>
+
+    init(pins: Set<String>) { self.pins = pins }
+
+    func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        if case let tlsEvent as TLSUserEvent = event,
+           case let .handshakeCompleted(negotiatedProtocol, peerCertificate, _, _) = tlsEvent {
+            let fingerprint = SHA256.hash(data: Data(peerCertificate.toDERBytes())).hexString
+            guard pins.contains(fingerprint) else {
+                context.close(promise: nil)
+                return
+            }
+        }
+        context.fireUserInboundEventTriggered(event)
+    }
+}
+```
+
+Key takeaways:
+- Perform pin validation inside your networking stack (swift-nio shown here) and fail the connection before any HTTP bytes flow if the cert/fingerprint is not trusted.
+- Use certificate DER hashes or public-key hashes and ship multiple pins for rotation.
+- Wrap the custom client in the ``HTTPClient`` protocol so `SpotifyClient` can continue operating without changes.
+
 ## Operational Guidance
 
-- Automate monitoring so you know when Spotify's certificates change and whether new pins are required.
-- Keep fallback logic ready: if all pins fail, surface a clear error instead of silently retrying.
 - Re-run your TLS tests whenever you upgrade SpotifyWebAPI, since HTTP defaults (timeouts, cache policy) may evolve.

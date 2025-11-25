@@ -145,24 +145,6 @@ enum AuthTestFixtures {
         return components.url!
     }
 
-    // MARK: - Store Helpers
-
-    /// Executes an operation with a clean file token store, handling cleanup.
-    ///
-    /// Ensures store is cleared before and after operation to prevent test pollution.
-    static func withCleanStore<T>(
-        _ store: FileTokenStore,
-        _ fileURL: URL,
-        operation: () async throws -> T
-    ) async throws -> T {
-        try await store.clear()
-        try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent())
-        defer {
-            try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent())
-        }
-        return try await operation()
-    }
-
     // MARK: - PKCE Helpers
 
     static func pkcePair(

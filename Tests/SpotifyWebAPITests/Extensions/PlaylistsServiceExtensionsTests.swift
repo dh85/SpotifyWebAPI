@@ -168,7 +168,7 @@ struct PlaylistsServiceExtensionsTests {
     func addTracksCancellationStopsFurtherRequests() async throws {
         let (client, http) = makeUserAuthClient()
         let success = #"{"snapshot_id":"snap"}"#.data(using: .utf8)!
-        await http.addMockResponse(data: success, statusCode: 201, delay: .seconds(1))
+        await http.addMockResponse(data: success, statusCode: 201, delay: .milliseconds(200))
         await http.addMockResponse(data: success, statusCode: 201)
 
         let uris = (1...150).map { "spotify:track:\($0)" }
@@ -189,7 +189,7 @@ struct PlaylistsServiceExtensionsTests {
     func removeTracksCancellationStopsFurtherRequests() async throws {
         let (client, http) = makeUserAuthClient()
         let success = #"{"snapshot_id":"snap"}"#.data(using: .utf8)!
-        await http.addMockResponse(data: success, statusCode: 200, delay: .seconds(1))
+        await http.addMockResponse(data: success, statusCode: 200, delay: .milliseconds(200))
         await http.addMockResponse(data: success, statusCode: 200)
 
         let uris = (1...150).map { "spotify:track:\($0)" }

@@ -63,6 +63,59 @@ struct SpotifyClientTests {
         // Verify client was created with defaults
         let _: AppSpotifyClient = client
     }
+
+    @Test
+    func builder_configuresPKCEFlow() async throws {
+        let httpClient = SimpleMockHTTPClient(response: .success(data: Data(), statusCode: 200))
+        let configuration = SpotifyClientConfiguration(requestTimeout: 45, maxRateLimitRetries: 3)
+        let tokenStore = InMemoryTokenStore()
+
+        let client = UserSpotifyClient
+            .builder()
+            .withPKCE(
+                clientID: "builder_client",
+                redirectURI: URL(string: "myapp://callback")!,
+                scopes: [.userReadEmail],
+                showDialog: true
+            )
+            .withTokenStore(tokenStore)
+            .withHTTPClient(httpClient)
+            .withConfiguration(configuration)
+            .build()
+
+        let storedHTTP = await client.httpClient
+        let storedConfiguration = await client.configuration
+
+        #expect((storedHTTP as? SimpleMockHTTPClient) === httpClient)
+        #expect(storedConfiguration.requestTimeout == configuration.requestTimeout)
+        #expect(storedConfiguration.maxRateLimitRetries == configuration.maxRateLimitRetries)
+    }
+
+    @Test
+    func builder_configuresClientCredentialsFlow() async throws {
+        let httpClient = SimpleMockHTTPClient(response: .success(data: Data(), statusCode: 200))
+        let configuration = SpotifyClientConfiguration(requestTimeout: 60, maxRateLimitRetries: 0)
+        let tokenStore = InMemoryTokenStore()
+
+        let client = AppSpotifyClient
+            .builder()
+            .withClientCredentials(
+                clientID: "builder_app",
+                clientSecret: "super_secret",
+                scopes: [.playlistReadPrivate]
+            )
+            .withTokenStore(tokenStore)
+            .withHTTPClient(httpClient)
+            .withConfiguration(configuration)
+            .build()
+
+        let storedHTTP = await client.httpClient
+        let storedConfiguration = await client.configuration
+
+        #expect((storedHTTP as? SimpleMockHTTPClient) === httpClient)
+        #expect(storedConfiguration.requestTimeout == configuration.requestTimeout)
+        #expect(storedConfiguration.maxRateLimitRetries == configuration.maxRateLimitRetries)
+    }
     
     // MARK: - accessToken Tests
     

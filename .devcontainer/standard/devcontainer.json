@@ -38,8 +38,7 @@
                 }
             },
             "extensions": [
-                "swiftlang.swift-vscode",
-                "openai.chatgpt"
+                "swiftlang.swift-vscode"
             ]
         }
     },

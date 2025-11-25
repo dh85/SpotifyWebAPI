@@ -153,6 +153,44 @@ struct RateLimitInfoTests {
 
     @Test
     @MainActor
+    func instrumentationReceivesRateLimitEvents() async throws {
+        let (client, http) = makeUserAuthClient()
+        let collector = InstrumentationEventCollector()
+        let token = await client.addObserver(InstrumentationObserver(collector: collector))
+        defer { Task { await client.removeObserver(token) } }
+
+        let albumData = try TestDataLoader.load("album_full")
+
+        await http.addMockResponse(
+            data: albumData,
+            statusCode: 200,
+            headers: [
+                "X-RateLimit-Remaining": "42",
+                "X-RateLimit-Limit": "100",
+                "X-RateLimit-Reset": "1732464000",
+            ]
+        )
+
+        _ = try await client.albums.get("instrumented-album")
+
+        let rateLimit = await collector.waitForEvent(timeout: .milliseconds(500)) { event -> RateLimitInfo? in
+            guard case .rateLimit(let info) = event else { return nil }
+            guard info.path.contains("instrumented-album") else { return nil }
+            return info
+        }
+
+        guard let first = rateLimit else {
+            Issue.record("Expected rate limit instrumentation event")
+            return
+        }
+
+        #expect(first.remaining == 42)
+        #expect(first.limit == 100)
+        #expect(first.statusCode == 200)
+    }
+
+    @Test
+    @MainActor
     func callbackNotCalledWhenNoRateLimitHeaders() async throws {
         let (client, http) = makeUserAuthClient()
 

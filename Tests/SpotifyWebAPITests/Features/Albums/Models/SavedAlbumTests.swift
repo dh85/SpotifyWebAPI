@@ -15,6 +15,20 @@ import Testing
         #expect(saved.album.id == "album123")
         #expect(saved.album.name == "Test Album")
     }
+    
+    @Test
+    func contentPropertyReturnsAlbum() {
+        let saved = SavedAlbum.testExample
+        #expect(saved.content.id == saved.album.id)
+        #expect(saved.content.name == saved.album.name)
+    }
+    
+    @Test
+    func conformsToSavedItemProtocol() {
+        let saved = SavedAlbum.testExample
+        #expect(saved.addedAt == Date(timeIntervalSince1970: 1_704_110_400))
+        #expect(saved.wasAddedAfter(Date(timeIntervalSince1970: 1_704_000_000)))
+    }
 }
 
 extension SavedAlbum {

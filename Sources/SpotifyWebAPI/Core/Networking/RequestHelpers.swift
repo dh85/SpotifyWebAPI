@@ -154,8 +154,10 @@ extension SpotifyClient {
         let prepared = try prepare(request)
         let requestKey = generateRequestKey(prepared)
 
+        let dedupEnabled = configuration.requestDeduplicationEnabled
+
         // Check for ongoing request
-        if let ongoingTask = ongoingRequests[requestKey] {
+        if dedupEnabled, let ongoingTask = ongoingRequests[requestKey] {
             return try await ongoingTask.value as! T
         }
 
@@ -164,14 +166,20 @@ extension SpotifyClient {
             try await self.performInternal(prepared)
         }
 
-        ongoingRequests[requestKey] = task
+        if dedupEnabled {
+            ongoingRequests[requestKey] = task
+        }
 
         do {
             let result = try await task.value as! T
-            ongoingRequests.removeValue(forKey: requestKey)
+            if dedupEnabled {
+                ongoingRequests.removeValue(forKey: requestKey)
+            }
             return result
         } catch {
-            ongoingRequests.removeValue(forKey: requestKey)
+            if dedupEnabled {
+                ongoingRequests.removeValue(forKey: requestKey)
+            }
             throw error
         }
     }
@@ -182,13 +190,7 @@ extension SpotifyClient {
             throw SpotifyClientError.offline
         }
 
-        #if DEBUG
-            let logger =
-                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-                ? DebugLogger.testInstance : DebugLogger.shared
-        #else
-            let logger = DebugLogger.shared
-        #endif
+        let logger = DebugLogger.telemetryLogger()
 
         let measurement = PerformanceMeasurement(
             "\(prepared.request.method) \(prepared.request.path)", logger: logger)
@@ -206,11 +208,12 @@ extension SpotifyClient {
 
         await logger.logResponse(response, data: data, error: nil, token: requestToken)
 
-        // Extract and notify rate limit info if callback is set
-        if let rateLimitCallback = rateLimitInfoCallback,
-            let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path)
-        {
-            rateLimitCallback(rateLimitInfo)
+        // Extract and notify rate limit info if available
+        if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
+            if let rateLimitCallback = rateLimitInfoCallback {
+                rateLimitCallback(rateLimitInfo)
+            }
+            await logger.emit(.rateLimit(rateLimitInfo))
         }
 
         // Handle 204 No Content
@@ -274,13 +277,7 @@ extension SpotifyClient {
     ) async throws -> T? {
         let prepared = try prepare(request)
 
-        #if DEBUG
-            let logger =
-                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-                ? DebugLogger.testInstance : DebugLogger.shared
-        #else
-            let logger = DebugLogger.shared
-        #endif
+        let logger = DebugLogger.telemetryLogger()
 
         let measurement = PerformanceMeasurement(
             "\(prepared.request.method) \(prepared.request.path)", logger: logger)
