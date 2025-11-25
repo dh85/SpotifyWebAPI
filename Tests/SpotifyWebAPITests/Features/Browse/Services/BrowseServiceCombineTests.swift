@@ -36,8 +36,8 @@
             let (client, _) = makeUserAuthClient()
             let browse = await client.browse
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(browse.newReleasesPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                browse.newReleasesPublisher(limit: limit)
             }
         }
 
@@ -85,8 +85,8 @@
             let (client, _) = makeUserAuthClient()
             let browse = await client.browse
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(browse.categoriesPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                browse.categoriesPublisher(limit: limit)
             }
         }
 

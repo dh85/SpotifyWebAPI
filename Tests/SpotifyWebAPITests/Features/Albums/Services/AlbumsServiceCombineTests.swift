@@ -51,10 +51,9 @@
         func severalPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
             let albums = client.albums
-            let ids = makeIDs(count: 21)
 
-            await expectInvalidRequest(reasonContains: "Maximum of 20") {
-                _ = try await awaitFirstValue(albums.severalPublisher(ids: ids))
+            await expectPublisherIDBatchLimit(max: 20) { ids in
+                albums.severalPublisher(ids: ids)
             }
         }
 
@@ -91,13 +90,13 @@
             #expect(page.items.isEmpty == false)
         }
 
-        @Test("savedPublisher validates limits")
-        func savedPublisherValidatesLimits() async {
+        @Test("tracksPublisher validates limits")
+        func tracksPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
             let albums = client.albums
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(albums.savedPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                albums.tracksPublisher("album123", limit: limit)
             }
         }
 

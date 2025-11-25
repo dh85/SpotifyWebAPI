@@ -370,12 +370,3 @@ struct BatchProgressTests {
 }
 
 // MARK: - Test Helpers
-
-/// Actor to safely collect progress reports from callbacks.
-private actor ProgressHolder {
-    private(set) var progressReports: [BatchProgress] = []
-    
-    func add(_ progress: BatchProgress) {
-        progressReports.append(progress)
-    }
-}

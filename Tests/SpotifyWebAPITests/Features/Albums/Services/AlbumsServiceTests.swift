@@ -74,8 +74,8 @@ struct AlbumsServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.several(ids: makeIDs(count: 21))
+        await expectIDBatchLimit(max: 20) { ids in
+            _ = try await client.albums.several(ids: ids)
         }
     }
 
@@ -114,8 +114,7 @@ struct AlbumsServiceTests {
 
     @Test
     func streamTrackPagesBuildsRequests() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "album_tracks.json",
             of: SimplifiedTrack.self,
             offset: 0,
@@ -123,18 +122,14 @@ struct AlbumsServiceTests {
             total: 25,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.albums.streamTrackPages(
             "album123",
             market: "US",
             pageSize: 25,
             maxPages: 1
         )
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0])
         let request = await http.firstRequest
@@ -145,8 +140,7 @@ struct AlbumsServiceTests {
 
     @Test
     func streamTracksEmitsItems() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "album_tracks.json",
             of: SimplifiedTrack.self,
             offset: 0,
@@ -154,22 +148,16 @@ struct AlbumsServiceTests {
             total: 30,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var ids: [String] = []
         let stream = await client.albums.streamTracks(
             "album123",
             market: "SE",
             pageSize: 30,
             maxItems: 50
         )
-        for try await track in stream {
-            if let id = track.id {
-                ids.append(id)
-            }
-        }
+        let items = try await collectStreamItems(stream)
 
-        #expect(ids.isEmpty == false)
+        #expect(items.isEmpty == false)
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/albums/album123/tracks", method: "GET")
         expectMarketParameter(request, market: "SE")
@@ -280,8 +268,8 @@ struct AlbumsServiceTests {
     @Test
     func saveThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.save(makeIDs(count: 21))
+        await expectIDBatchLimit(max: 20) { ids in
+            _ = try await client.albums.save(ids)
         }
     }
 
@@ -300,8 +288,8 @@ struct AlbumsServiceTests {
     @Test
     func removeThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.remove(makeIDs(count: 21))
+        await expectIDBatchLimit(max: 20) { ids in
+            _ = try await client.albums.remove(ids)
         }
     }
 
@@ -326,8 +314,8 @@ struct AlbumsServiceTests {
     @Test
     func checkSavedThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 20") {
-            _ = try await client.albums.checkSaved(makeIDs(count: 21))
+        await expectIDBatchLimit(max: 20) { ids in
+            _ = try await client.albums.checkSaved(ids)
         }
     }
 

@@ -70,8 +70,8 @@ struct ChaptersServiceTests {
     @Test
     func severalThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.chapters.several(ids: makeIDs(count: 51).map { $0 })
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.chapters.several(ids: ids.map { $0 })
         }
     }
 

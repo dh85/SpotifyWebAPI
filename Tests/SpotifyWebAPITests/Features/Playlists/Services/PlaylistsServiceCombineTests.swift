@@ -69,11 +69,8 @@
         func itemsPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
             let playlists = await client.playlists
-
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(
-                    playlists.itemsPublisher("playlist123", limit: limit)
-                )
+            await expectPublisherLimitValidation { limit in
+                playlists.itemsPublisher("playlist123", limit: limit)
             }
         }
 

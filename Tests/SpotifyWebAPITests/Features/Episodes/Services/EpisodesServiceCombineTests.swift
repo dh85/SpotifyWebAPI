@@ -52,8 +52,8 @@
             let (client, _) = makeUserAuthClient()
             let episodes = await client.episodes
 
-            await assertIDBatchTooLarge(maxAllowed: 50, reasonContains: "Maximum of 50") { ids in
-                _ = try await awaitFirstValue(episodes.severalPublisher(ids: ids))
+            await expectPublisherIDBatchLimit(max: 50) { ids in
+                episodes.severalPublisher(ids: ids)
             }
         }
 
@@ -80,8 +80,8 @@
             let (client, _) = makeUserAuthClient()
             let episodes = await client.episodes
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(episodes.savedPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                episodes.savedPublisher(limit: limit)
             }
         }
 
@@ -112,13 +112,13 @@
             }
         }
 
-        @Test("savePublisher validates ID limit")
+        @Test("savePublisher validates limit")
         func savePublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
             let episodes = await client.episodes
 
-            await assertIDBatchTooLarge(maxAllowed: 50, reasonContains: "Maximum of 50") { ids in
-                _ = try await awaitFirstValue(episodes.savePublisher(ids))
+            await expectPublisherIDBatchLimit(max: 50) { ids in
+                episodes.savePublisher(ids)
             }
         }
 

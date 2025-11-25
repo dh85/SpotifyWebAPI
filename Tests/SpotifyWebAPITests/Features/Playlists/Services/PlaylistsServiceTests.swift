@@ -86,13 +86,10 @@ struct PlaylistsServiceTests {
         await http.addMockResponse(data: first, statusCode: 200)
         await http.addMockResponse(data: second, statusCode: 200)
 
-        var pageCount = 0
         let stream = await client.playlists.streamItemPages("playlist123")
-        for try await _ in stream {
-            pageCount += 1
-        }
+        let pages = try await collectStreamItems(stream)
 
-        #expect(pageCount == 2)
+        #expect(pages.count == 2)
         expectRequest(
             await http.firstRequest, path: "/v1/playlists/playlist123/tracks", method: "GET")
     }
@@ -185,11 +182,9 @@ struct PlaylistsServiceTests {
         await http.addMockResponse(data: first, statusCode: 200)
         await http.addMockResponse(data: second, statusCode: 200)
 
-        var totalItems = 0
         let stream = await client.playlists.streamMyPlaylistPages()
-        for try await page in stream {
-            totalItems += page.items.count
-        }
+        let pages = try await collectStreamItems(stream)
+        let totalItems = pages.reduce(0) { $0 + $1.items.count }
 
         #expect(totalItems > 0)
         expectRequest(await http.firstRequest, path: "/v1/me/playlists", method: "GET")
@@ -618,9 +613,7 @@ struct PlaylistsServiceTests {
             )
 
             let request = await http.firstRequest
-            #expect(request?.url?.query()?.contains("market=US") == true)
-            #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
-            #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+            expectQueryParameters(request, contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
         }
     }
 
@@ -664,12 +657,8 @@ struct PlaylistsServiceTests {
             // Mock 2 pages (one already queued)
             await http.addMockResponse(data: itemsData, statusCode: 200)
 
-            var items: [PlaylistTrackItem] = []
             let stream = await client.playlists.streamItems("playlist123")
-
-            for try await item in stream {
-                items.append(item)
-            }
+            let items = try await collectStreamItems(stream)
 
             #expect(items.count > 0)
         }
@@ -685,12 +674,8 @@ struct PlaylistsServiceTests {
 
             await http.addMockResponse(data: itemsData, statusCode: 200)
 
-            var items: [PlaylistTrackItem] = []
             let stream = await client.playlists.streamItems("playlist123", maxItems: 1)
-
-            for try await item in stream {
-                items.append(item)
-            }
+            let items = try await collectStreamItems(stream)
 
             // Should stop at maxItems
             #expect(items.count == 1)
@@ -707,22 +692,16 @@ struct PlaylistsServiceTests {
 
             await http.addMockResponse(data: itemsData, statusCode: 200)
 
-            var itemCount = 0
             let stream = await client.playlists.streamItems(
                 "playlist123",
                 market: "US",
                 fields: "items(track(name))",
                 additionalTypes: [.episode]
             )
-
-            for try await _ in stream {
-                itemCount += 1
-            }
+            let itemCount = try await collectStreamItems(stream).count
 
             let request = await http.firstRequest
-            #expect(request?.url?.query()?.contains("market=US") == true)
-            #expect(request?.url?.query()?.contains("fields=items(track(name))") == true)
-            #expect(request?.url?.query()?.contains("additional_types=episode") == true)
+            expectQueryParameters(request, contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
             #expect(itemCount > 0)
         }
     }

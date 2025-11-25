@@ -41,9 +41,9 @@ struct UsersServiceTests {
     @Test
     func checkFollowingPlaylistThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 5") {
+        await expectIDBatchLimit(max: 5) { ids in
             _ = try await client.users.checkFollowing(
-                playlist: "playlist123", users: makeIDs(count: 6))
+                playlist: "playlist123", users: ids)
         }
     }
 
@@ -90,8 +90,7 @@ struct UsersServiceTests {
 
     @Test
     func streamTopArtistPagesBuildsRequests() async throws {
-        let (client, http) = makeUserAuthClient()
-        let response = try makePaginatedResponse(
+        let (client, http) = try await makeClientWithPaginatedResponse(
             fixture: "top_artists.json",
             of: Artist.self,
             offset: 0,
@@ -99,23 +98,18 @@ struct UsersServiceTests {
             total: 30,
             hasNext: false
         )
-        await http.addMockResponse(data: response, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.users.streamTopArtistPages(
             range: .shortTerm,
             pageSize: 30,
             maxPages: 1
         )
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0])
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/me/top/artists", method: "GET")
-        #expect(request?.url?.query()?.contains("time_range=short_term") == true)
-        #expect(request?.url?.query()?.contains("limit=30") == true)
+        expectQueryParameters(request, contains: ["time_range=short_term", "limit=30"])
     }
 
     @Test
@@ -131,23 +125,17 @@ struct UsersServiceTests {
         )
         await http.addMockResponse(data: response, statusCode: 200)
 
-        var artistIDs: [String] = []
         let stream = await client.users.streamTopArtists(
             range: .longTerm,
             pageSize: 40,
             maxItems: 80
         )
-        for try await artist in stream {
-            if let id = artist.id {
-                artistIDs.append(id)
-            }
-        }
+        let artistIDs = try await collectStreamItems(stream).compactMap(\.id)
 
         #expect(artistIDs.isEmpty == false)
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/me/top/artists", method: "GET")
-        #expect(request?.url?.query()?.contains("time_range=long_term") == true)
-        #expect(request?.url?.query()?.contains("limit=40") == true)
+        expectQueryParameters(request, contains: ["time_range=long_term", "limit=40"])
     }
 
     @Test
@@ -192,21 +180,17 @@ struct UsersServiceTests {
         )
         await http.addMockResponse(data: response, statusCode: 200)
 
-        var offsets: [Int] = []
         let stream = await client.users.streamTopTrackPages(
             range: .longTerm,
             pageSize: 35,
             maxPages: 1
         )
-        for try await page in stream {
-            offsets.append(page.offset)
-        }
+        let offsets = try await collectStreamItems(stream).map(\.offset)
 
         #expect(offsets == [0])
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/me/top/tracks", method: "GET")
-        #expect(request?.url?.query()?.contains("time_range=long_term") == true)
-        #expect(request?.url?.query()?.contains("limit=35") == true)
+        expectQueryParameters(request, contains: ["time_range=long_term", "limit=35"])
     }
 
     @Test
@@ -222,23 +206,17 @@ struct UsersServiceTests {
         )
         await http.addMockResponse(data: response, statusCode: 200)
 
-        var trackIDs: [String] = []
         let stream = await client.users.streamTopTracks(
-            range: .shortTerm,
+            range: .longTerm,
             pageSize: 45,
-            maxItems: 45
+            maxItems: 90
         )
-        for try await track in stream {
-            if let id = track.id {
-                trackIDs.append(id)
-            }
-        }
+        let trackIDs = try await collectStreamItems(stream).compactMap(\.id)
 
         #expect(trackIDs.isEmpty == false)
         let request = await http.firstRequest
         expectRequest(request, path: "/v1/me/top/tracks", method: "GET")
-        #expect(request?.url?.query()?.contains("time_range=short_term") == true)
-        #expect(request?.url?.query()?.contains("limit=45") == true)
+        expectQueryParameters(request, contains: ["time_range=long_term", "limit=45"])
     }
 
     @Test
@@ -289,8 +267,8 @@ struct UsersServiceTests {
     @Test
     func followArtistsThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            try await client.users.follow(artists: makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            try await client.users.follow(artists: ids)
         }
     }
 
@@ -323,8 +301,8 @@ struct UsersServiceTests {
     @Test
     func unfollowArtistsThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            try await client.users.unfollow(artists: makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            try await client.users.unfollow(artists: ids)
         }
     }
 
@@ -360,8 +338,8 @@ struct UsersServiceTests {
     @Test
     func checkFollowingArtistsThrowsErrorWhenIDLimitExceeded() async throws {
         let (client, _) = makeUserAuthClient()
-        await expectInvalidRequest(reasonContains: "Maximum of 50") {
-            _ = try await client.users.checkFollowing(artists: makeIDs(count: 51))
+        await expectIDBatchLimit(max: 50) { ids in
+            _ = try await client.users.checkFollowing(artists: ids)
         }
     }
 

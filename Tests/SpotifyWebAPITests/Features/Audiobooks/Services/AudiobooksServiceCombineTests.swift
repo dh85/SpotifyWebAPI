@@ -56,8 +56,8 @@
             let (client, _) = makeUserAuthClient()
             let audiobooks = client.audiobooks
 
-            await assertIDBatchTooLarge(maxAllowed: 50, reasonContains: "Maximum of 50") { ids in
-                _ = try await awaitFirstValue(audiobooks.severalPublisher(ids: ids))
+            await expectPublisherIDBatchLimit(max: 50) { ids in
+                audiobooks.severalPublisher(ids: ids)
             }
         }
 
@@ -89,10 +89,8 @@
             let (client, _) = makeUserAuthClient()
             let audiobooks = client.audiobooks
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(
-                    audiobooks.chaptersPublisher(for: "id", limit: limit)
-                )
+            await expectPublisherLimitValidation { limit in
+                audiobooks.chaptersPublisher(for: "id", limit: limit)
             }
         }
 
@@ -116,8 +114,8 @@
             let (client, _) = makeUserAuthClient()
             let audiobooks = await client.audiobooks
 
-            await assertLimitOutOfRange { limit in
-                _ = try await awaitFirstValue(audiobooks.savedPublisher(limit: limit))
+            await expectPublisherLimitValidation { limit in
+                audiobooks.savedPublisher(limit: limit)
             }
         }
 
@@ -150,8 +148,8 @@
             let (client, _) = makeUserAuthClient()
             let audiobooks = await client.audiobooks
 
-            await assertIDBatchTooLarge(maxAllowed: 50, reasonContains: "Maximum of 50") { ids in
-                _ = try await awaitFirstValue(audiobooks.savePublisher(ids))
+            await expectPublisherIDBatchLimit(max: 50) { ids in
+                audiobooks.savePublisher(ids)
             }
         }
 
