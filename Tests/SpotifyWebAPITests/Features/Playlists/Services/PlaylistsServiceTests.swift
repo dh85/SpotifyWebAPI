@@ -613,7 +613,9 @@ struct PlaylistsServiceTests {
             )
 
             let request = await http.firstRequest
-            expectQueryParameters(request, contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
+            expectQueryParameters(
+                request,
+                contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
         }
     }
 
@@ -701,7 +703,9 @@ struct PlaylistsServiceTests {
             let itemCount = try await collectStreamItems(stream).count
 
             let request = await http.firstRequest
-            expectQueryParameters(request, contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
+            expectQueryParameters(
+                request,
+                contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
             #expect(itemCount > 0)
         }
     }
