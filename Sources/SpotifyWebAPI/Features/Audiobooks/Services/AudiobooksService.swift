@@ -3,6 +3,12 @@ import Foundation
 private typealias SeveralAudiobooksWrapper = ArrayWrapper<Audiobook?>
 
 /// A service for fetching and managing Spotify Audiobook resources and their chapters.
+///
+/// ## Combine Counterparts
+///
+/// Publisher variants—like ``AudiobooksService/getPublisher(_:market:priority:)`` and
+/// ``AudiobooksService/savedPublisher(limit:offset:priority:)``—live in `AudiobooksService+Combine.swift`.
+/// Import Combine to expose those helpers; they reuse the async implementations defined here.
 public struct AudiobooksService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
     init(client: SpotifyClient<Capability>) { self.client = client }
@@ -30,9 +36,10 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-audiobook)
     public func get(_ id: String, market: String? = nil) async throws -> Audiobook {
-        let query = makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Audiobook>.get("/audiobooks/\(id)", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/audiobooks/\(id)")
+            .market(market)
+            .decode(Audiobook.self)
     }
 
     /// Get Spotify catalog information for several audiobooks identified by their Spotify IDs.
@@ -46,11 +53,12 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-audiobooks)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [Audiobook?] {
         try validateAudiobookIDs(ids)
-        let query =
-            [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<SeveralAudiobooksWrapper>.get("/audiobooks", query: query)
-        return try await client.perform(request).items
+        let wrapper = try await client
+            .get("/audiobooks")
+            .query("ids", ids.sorted().joined(separator: ","))
+            .market(market)
+            .decode(SeveralAudiobooksWrapper.self)
+        return wrapper.items
     }
 
     /// Get Spotify catalog information about an audiobook's chapters.
@@ -70,12 +78,12 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
         offset: Int = 0,
         market: String? = nil
     ) async throws -> Page<SimplifiedChapter> {
-        let query =
-            try buildPaginationQuery(limit: limit, offset: offset)
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Page<SimplifiedChapter>>.get(
-            "/audiobooks/\(id)/chapters", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/audiobooks/\(id)/chapters")
+            .paginate(limit: limit, offset: offset)
+            .market(market)
+            .decode(Page<SimplifiedChapter>.self)
     }
 
     /// Streams an audiobook's chapters page-by-page for responsive UIs.
@@ -132,9 +140,11 @@ extension AudiobooksService where Capability == UserAuthCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-audiobooks)
     public func saved(limit: Int = 20, offset: Int = 0) async throws -> Page<SavedAudiobook> {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
-        let request = SpotifyRequest<Page<SavedAudiobook>>.get("/me/audiobooks", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/me/audiobooks")
+            .paginate(limit: limit, offset: offset)
+            .decode(Page<SavedAudiobook>.self)
     }
 
     /// Fetch every saved audiobook in the user's library.
@@ -205,8 +215,9 @@ extension AudiobooksService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-audiobooks)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {
         try validateAudiobookIDs(ids)
-        let query = [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
-        let request = SpotifyRequest<[Bool]>.get("/me/audiobooks/contains", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/me/audiobooks/contains")
+            .query("ids", ids.sorted().joined(separator: ","))
+            .decode([Bool].self)
     }
 }

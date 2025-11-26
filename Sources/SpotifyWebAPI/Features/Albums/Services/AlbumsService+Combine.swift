@@ -2,6 +2,12 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``AlbumsService`` async methods.
+    ///
+    /// ## Async Counterparts
+    /// When you switch to async/await, call helpers like ``AlbumsService/get(_:market:)`` or
+    /// ``AlbumsService/saved(limit:offset:)``—these publishers forward to the same implementations so
+    /// validation and instrumentation behave consistently.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension AlbumsService where Capability: PublicSpotifyCapability {
 

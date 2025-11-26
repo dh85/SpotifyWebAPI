@@ -2,6 +2,12 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``PlayerService`` async control and state APIs.
+    ///
+    /// ## Async Counterparts
+    /// Call async helpers such as ``PlayerService/state(market:additionalTypes:)`` or
+    /// ``PlayerService/play(contextURI:deviceID:offset:)`` when you prefer async/await—the
+    /// publishers below simply wrap those implementations.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension PlayerService where Capability == UserAuthCapability {
 

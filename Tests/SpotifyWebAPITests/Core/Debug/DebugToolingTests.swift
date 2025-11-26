@@ -599,7 +599,8 @@ struct DebugToolingTests {
             headerFields: ["Content-Type": "application/json"]
         )
         let responseData = Data("{\"refresh_token\":\"secret\"}".utf8)
-        await TestEnvironment.logger.logResponse(response, data: responseData, error: nil, token: token)
+        await TestEnvironment.logger.logResponse(
+            response, data: responseData, error: nil, token: token)
 
         let responseContext = await collector.waitForEvent { event -> ResponseLogContext? in
             guard case .response(let context) = event else { return nil }
@@ -638,7 +639,8 @@ struct DebugToolingTests {
         // Simulate a request with Authorization header
         let requestURL = URL(string: "https://api.spotify.com/v1/me/player")!
         var request = URLRequest(url: requestURL)
-        request.setValue("Bearer my-super-secret-access-token-12345", forHTTPHeaderField: "Authorization")
+        request.setValue(
+            "Bearer my-super-secret-access-token-12345", forHTTPHeaderField: "Authorization")
 
         let token = await TestEnvironment.logger.logRequest(request)
 
@@ -656,8 +658,9 @@ struct DebugToolingTests {
         // Verify the Authorization header is redacted
         let authHeader = requestContext.headers["Authorization"]
         #expect(authHeader == "Bearer <redacted>", "Authorization header must be redacted")
-        #expect(!authHeader!.contains("my-super-secret-access-token-12345"), 
-                "Plain text access token must never appear in logs")
+        #expect(
+            !authHeader!.contains("my-super-secret-access-token-12345"),
+            "Plain text access token must never appear in logs")
     }
 
     @Test("Debug logger never logs refresh tokens in response bodies")
@@ -680,18 +683,19 @@ struct DebugToolingTests {
         )
 
         let tokenResponse = """
-        {
-            "access_token": "NgCXRK...MzYjw",
-            "token_type": "Bearer",
-            "expires_in": 3600,
-            "refresh_token": "NgAagA...Um_SHo",
-            "scope": "user-read-private user-read-email"
-        }
-        """
+            {
+                "access_token": "NgCXRK...MzYjw",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "NgAagA...Um_SHo",
+                "scope": "user-read-private user-read-email"
+            }
+            """
         let responseData = Data(tokenResponse.utf8)
 
         let token = await TestEnvironment.logger.logRequest(URLRequest(url: responseURL))
-        await TestEnvironment.logger.logResponse(response, data: responseData, error: nil, token: token)
+        await TestEnvironment.logger.logResponse(
+            response, data: responseData, error: nil, token: token)
 
         let responseContext = await collector.waitForEvent { event -> ResponseLogContext? in
             guard case .response(let context) = event else { return nil }
@@ -706,9 +710,15 @@ struct DebugToolingTests {
 
         // Verify response body containing tokens is redacted
         let expectedPlaceholder = DebugLogger.redactedBodyPlaceholder
-        #expect(responseContext.bodyPreview == expectedPlaceholder, "Token response body must be redacted")
-        #expect(!responseContext.bodyPreview!.contains("NgCXRK"), "Access token must not appear in logs")
-        #expect(!responseContext.bodyPreview!.contains("NgAagA"), "Refresh token must not appear in logs")
+        #expect(
+            responseContext.bodyPreview == expectedPlaceholder,
+            "Token response body must be redacted")
+        #expect(
+            !responseContext.bodyPreview!.contains("NgCXRK"), "Access token must not appear in logs"
+        )
+        #expect(
+            !responseContext.bodyPreview!.contains("NgAagA"),
+            "Refresh token must not appear in logs")
     }
 
     @Test("Debug logger redacts all sensitive header types")
@@ -728,7 +738,7 @@ struct DebugToolingTests {
             "Cookie": "session=xyz789",
             "Set-Cookie": "auth=def456; HttpOnly",
             "X-Spotify-Authorization": "Custom token999",
-            "X-API-Key": "apikey888"
+            "X-API-Key": "apikey888",
         ]
 
         let requestURL = URL(string: "https://api.spotify.com/v1/test")!
@@ -752,12 +762,17 @@ struct DebugToolingTests {
 
         // Verify all sensitive headers are redacted
         for (headerName, originalValue) in sensitiveHeaders {
-            let loggedValue = requestContext.headers[headerName]
+            // HTTP headers are case-insensitive, find the actual logged key
+            let loggedKey = requestContext.headers.keys.first {
+                $0.lowercased() == headerName.lowercased()
+            }
+            let loggedValue = loggedKey.flatMap { requestContext.headers[$0] }
             #expect(loggedValue != originalValue, "\(headerName) must be redacted")
-            #expect(loggedValue?.contains("<redacted>") == true || 
-                    loggedValue?.contains("Bearer <redacted>") == true ||
-                    loggedValue?.contains("Basic <redacted>") == true,
-                    "\(headerName) must show <redacted> placeholder")
+            #expect(
+                loggedValue?.contains("<redacted>") == true
+                    || loggedValue?.contains("Bearer <redacted>") == true
+                    || loggedValue?.contains("Basic <redacted>") == true,
+                "\(headerName) must show <redacted> placeholder")
         }
     }
 
@@ -791,8 +806,9 @@ struct DebugToolingTests {
         // URLs are preserved for debugging context (developers need full URL to reproduce issues)
         // Security best practice: never put tokens in URLs in the first place
         let loggedURL = requestContext.url?.absoluteString ?? ""
-        #expect(loggedURL == "https://api.spotify.com/v1/tracks?access_token=secret123",
-                "URLs are preserved for debugging (tokens should never be in URLs)")
+        #expect(
+            loggedURL == "https://api.spotify.com/v1/tracks?access_token=secret123",
+            "URLs are preserved for debugging (tokens should never be in URLs)")
     }
 
     @Test("Debug logger is disabled by default in production")
@@ -825,21 +841,26 @@ struct DebugToolingTests {
             let _ = await TestEnvironment.logger.logRequest(request)
 
             // Wait briefly for any events
-                let events = await collector.waitForEvents(minCount: 1, timeout: .milliseconds(100))
+            let events = await collector.waitForEvents(minCount: 1, timeout: .milliseconds(100))
 
-                // Observers still receive instrumentation even in production builds so they can
-                // surface telemetry without enabling verbose logging. However, the configuration
-                // must be sanitized to ensure nothing is actually written to logs.
-                #expect(events.contains { if case .request = $0 { true } else { false } })
+            // Observers still receive instrumentation even in production builds so they can
+            // surface telemetry without enabling verbose logging. However, the configuration
+            // must be sanitized to ensure nothing is actually written to logs.
+            #expect(events.contains { if case .request = $0 { true } else { false } })
 
-                let config = await TestEnvironment.logger.configurationSnapshotForTests()
-                #expect(config.logRequests == false, "Request logging must be disabled in production builds")
-                #expect(config.logResponses == false, "Response logging must be disabled in production builds")
-                #expect(config.logLevel.rawValue <= DebugLogLevel.info.rawValue,
-                    "Verbose log levels must be clamped in production builds")
+            let config = await TestEnvironment.logger.configurationSnapshotForTests()
+            #expect(
+                config.logRequests == false, "Request logging must be disabled in production builds"
+            )
+            #expect(
+                config.logResponses == false,
+                "Response logging must be disabled in production builds")
+            #expect(
+                config.logLevel.rawValue <= DebugLogLevel.info.rawValue,
+                "Verbose log levels must be clamped in production builds")
 
-                let didWarn = await TestEnvironment.logger.didLogProductionRestrictionWarningForTests()
-                #expect(didWarn == true, "Production restriction warning must be emitted")
+            let didWarn = await TestEnvironment.logger.didLogProductionRestrictionWarningForTests()
+            #expect(didWarn == true, "Production restriction warning must be emitted")
 
             await TestEnvironment.logger.overrideIsDebugBuildForTests(nil)
         #else
@@ -854,8 +875,8 @@ struct DebugToolingTests {
             let actual = await TestEnvironment.logger.configurationSnapshotForTests()
 
             #expect(actual.logRequests == false, "Sensitive logging must be disabled in production")
-            #expect(actual.logResponses == false, "Sensitive logging must be disabled in production")
+            #expect(
+                actual.logResponses == false, "Sensitive logging must be disabled in production")
         #endif
     }
 }
-

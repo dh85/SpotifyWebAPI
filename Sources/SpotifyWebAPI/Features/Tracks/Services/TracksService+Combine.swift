@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``TracksService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// Use async helpers such as ``TracksService/get(_:market:)`` or ``TracksService/saved(limit:offset:market:)``
+    /// when you're writing async/await—the publishers here just wrap them.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension TracksService where Capability: PublicSpotifyCapability {
 

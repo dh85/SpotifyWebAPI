@@ -2,6 +2,12 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``PlaylistsService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// When you need async/await, call helpers such as ``PlaylistsService/get(_:market:fields:additionalTypes:)``
+    /// or ``PlaylistsService/items(_:market:fields:limit:offset:additionalTypes:)``—the publishers inside this
+    /// file just wrap those implementations.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension PlaylistsService where Capability: PublicSpotifyCapability {
 

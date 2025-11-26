@@ -3,6 +3,10 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 // MARK: - Service Test Helpers
 
 /// Provides a configured client and mock HTTP response for service tests.

@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``BrowseService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// When you need async/await, call helpers such as ``BrowseService/newReleases(country:limit:offset:)``.
+    /// These publishers wrap those same implementations so validation and paging stay aligned.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension BrowseService where Capability: PublicSpotifyCapability {
 

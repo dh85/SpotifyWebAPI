@@ -40,7 +40,7 @@
                 ]
             ) { client in
                 let users = await client.users
-                return users.topArtistsPublisher(range: .shortTerm, limit: 10, offset: 5)
+                return users.topArtistsPublisher(timeRange: .shortTerm, limit: 10, offset: 5)
             }
 
             #expect(page.items.isEmpty == false)
@@ -107,7 +107,7 @@
                 ]
             ) { client in
                 let users = await client.users
-                return users.topTracksPublisher(range: .longTerm, limit: 15, offset: 2)
+                return users.topTracksPublisher(timeRange: .longTerm, limit: 15, offset: 2)
             }
 
             #expect(page.items.isEmpty == false)

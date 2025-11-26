@@ -3,6 +3,10 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 @Suite("Rate Limit Info Tests")
 struct RateLimitInfoTests {
 
@@ -123,7 +127,7 @@ struct RateLimitInfoTests {
         let (client, http) = makeUserAuthClient()
 
         let infoActor = RateLimitInfoHolder()
-        client.onRateLimitInfo { info in
+        await client.events.onRateLimitInfo { info in
             Task { await infoActor.set(info) }
         }
 
@@ -173,7 +177,8 @@ struct RateLimitInfoTests {
 
         _ = try await client.albums.get("instrumented-album")
 
-        let rateLimit = await collector.waitForEvent(timeout: .milliseconds(500)) { event -> RateLimitInfo? in
+        let rateLimit = await collector.waitForEvent(timeout: .milliseconds(500)) {
+            event -> RateLimitInfo? in
             guard case .rateLimit(let info) = event else { return nil }
             guard info.path.contains("instrumented-album") else { return nil }
             return info
@@ -195,7 +200,7 @@ struct RateLimitInfoTests {
         let (client, http) = makeUserAuthClient()
 
         let invokedActor = BoolHolder()
-        client.onRateLimitInfo { _ in
+        await client.events.onRateLimitInfo { _ in
             Task { await invokedActor.set(true) }
         }
 

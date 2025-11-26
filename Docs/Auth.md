@@ -54,7 +54,22 @@ Conform to `SpotifyTokenStore` or use the built-ins:
 - `RestrictedFileTokenStore` for hardened POSIX permissions and non-Apple deployments.
 - `TokenStoreFactory.defaultStore()` picks Keychain (Apple platforms) or `RestrictedFileTokenStore` automatically.
 
-The client watches for expiration and asks the authenticator to refresh before making a request. You can subscribe to these events via `tokenExpirationCallback`.
+The client watches for expiration and asks the authenticator to refresh before making a request. You can subscribe to these events via `client.events.onTokenExpiring`.
+
+## Combine Helpers
+
+All authenticator actors now ship a Combine mirror of their async API surface:
+
+- `SpotifyPKCEAuthenticator`: `handleCallbackPublisher`, `refreshAccessTokenPublisher`, and
+    `refreshAccessTokenIfNeededPublisher` wrap the async calls so SwiftUI apps built around Combine can
+    authorize without rewriting PKCE state handling.
+- `SpotifyAuthorizationCodeAuthenticator`: the same trio of publishers mirrors the server-side flow
+    (`handleCallback`, `refreshAccessToken`, and `refreshAccessTokenIfNeeded`).
+- `SpotifyClientCredentialsAuthenticator`: use `appAccessTokenPublisher` and
+    `loadPersistedTokensPublisher` when background jobs prefer publisher chaining.
+
+Each helper forwards to the async implementation, so token persistence, validation, and metrics stay
+in one place regardless of concurrency paradigm.
 
 ## Tips for Consumers
 

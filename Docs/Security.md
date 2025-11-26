@@ -23,7 +23,7 @@ let client = URLSessionHTTPClient(session: pinnedSession)
 ## Protect Tokens & Scopes
 
 - Use `TokenStoreFactory.defaultStore()` for platform-appropriate secure storage (Keychain on Apple platforms, restricted file storage elsewhere).
-- Listen to `tokenExpirationCallback` to refresh UI widgets or expire sessions without printing raw tokens.
+- Listen to `client.events.onTokenExpiring` to refresh UI widgets or expire sessions without printing raw tokens.
 - Build scope lists with the `SpotifyScope` enums and request only what the current feature needs.
 
 > Legacy `FileTokenStore` samples have been removed to avoid encouraging insecure storage. Use

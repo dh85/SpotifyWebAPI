@@ -76,6 +76,13 @@ private typealias TopTracksWrapper = ArrayWrapper<Track>
 /// - `.single` - Singles and EPs
 /// - `.compilation` - Compilation albums
 /// - `.appearsOn` - Albums the artist appears on
+///
+/// ## Combine Counterparts
+///
+/// Publisher variants such as ``ArtistsService/getPublisher(_:)`` and
+/// ``ArtistsService/albumsPublisher(for:includeGroups:market:limit:offset:priority:)`` live in
+/// `ArtistsService+Combine.swift`. They call into these async methods so you can switch between
+/// async/await and Combine without relearning the API surface.
 public struct ArtistsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -95,8 +102,9 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artist)
     public func get(_ id: String) async throws -> Artist {
-        let request = SpotifyRequest<Artist>.get("/artists/\(id)")
-        return try await client.perform(request)
+        return try await client
+            .get("/artists/\(id)")
+            .decode(Artist.self)
     }
 
     /// Get Spotify catalog information for several artists based on their Spotify IDs.
@@ -108,10 +116,12 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-artists)
     public func several(ids: Set<String>) async throws -> [Artist] {
         try validateArtistIDs(ids)
-
-        let query = [makeIDsQueryItem(from: ids)]
-        let request = SpotifyRequest<SeveralArtistsWrapper>.get("/artists", query: query)
-        return try await client.perform(request).items
+        
+        let wrapper = try await client
+            .get("/artists")
+            .query("ids", ids.joined(separator: ","))
+            .decode(SeveralArtistsWrapper.self)
+        return wrapper.items
     }
 
     /// Get Spotify catalog information about an artist's albums.
@@ -127,23 +137,27 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artists-albums)
     public func albums(
-        for id: String,
-        includeGroups: Set<AlbumGroup>? = nil,
+        artistId: String,
+        groups: Set<AlbumGroup>? = nil,
         market: String? = nil,
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<SimplifiedAlbum> {
-        var query = try buildPaginationQuery(limit: limit, offset: offset)
-        query += makeMarketQueryItems(from: market)
-
-        if let groups = includeGroups, !groups.isEmpty {
-            let value = groups.map(\.rawValue).sorted().joined(separator: ",")
-            query.append(.init(name: "include_groups", value: value))
+        try validateLimit(limit)
+        
+        var builder = client
+            .get("/artists/\(artistId)/albums")
+            .market(market)
+            .paginate(limit: limit, offset: offset)
+        
+        if let groups = groups, !groups.isEmpty {
+            builder = builder.query(
+                "include_groups",
+                groups.map(\.rawValue).sorted().joined(separator: ",")
+            )
         }
-
-        let request = SpotifyRequest<Page<SimplifiedAlbum>>.get(
-            "/artists/\(id)/albums", query: query)
-        return try await client.perform(request)
+        
+        return try await builder.decode(Page<SimplifiedAlbum>.self)
     }
 
     /// Stream full pages of an artist's albums for incremental processing.
@@ -164,8 +178,8 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     ) -> AsyncThrowingStream<Page<SimplifiedAlbum>, Error> {
         client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
             try await self.albums(
-                for: id,
-                includeGroups: includeGroups,
+                artistId: id,
+                groups: includeGroups,
                 market: market,
                 limit: limit,
                 offset: offset
@@ -190,8 +204,8 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     ) -> AsyncThrowingStream<SimplifiedAlbum, Error> {
         client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
             try await self.albums(
-                for: id,
-                includeGroups: includeGroups,
+                artistId: id,
+                groups: includeGroups,
                 market: market,
                 limit: limit,
                 offset: offset
@@ -208,11 +222,12 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     /// - Throws: `SpotifyError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artists-top-tracks)
-    public func topTracks(for id: String, market: String) async throws -> [Track] {
-        let query = [URLQueryItem(name: "market", value: market)]
-        let request = SpotifyRequest<TopTracksWrapper>.get(
-            "/artists/\(id)/top-tracks", query: query)
-        return try await client.perform(request).items
+    public func topTracks(artistId: String, market: String) async throws -> [Track] {
+        let wrapper = try await client
+            .get("/artists/\(artistId)/top-tracks")
+            .query("market", market)
+            .decode(TopTracksWrapper.self)
+        return wrapper.items
     }
 }
 

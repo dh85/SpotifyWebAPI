@@ -62,7 +62,8 @@ struct UsersServiceTests {
     @Test
     func topArtistsBuildsCorrectRequest() async throws {
         try await withMockServiceClient(fixture: "top_artists.json") { client, http in
-            let page = try await client.users.topArtists(range: .shortTerm, limit: 10, offset: 5)
+            let page = try await client.users.topArtists(
+                timeRange: .shortTerm, limit: 10, offset: 5)
 
             #expect(page.items.count > 0)
             let request = await http.firstRequest
@@ -100,7 +101,7 @@ struct UsersServiceTests {
         )
 
         let stream = await client.users.streamTopArtistPages(
-            range: .shortTerm,
+            timeRange: .shortTerm,
             pageSize: 30,
             maxPages: 1
         )
@@ -126,7 +127,7 @@ struct UsersServiceTests {
         await http.addMockResponse(data: response, statusCode: 200)
 
         let stream = await client.users.streamTopArtists(
-            range: .longTerm,
+            timeRange: .longTerm,
             pageSize: 40,
             maxItems: 80
         )
@@ -141,7 +142,7 @@ struct UsersServiceTests {
     @Test
     func topTracksBuildsCorrectRequest() async throws {
         try await withMockServiceClient(fixture: "top_tracks.json") { client, http in
-            let page = try await client.users.topTracks(range: .longTerm, limit: 15, offset: 10)
+            let page = try await client.users.topTracks(timeRange: .longTerm, limit: 15, offset: 10)
 
             #expect(page.items.count > 0)
             let request = await http.firstRequest
@@ -181,7 +182,7 @@ struct UsersServiceTests {
         await http.addMockResponse(data: response, statusCode: 200)
 
         let stream = await client.users.streamTopTrackPages(
-            range: .longTerm,
+            timeRange: .longTerm,
             pageSize: 35,
             maxPages: 1
         )
@@ -207,7 +208,7 @@ struct UsersServiceTests {
         await http.addMockResponse(data: response, statusCode: 200)
 
         let stream = await client.users.streamTopTracks(
-            range: .longTerm,
+            timeRange: .longTerm,
             pageSize: 45,
             maxItems: 90
         )

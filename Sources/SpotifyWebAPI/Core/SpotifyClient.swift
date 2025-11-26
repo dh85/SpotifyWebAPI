@@ -161,11 +161,10 @@ public actor SpotifyClient<Capability: Sendable> {
     private let backend: TokenGrantAuthenticator
     let configuration: SpotifyClientConfiguration
     var interceptors: [RequestInterceptor] = []
-    private var tokenExpirationCallback: TokenExpirationCallback?
-    var rateLimitInfoCallback: RateLimitInfoCallback?
-    private var tokenRefreshWillStartCallback: TokenRefreshWillStartCallback?
-    private var tokenRefreshDidSucceedCallback: TokenRefreshDidSucceedCallback?
-    private var tokenRefreshDidFailCallback: TokenRefreshDidFailCallback?
+    
+    /// Centralized event manager for lifecycle and instrumentation callbacks.
+    public let events = SpotifyClientEvents()
+    
     let networkRecovery: NetworkRecoveryHandler
     var ongoingRequests: [String: Task<(any Sendable), Error>] = [:]
     var _isOffline: Bool = false
@@ -227,14 +226,15 @@ public actor SpotifyClient<Capability: Sendable> {
     /// The callback receives the number of seconds until expiration.
     ///
     /// ```swift
-    /// client.onTokenExpiring { expiresIn in
+    /// client.events.onTokenExpiring { expiresIn in
     ///     if expiresIn < 300 {
     ///         print("⚠️ Token expires in \(expiresIn) seconds")
     ///     }
     /// }
     /// ```
+    @available(*, deprecated, message: "Use client.events.onTokenExpiring instead")
     public func onTokenExpiring(_ callback: @escaping TokenExpirationCallback) {
-        tokenExpirationCallback = callback
+        Task { await events.onTokenExpiring(callback) }
     }
 
     /// Set a callback to be notified before a token refresh begins.
@@ -243,14 +243,15 @@ public actor SpotifyClient<Capability: Sendable> {
     /// the current token expires.
     ///
     /// ```swift
-    /// client.onTokenRefreshWillStart { info in
+    /// client.events.onTokenRefreshWillStart { info in
     ///     if info.reason == .automatic {
     ///         print("🔄 Auto-refreshing token (expires in \(info.secondsUntilExpiration)s)")
     ///     }
     /// }
     /// ```
+    @available(*, deprecated, message: "Use client.events.onTokenRefreshWillStart instead")
     public func onTokenRefreshWillStart(_ callback: @escaping TokenRefreshWillStartCallback) {
-        tokenRefreshWillStartCallback = callback
+        Task { await events.onTokenRefreshWillStart(callback) }
     }
 
     /// Set a callback to be notified when a token refresh succeeds.
@@ -259,13 +260,14 @@ public actor SpotifyClient<Capability: Sendable> {
     /// and its expiration date.
     ///
     /// ```swift
-    /// client.onTokenRefreshDidSucceed { newTokens in
+    /// client.events.onTokenRefreshDidSucceed { newTokens in
     ///     print("✅ Token refreshed, expires at \(newTokens.expiresAt)")
     ///     await keychain.save(newTokens)
     /// }
     /// ```
+    @available(*, deprecated, message: "Use client.events.onTokenRefreshDidSucceed instead")
     public func onTokenRefreshDidSucceed(_ callback: @escaping TokenRefreshDidSucceedCallback) {
-        tokenRefreshDidSucceedCallback = callback
+        Task { await events.onTokenRefreshDidSucceed(callback) }
     }
 
     /// Set a callback to be notified when a token refresh fails.
@@ -274,7 +276,7 @@ public actor SpotifyClient<Capability: Sendable> {
     /// when the refresh token is invalid or expired.
     ///
     /// ```swift
-    /// client.onTokenRefreshDidFail { error in
+    /// client.events.onTokenRefreshDidFail { error in
     ///     if case SpotifyAuthError.missingRefreshToken = error {
     ///         Task { @MainActor in
     ///             showLoginScreen()
@@ -282,8 +284,9 @@ public actor SpotifyClient<Capability: Sendable> {
     ///     }
     /// }
     /// ```
+    @available(*, deprecated, message: "Use client.events.onTokenRefreshDidFail instead")
     public func onTokenRefreshDidFail(_ callback: @escaping TokenRefreshDidFailCallback) {
-        tokenRefreshDidFailCallback = callback
+        Task { await events.onTokenRefreshDidFail(callback) }
     }
 
     /// Set a callback to receive rate limit information from API responses.
@@ -292,7 +295,7 @@ public actor SpotifyClient<Capability: Sendable> {
     /// implement proactive throttling or display usage warnings.
     ///
     /// ```swift
-    /// client.onRateLimitInfo { info in
+    /// client.events.onRateLimitInfo { info in
     ///     if let remaining = info.remaining, remaining < 10 {
     ///         print("⚠️ Only \(remaining) requests remaining!")
     ///     }
@@ -305,12 +308,9 @@ public actor SpotifyClient<Capability: Sendable> {
     /// ```
     ///
     /// - Parameter callback: A closure called with rate limit info from each response.
+    @available(*, deprecated, message: "Use client.events.onRateLimitInfo instead")
     public nonisolated func onRateLimitInfo(_ callback: @escaping RateLimitInfoCallback) {
-        Task { await setRateLimitInfoCallback(callback) }
-    }
-
-    private func setRateLimitInfoCallback(_ callback: @escaping RateLimitInfoCallback) {
-        rateLimitInfoCallback = callback
+        Task { await events.onRateLimitInfo(callback) }
     }
 
     /// Check when the current access token expires.
@@ -404,9 +404,7 @@ public actor SpotifyClient<Capability: Sendable> {
                 reason: reason,
                 secondsUntilExpiration: secondsUntilExpiration
             )
-            if let callback = tokenRefreshWillStartCallback {
-                callback(info)
-            }
+            await events.invokeTokenRefreshWillStart(info)
             await instrumentationLogger.emit(.tokenRefreshWillStart(info))
         }
 
@@ -421,25 +419,19 @@ public actor SpotifyClient<Capability: Sendable> {
 
             // Notify of successful refresh
             if didRefresh {
-                if let callback = tokenRefreshDidSucceedCallback {
-                    callback(tokens)
-                }
+                await events.invokeTokenRefreshDidSucceed(tokens)
                 await instrumentationLogger.emit(.tokenRefreshDidSucceed(tokens))
             }
 
             // Always notify token expiration callback
-            if let callback = tokenExpirationCallback {
-                let expiresIn = tokens.expiresAt.timeIntervalSinceNow
-                callback(expiresIn)
-            }
+            let expiresIn = tokens.expiresAt.timeIntervalSinceNow
+            await events.invokeTokenExpiring(expiresIn)
 
             return tokens.accessToken
         } catch {
             // Notify of refresh failure (if refresh was attempted)
             if willRefresh {
-                if let callback = tokenRefreshDidFailCallback {
-                    callback(error)
-                }
+                await events.invokeTokenRefreshDidFail(error)
                 await instrumentationLogger.emit(
                     .tokenRefreshDidFail(TokenRefreshFailureContext(error: error))
                 )

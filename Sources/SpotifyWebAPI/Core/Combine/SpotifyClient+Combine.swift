@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine utilities that bridge ``SpotifyClient`` async operations into publishers.
+    ///
+    /// ## Async Counterparts
+    /// Every publisher created through these helpers forwards to the underlying async call, so you
+    /// can swap between paradigms without duplicating business logic.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension SpotifyClient {
 
@@ -13,98 +18,128 @@
             priority: TaskPriority? = nil,
             _ operation: @escaping @Sendable () async throws -> Output
         ) -> AnyPublisher<Output, Error> {
-            Deferred {
-                makeTaskPublisher(priority: priority, operation)
+            CombineTaskPublisher.make(priority: priority, operation: operation)
+        }
+
+        /// Emits ``SpotifyClientEvent`` values through a Combine publisher by wiring up a
+        /// transient ``SpotifyClientObserver``.
+        ///
+        /// ## Async Counterpart
+        /// If you prefer AsyncSequence, register an observer manually via ``addObserver(_:)`` and
+        /// stream events through `AsyncStream`. This publisher wraps the same observer APIs so loggers
+        /// and telemetry can swap paradigms without changing instrumentation wiring.
+        public nonisolated func observerPublisher(
+            bufferSize: Int = 64
+        ) -> AnyPublisher<SpotifyClientEvent, Never> {
+            Deferred { [client = self] in
+                let subject = PassthroughSubject<SpotifyClientEvent, Never>()
+                let bridge = ObserverBridge(client: client, subject: subject)
+
+                let publisher: AnyPublisher<SpotifyClientEvent, Never>
+                if bufferSize > 0 {
+                    publisher = subject
+                        .buffer(
+                            size: bufferSize,
+                            prefetch: .keepFull,
+                            whenFull: .dropOldest
+                        )
+                        .eraseToAnyPublisher()
+                } else {
+                    publisher = subject.eraseToAnyPublisher()
+                }
+
+                return publisher
+                    .handleEvents(
+                        receiveCompletion: { _ in bridge.cancel() },
+                        receiveCancel: { bridge.cancel() }
+                    )
+                    .eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Observer Bridge
 
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
-    private func makeTaskPublisher<Output: Sendable>(
-        priority: TaskPriority?,
-        _ operation: @escaping @Sendable () async throws -> Output
-    ) -> Publishers.HandleEvents<Future<Output, Error>> {
-        let taskReference = TaskReference()
+    private final class ObserverBridge<Capability: Sendable>: @unchecked Sendable {
+        private let client: SpotifyClient<Capability>
+        private weak var subject: PassthroughSubject<SpotifyClientEvent, Never>?
+        private var observerToken: DebugLogObserver?
+        private var cancelled = false
+        private let lock = NSLock()
 
-        let future = Future<Output, Error> { promise in
-            let promiseBox = PromiseBox(promise)
-
-            let task = Task(priority: priority) {
-                defer { taskReference.markFinished() }
-                do {
-                    let value = try await operation()
-                    if Task.isCancelled || taskReference.isCancelled { return }
-                    promiseBox.succeed(value)
-                } catch is CancellationError {
-                    if taskReference.isCancelled { return }
-                    promiseBox.fail(CancellationError())
-                } catch {
-                    if taskReference.isCancelled { return }
-                    promiseBox.fail(error)
-                }
-            }
-
-            taskReference.store(task)
+        init(client: SpotifyClient<Capability>, subject: PassthroughSubject<SpotifyClientEvent, Never>) {
+            self.client = client
+            self.subject = subject
+            Task { await self.registerObserver() }
         }
 
-        return future.handleEvents(receiveCancel: {
-            taskReference.cancel()
-        })
-    }
-
-    @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
-    private final class TaskReference: @unchecked Sendable {
-        private let lock = NSLock()
-        private var task: Task<Void, Never>?
-        private var cancelled = false
-
-        func store(_ task: Task<Void, Never>) {
-            lock.lock()
-            self.task = task
-            cancelled = false
-            lock.unlock()
+        deinit {
+            cancel()
         }
 
         func cancel() {
+            let token: DebugLogObserver?
             lock.lock()
+            if cancelled {
+                lock.unlock()
+                return
+            }
             cancelled = true
-            let task = self.task
-            self.task = nil
+            token = observerToken
+            observerToken = nil
+            self.subject = nil
             lock.unlock()
-            task?.cancel()
+
+            if let token {
+                Task { await client.removeObserver(token) }
+            }
         }
 
-        func markFinished() {
-            lock.lock()
-            self.task = nil
-            lock.unlock()
+        private func registerObserver() async {
+            let proxy = ObserverProxy { [weak self] event in
+                self?.forward(event)
+            }
+            let token = await client.addObserver(proxy)
+            storeToken(token)
         }
 
-        var isCancelled: Bool {
+        private func storeToken(_ token: DebugLogObserver) {
             lock.lock()
-            let value = cancelled
+            if cancelled {
+                lock.unlock()
+                Task { await client.removeObserver(token) }
+            } else {
+                observerToken = token
+                lock.unlock()
+            }
+        }
+
+        private func forward(_ event: SpotifyClientEvent) {
+            let subjectToUse: PassthroughSubject<SpotifyClientEvent, Never>?
+            lock.lock()
+            if !cancelled, let subject = subject {
+                subjectToUse = subject
+            } else {
+                subjectToUse = nil
+            }
             lock.unlock()
-            return value
+            
+            if let subject = subjectToUse {
+                DispatchQueue.main.async {
+                    subject.send(event)
+                }
+            }
         }
     }
 
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
-    private final class PromiseBox<Output>: @unchecked Sendable {
-        private let promise: (Result<Output, Error>) -> Void
+    private struct ObserverProxy: SpotifyClientObserver {
+        let handler: @Sendable (SpotifyClientEvent) -> Void
 
-        init(_ promise: @escaping (Result<Output, Error>) -> Void) {
-            self.promise = promise
-        }
-
-        func succeed(_ value: Output) {
-            promise(.success(value))
-        }
-
-        func fail(_ error: Error) {
-            promise(.failure(error))
+        func receive(_ event: SpotifyClientEvent) {
+            handler(event)
         }
     }
 

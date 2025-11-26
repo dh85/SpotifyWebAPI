@@ -31,6 +31,14 @@ let demoPlaylist = Playlist(
 
 Need to drive a UI against the real networking stack without Spotify's servers? Stand up your own HTTP endpoint that mimics Spotify's responses and point `SpotifyClientConfiguration` at it by overriding the `httpClient`.
 
+## Async vs Combine Tests
+
+Every service documents both the async method and its `*Publisher` counterpart. Mirror that in your
+tests: call the async API when you're already in an async XCTest method, or rely on the publisher
+when you need to integrate with Combine operators. Because the publisher helpers wrap the async
+implementations, you can share fixtures, mocks, and assertions between paradigms and still get
+identical validation and instrumentation output.
+
 ## Helper Assertions
 
 Combine pipelines are easy to verify by returning `Just` values from your mocks, while async code can be exercised with `async let`/`await` inside XCTest. Because everything funnels through ``SpotifyClientProtocol``, you rarely need to spin up real HTTP traffic for unit tests.
@@ -57,6 +65,10 @@ let observer = await client.addObserver(LoggingObserver())
 ```
 
 Remove observers with ``SpotifyClient/removeObserver(_:)`` when you no longer need the events (for example, when a view disappears).
+
+Prefer Combine for telemetry fan-out? ``SpotifyClient/observerPublisher(bufferSize:)`` yields the same
+``SpotifyClientEvent`` stream as an `AnyPublisher`, managing observer lifetimes and drop-oldest
+buffering automatically so analytics sinks can stay reactive without manual observer bookkeeping.
 
 ## Continuous Integration Tips
 

@@ -1,6 +1,6 @@
 import Foundation
 
-private typealias SeveralTracksWrapper = ArrayWrapper<Track?>
+private typealias SeveralTracksWrapper = ArrayWrapper<Track>
 
 /// A service for fetching and managing Spotify Track resources.
 ///
@@ -52,6 +52,13 @@ private typealias SeveralTracksWrapper = ArrayWrapper<Track?>
 /// - SeeAlso: ``LibraryServiceExtensions`` for batch operations
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
+///
+/// ## Combine Counterparts
+///
+/// Combine publishers—like ``TracksService/getPublisher(_:market:priority:)`` and
+/// ``TracksService/savedPublisher(limit:offset:market:priority:)``—live in
+/// `TracksService+Combine.swift`. Import Combine to switch paradigms without hunting for another
+/// type.
 public struct TracksService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -81,9 +88,10 @@ extension TracksService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
     public func get(_ id: String, market: String? = nil) async throws -> Track {
-        let query = makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Track>.get("/tracks/\(id)", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/tracks/\(id)")
+            .market(market)
+            .decode(Track.self)
     }
 
     /// Get Spotify catalog information for several tracks based on their Spotify IDs.
@@ -97,12 +105,61 @@ extension TracksService where Capability: PublicSpotifyCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-tracks)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [Track] {
         try validateTrackIDs(ids)
-        let query =
-            [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<SeveralTracksWrapper>.get("/tracks", query: query)
-        return try await client.perform(request).items.compactMap { $0 }
+        
+        let wrapper = try await client
+            .get("/tracks")
+            .query("ids", ids.joined(separator: ","))
+            .market(market)
+            .decode(SeveralTracksWrapper.self)
+        return wrapper.items
     }
+
+    // Note: AudioFeatures and AudioAnalysis models are not yet implemented
+    // These methods are placeholders for future implementation
+    /*
+    /// Get audio features for a single track.
+    ///
+    /// - Parameter trackId: The Spotify ID for the track.
+    /// - Returns: `AudioFeatures` object with audio analysis.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audio-features)
+    public func audioFeatures(trackId: String) async throws -> AudioFeatures {
+        return try await client
+            .get("/audio-features/\(trackId)")
+            .decode(AudioFeatures.self)
+    }
+
+    /// Get audio features for several tracks based on their Spotify IDs.
+    ///
+    /// - Parameter trackIds: A list of Spotify IDs (max 100).
+    /// - Returns: A list of `AudioFeatures` objects (nullable).
+    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-audio-features)
+    public func audioFeatures(trackIds: Set<String>) async throws -> [AudioFeatures?] {
+        try validateTrackIDs(trackIds)
+        
+        let wrapper = try await client
+            .get("/audio-features")
+            .query("ids", trackIds.joined(separator: ","))
+            .decode(SeveralAudioFeaturesWrapper.self)
+        return wrapper.items
+    }
+
+    /// Get a low-level audio analysis for a track.
+    ///
+    /// - Parameter trackId: The Spotify ID for the track.
+    /// - Returns: `AudioAnalysis` object with detailed analysis.
+    /// - Throws: `SpotifyError` if the request fails.
+    ///
+    /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audio-analysis)
+    public func audioAnalysis(trackId: String) async throws -> AudioAnalysis {
+        return try await client
+            .get("/audio-analysis/\(trackId)")
+            .decode(AudioAnalysis.self)
+    }
+    */
 }
 
 // MARK: - User Access
@@ -121,11 +178,12 @@ extension TracksService where Capability == UserAuthCapability {
     public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil) async throws -> Page<
         SavedTrack
     > {
-        let query =
-            try buildPaginationQuery(limit: limit, offset: offset)
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Page<SavedTrack>>.get("/me/tracks", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/me/tracks")
+            .paginate(limit: limit, offset: offset)
+            .market(market)
+            .decode(Page<SavedTrack>.self)
     }
 
     /// Fetch all saved tracks from the current user's library.
@@ -208,8 +266,9 @@ extension TracksService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-tracks)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {
         try validateTrackIDs(ids)
-        let query = [URLQueryItem(name: "ids", value: ids.joined(separator: ","))]
-        let request = SpotifyRequest<[Bool]>.get("/me/tracks/contains", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/me/tracks/contains")
+            .query("ids", ids.joined(separator: ","))
+            .decode([Bool].self)
     }
 }

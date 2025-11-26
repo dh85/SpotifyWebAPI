@@ -73,6 +73,43 @@
             let didCancel = await tracker.waitForCancellation()
             #expect(didCancel)
         }
+
+        @Test("observerPublisher emits SpotifyClientEvents")
+        func observerPublisherEmitsEvents() async throws {
+            let backend = MockTokenAuthenticator(token: AuthTestFixtures.sampleTokens())
+            let client = SpotifyClient<UserAuthCapability>(backend: backend)
+
+                        // Filter for our specific test event to avoid noise from other tests
+            let performancePublisher = client.observerPublisher(bufferSize: 4)
+                .filter { event in
+                    if case .performance(let metrics) = event, metrics.operationName == "observer-test" {
+                        return true
+                    }
+                    return false
+                }
+                .setFailureType(to: Error.self)
+
+            let metrics = PerformanceMetrics(operationName: "observer-test", duration: 0.1)
+            let logger = DebugLogger.telemetryLogger()
+
+            // Emit repeatedly to handle race condition where observer registration is async
+            let emitterTask = Task {
+                while !Task.isCancelled {
+                    await logger.emit(.performance(metrics))
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+            }
+
+            let emitted = try await awaitFirstValue(performancePublisher)
+            emitterTask.cancel()
+            
+            guard case .performance(let emittedMetrics) = emitted else {
+                Issue.record("Expected performance event")
+                return
+            }
+            
+            #expect(emittedMetrics.operationName == metrics.operationName)
+        }
     }
 
 #endif
