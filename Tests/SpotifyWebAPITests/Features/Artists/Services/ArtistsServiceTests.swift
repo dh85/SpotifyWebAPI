@@ -64,8 +64,8 @@ struct ArtistsServiceTests {
     func artistAlbums_buildsCorrectRequest_withAllParameters() async throws {
         try await withMockServiceClient(fixture: "artist_albums.json") { client, http in
             let page = try await client.artists.albums(
-                for: "0TnOYISbd1XYRBk9myaseg",
-                includeGroups: [.single, .appearsOn],
+                artistId: "0TnOYISbd1XYRBk9myaseg",
+                groups: [.single, .appearsOn],
                 market: "ES",
                 limit: 10,
                 offset: 5
@@ -91,8 +91,8 @@ struct ArtistsServiceTests {
     func artistAlbums_emptyIncludeGroups_omitsIncludeGroupsQuery() async throws {
         try await withMockServiceClient(fixture: "artist_albums.json") { client, http in
             _ = try await client.artists.albums(
-                for: "artist123",
-                includeGroups: [],  // explicit empty set
+                artistId: "artist123",
+                groups: [],  // explicit empty set
                 market: "US"
             )
 
@@ -107,7 +107,7 @@ struct ArtistsServiceTests {
     @Test
     func artistAlbums_minimalParameters_omitsOptionalQueries() async throws {
         try await withMockServiceClient(fixture: "artist_albums.json") { client, http in
-            _ = try await client.artists.albums(for: "artist123")
+            _ = try await client.artists.albums(artistId: "artist123")
 
             let request = await http.firstRequest
             let query = request?.url?.query()
@@ -127,7 +127,7 @@ struct ArtistsServiceTests {
             reasonEquals: "Limit must be between 1 and 50. You provided 51."
         ) {
             _ = try await client.artists.albums(
-                for: "artist123",
+                artistId: "artist123",
                 limit: 51
             )
         }
@@ -136,7 +136,7 @@ struct ArtistsServiceTests {
             reasonEquals: "Limit must be between 1 and 50. You provided 0."
         ) {
             _ = try await client.artists.albums(
-                for: "artist123",
+                artistId: "artist123",
                 limit: 0
             )
         }
@@ -145,13 +145,13 @@ struct ArtistsServiceTests {
     @Test
     func artistAlbums_allowsLimitLowerAndUpperBounds() async throws {
         try await withMockServiceClient(fixture: "artist_albums.json") { client, http in
-            _ = try await client.artists.albums(for: "artist123", limit: 1)
+            _ = try await client.artists.albums(artistId: "artist123", limit: 1)
             let request = await http.requests.first
             #expect(request?.url?.query()?.contains("limit=1") == true)
         }
 
         try await withMockServiceClient(fixture: "artist_albums.json") { client, http in
-            _ = try await client.artists.albums(for: "artist123", limit: 50)
+            _ = try await client.artists.albums(artistId: "artist123", limit: 50)
             let request = await http.requests.first
             #expect(request?.url?.query()?.contains("limit=50") == true)
         }
@@ -213,7 +213,7 @@ struct ArtistsServiceTests {
     func topTracks_buildsCorrectRequest_andUnwrapsDTO() async throws {
         try await withMockServiceClient(fixture: "artist_top_tracks.json") { client, http in
             let tracks = try await client.artists.topTracks(
-                for: "artist123",
+                artistId: "artist123",
                 market: "GB"
             )
 

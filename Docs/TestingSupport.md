@@ -25,6 +25,11 @@ Treat SpotifyWebAPI as a protocol-oriented dependency so production code, previe
 - `assertLimitOutOfRange` / `assertIDBatchTooLarge` enforce validation errors consistently.
 - `expectInvalidRequest` inspects `SpotifyClientError.invalidRequest` reasons and fails with contextual source locations.
 
+Every async service now calls out its Combine counterpart (and vice versa), so when you stub one you
+automatically know the matching function name in the other paradigm (`get` ↔︎ `getPublisher`). This
+makes it trivial to offer both async and publisher overrides inside `MockSpotifyClient` without
+double-checking file names.
+
 ## Instrumentation & Telemetry
 
 `SpotifyClientObserver` offers a single stream of structured events (requests, responses, retries, token lifecycle, rate limits) so you no longer have to juggle multiple callbacks. Register once via `client.addObserver(_:)` and forward events into your logging or metrics pipeline:
@@ -47,6 +52,11 @@ let handle = await client.addObserver(MetricsObserver())
 ```
 
 Because `SpotifyClientObserver` is `Sendable`, you can fan out to OSLog, metrics vendors, or custom tracing backends while preserving type safety and avoiding duplicate registrations.
+
+Prefer Combine? Call `client.observerPublisher(bufferSize:)` to receive the same
+`SpotifyClientEvent` stream inside `sink`/`assign` pipelines. The publisher registers and removes the
+underlying observer automatically and offers a configurable in-memory buffer so UI subscribers can
+briefly fall behind without losing critical telemetry.
 
 ## CI Suggestions
 

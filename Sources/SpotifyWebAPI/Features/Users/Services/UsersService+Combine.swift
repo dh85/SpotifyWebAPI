@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``UsersService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// When you prefer async/await, stick with calls like ``UsersService/get(_: )`` or
+    /// ``UsersService/me()``—publisher helpers simply wrap the same implementations.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension UsersService where Capability: PublicSpotifyCapability {
 
@@ -37,26 +42,26 @@
         }
 
         public func topArtistsPublisher(
-            range: TimeRange = .mediumTerm,
+            timeRange: TimeRange = .mediumTerm,
             limit: Int = 20,
             offset: Int = 0,
             priority: TaskPriority? = nil
         ) -> AnyPublisher<Page<Artist>, Error> {
             pagedPublisher(limit: limit, offset: offset, priority: priority) {
                 service, limit, offset in
-                try await service.topArtists(range: range, limit: limit, offset: offset)
+                try await service.topArtists(timeRange: timeRange, limit: limit, offset: offset)
             }
         }
 
         public func topTracksPublisher(
-            range: TimeRange = .mediumTerm,
+            timeRange: TimeRange = .mediumTerm,
             limit: Int = 20,
             offset: Int = 0,
             priority: TaskPriority? = nil
         ) -> AnyPublisher<Page<Track>, Error> {
             pagedPublisher(limit: limit, offset: offset, priority: priority) {
                 service, limit, offset in
-                try await service.topTracks(range: range, limit: limit, offset: offset)
+                try await service.topTracks(timeRange: timeRange, limit: limit, offset: offset)
             }
         }
 

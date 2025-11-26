@@ -50,7 +50,7 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshWillStart { info in
+        await client.events.onTokenRefreshWillStart { info in
             Task { @MainActor in
                 await tracker.recordWillStart(info)
             }
@@ -74,7 +74,7 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshDidSucceed { tokens in
+        await client.events.onTokenRefreshDidSucceed { tokens in
             Task { @MainActor in
                 await tracker.recordDidSucceed(tokens)
             }
@@ -97,7 +97,7 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshWillStart { info in
+        await client.events.onTokenRefreshWillStart { info in
             Task { @MainActor in
                 await tracker.recordWillStart(info)
             }
@@ -120,7 +120,7 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshWillStart { info in
+        await client.events.onTokenRefreshWillStart { info in
             Task { @MainActor in
                 await tracker.recordWillStart(info)
             }
@@ -145,7 +145,7 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshDidSucceed { tokens in
+        await client.events.onTokenRefreshDidSucceed { tokens in
             Task { @MainActor in
                 await tracker.recordDidSucceed(tokens)
             }
@@ -169,19 +169,19 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshWillStart { info in
+        await client.events.onTokenRefreshWillStart { info in
             Task { @MainActor in
                 await tracker.recordWillStart(info)
             }
         }
 
-        await client.onTokenRefreshDidSucceed { tokens in
+        await client.events.onTokenRefreshDidSucceed { tokens in
             Task { @MainActor in
                 await tracker.recordDidSucceed(tokens)
             }
         }
 
-        await client.onTokenRefreshDidFail { error in
+        await client.events.onTokenRefreshDidFail { error in
             Task { @MainActor in
                 await tracker.recordDidFail(error)
             }
@@ -209,14 +209,14 @@ struct TokenRefreshEventTests {
         let (client, http, _) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshWillStart { _ in
+        await client.events.onTokenRefreshWillStart { _ in
             Task { @MainActor in
                 await tracker.recordWillStart(
                     TokenRefreshInfo(reason: .automatic, secondsUntilExpiration: 0))
             }
         }
 
-        await client.onTokenRefreshDidSucceed { tokens in
+        await client.events.onTokenRefreshDidSucceed { tokens in
             Task { @MainActor in
                 await tracker.recordDidSucceed(tokens)
             }
@@ -241,7 +241,7 @@ struct TokenRefreshEventTests {
         let (client, http, auth) = makeUserAuthClientWithAuth(initialToken: .mockExpired)
         let tracker = EventTracker()
 
-        await client.onTokenRefreshWillStart { _ in
+        await client.events.onTokenRefreshWillStart { _ in
             Task { @MainActor in
                 await tracker.recordWillStart(
                     TokenRefreshInfo(reason: .automatic, secondsUntilExpiration: 0))

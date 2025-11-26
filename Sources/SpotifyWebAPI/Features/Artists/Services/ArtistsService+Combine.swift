@@ -2,6 +2,12 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``ArtistsService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// Prefer ``ArtistsService/get(_: )`` and other async variants when your codebase leans on
+    /// async/await—the publisher helpers simply call into those implementations so behavior stays
+    /// identical.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension ArtistsService where Capability: PublicSpotifyCapability {
 
@@ -34,8 +40,8 @@
             pagedPublisher(limit: limit, offset: offset, priority: priority) {
                 service, limit, offset in
                 try await service.albums(
-                    for: id,
-                    includeGroups: includeGroups,
+                    artistId: id,
+                    groups: includeGroups,
                     market: market,
                     limit: limit,
                     offset: offset

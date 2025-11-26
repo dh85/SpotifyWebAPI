@@ -89,4 +89,52 @@ struct MockSpotifyClientTests {
         #expect(mock.myPlaylistsParameters.first?.limit == 2)
         #expect(mock.myPlaylistsParameters.first?.offset == 1)
     }
+
+    @Test("Mock returns artist")
+    func mockReturnsArtist() async throws {
+        let mock = MockSpotifyClient()
+        let artist = Artist(
+            externalUrls: SpotifyExternalUrls(spotify: nil),
+            followers: SpotifyFollowers(href: nil, total: 10000),
+            genres: ["rock", "indie"],
+            href: URL(string: "https://api.spotify.com/v1/artists/artist123")!,
+            id: "artist123",
+            images: [],
+            name: "Test Artist",
+            popularity: 75,
+            type: .artist,
+            uri: "spotify:artist:artist123"
+        )
+        mock.mockArtist = artist
+        
+        let result = try await mock.artists.get("artist123")
+        
+        #expect(result == artist)
+        #expect(mock.getArtistCalled == true)
+    }
+
+    @Test("Mock returns search results")
+    func mockReturnsSearchResults() async throws {
+        let mock = MockSpotifyClient()
+        let results = SearchResults(
+            tracks: nil,
+            artists: nil,
+            albums: nil,
+            playlists: nil,
+            shows: nil,
+            episodes: nil,
+            audiobooks: nil
+        )
+        mock.mockSearchResult = results
+        
+        let result = try await mock.search.search(query: "test", types: [.track, .artist])
+        
+        #expect(result == results)
+        #expect(mock.searchCalled == true)
+        #expect(mock.searchParameters.first?.query == "test")
+        #expect(mock.searchParameters.first?.types == [.track, .artist])
+        #expect(mock.searchParameters.first?.limit == 20)
+        #expect(mock.searchParameters.first?.offset == 0)
+    }
 }
+

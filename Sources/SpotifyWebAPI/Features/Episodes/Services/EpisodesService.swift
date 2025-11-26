@@ -3,6 +3,13 @@ import Foundation
 private typealias SeveralEpisodesWrapper = ArrayWrapper<Episode>
 
 /// A service for fetching and managing Spotify Episode (Podcast Episode) resources.
+///
+/// ## Combine Counterparts
+///
+/// Publisher helpers such as ``EpisodesService/getPublisher(_:market:priority:)`` and
+/// ``EpisodesService/savedPublisher(limit:offset:market:priority:)`` are defined in
+/// `EpisodesService+Combine.swift`. Import Combine to expose them—they reuse these async methods so
+/// both concurrency models behave the same.
 public struct EpisodesService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
     init(client: SpotifyClient<Capability>) { self.client = client }
@@ -30,9 +37,10 @@ extension EpisodesService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-episode)
     public func get(_ id: String, market: String? = nil) async throws -> Episode {
-        let query = makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Episode>.get("/episodes/\(id)", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/episodes/\(id)")
+            .market(market)
+            .decode(Episode.self)
     }
 
     /// Get Spotify catalog information for several episodes identified by their Spotify IDs.
@@ -46,11 +54,12 @@ extension EpisodesService where Capability: PublicSpotifyCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-episodes)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [Episode] {
         try validateEpisodeIDs(ids)
-        let query =
-            [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<SeveralEpisodesWrapper>.get("/episodes", query: query)
-        return try await client.perform(request).items
+        let wrapper = try await client
+            .get("/episodes")
+            .query("ids", ids.sorted().joined(separator: ","))
+            .market(market)
+            .decode(SeveralEpisodesWrapper.self)
+        return wrapper.items
     }
 }
 
@@ -70,9 +79,12 @@ extension EpisodesService where Capability == UserAuthCapability {
     public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil) async throws -> Page<
         SavedEpisode
     > {
-        let query = try makePagedMarketQuery(limit: limit, offset: offset, market: market)
-        let request = SpotifyRequest<Page<SavedEpisode>>.get("/me/episodes", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/me/episodes")
+            .paginate(limit: limit, offset: offset)
+            .market(market)
+            .decode(Page<SavedEpisode>.self)
     }
 
     /// Fetch every episode saved in the user's library.
@@ -154,8 +166,9 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-episodes)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {
         try validateEpisodeIDs(ids)
-        let query = [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
-        let request = SpotifyRequest<[Bool]>.get("/me/episodes/contains", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/me/episodes/contains")
+            .query("ids", ids.sorted().joined(separator: ","))
+            .decode([Bool].self)
     }
 }

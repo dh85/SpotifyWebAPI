@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``ShowsService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// Reach for ``ShowsService/get(_:market:)`` or ``ShowsService/saved(limit:offset:)`` when you
+    /// want native async/await—the publishers in this file delegate to those implementations.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension ShowsService where Capability: PublicSpotifyCapability {
 

@@ -11,7 +11,7 @@ Ship consumer apps with confidence by keeping tokens, scopes, and traffic locked
 ## Protect Tokens
 
 - Use ``RestrictedFileTokenStore`` for simulator/local builds and swap in a Keychain-backed `SpotifyTokenStore` for production. The protocol keeps your DI simple across targets.
-- ``SpotifyClient/tokenExpirationCallback`` tells you when a refresh occurs so you can refresh widgets or show “session expired” banners without dumping raw tokens into analytics.
+- ``SpotifyClientEvents/onTokenExpiring(_:)`` tells you when a refresh occurs so you can refresh widgets or show “session expired” banners without dumping raw tokens into analytics.
 - Keep scopes tight: build feature-specific arrays of ``SpotifyScope`` values and only request what each screen needs.
 
 ## Safe Testing & Sandboxes

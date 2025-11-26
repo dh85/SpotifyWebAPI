@@ -4,80 +4,6 @@ import Foundation
     import FoundationNetworking
 #endif
 
-private struct SnapshotResponse: Decodable, Sendable { let snapshotId: String }
-private struct FollowPlaylistBody: Encodable, Sendable {
-    let isPublic: Bool?
-    enum CodingKeys: String, CodingKey { case isPublic = "public" }
-}
-
-private struct AddPlaylistItemsBody: Encodable, Sendable {
-    let uris: [String]
-    let position: Int?
-}
-
-private struct ChangePlaylistDetailsBody: Encodable, Sendable {
-    let name: String?
-    let isPublic: Bool?
-    let collaborative: Bool?
-    let description: String?
-    enum CodingKeys: String, CodingKey {
-        case name, collaborative, description
-        case isPublic = "public"
-    }
-}
-
-private struct CreatePlaylistBody: Encodable, Sendable {
-    let name: String
-    let isPublic: Bool?
-    let collaborative: Bool?
-    let description: String?
-    enum CodingKeys: String, CodingKey {
-        case name, collaborative, description
-        case isPublic = "public"
-    }
-}
-
-private struct ReorderPlaylistItemsBody: Encodable, Sendable {
-    let rangeStart: Int
-    let insertBefore: Int
-    let rangeLength: Int?
-    let snapshotId: String?
-    enum CodingKeys: String, CodingKey {
-        case rangeStart = "range_start"
-        case insertBefore = "insert_before"
-        case rangeLength = "range_length"
-        case snapshotId = "snapshot_id"
-    }
-}
-
-private struct RemovePlaylistItemsBody: Encodable, Sendable {
-    let tracks: [TrackURIObject]?
-    let positions: [Int]?
-    let snapshotId: String?
-
-    enum CodingKeys: String, CodingKey {
-        case tracks, positions
-        case snapshotId = "snapshot_id"
-    }
-
-    static func byURIs(_ uris: [String], snapshotId: String? = nil) -> Self {
-        let trackObjects = uris.map { TrackURIObject(uri: $0) }
-        return .init(
-            tracks: trackObjects,
-            positions: nil,
-            snapshotId: snapshotId
-        )
-    }
-
-    static func byPositions(_ positions: [Int], snapshotId: String? = nil)
-        -> Self
-    {
-        return .init(tracks: nil, positions: positions, snapshotId: snapshotId)
-    }
-}
-
-private struct TrackURIObject: Encodable, Sendable { let uri: String }
-
 /// A service for interacting with Spotify Playlists, managing items, and updating details.
 ///
 /// ## Overview
@@ -132,6 +58,13 @@ private struct TrackURIObject: Encodable, Sendable { let uri: String }
 /// ```
 ///
 /// - SeeAlso: ``PlaylistsServiceExtensions`` for batch operations
+///
+/// ## Combine Counterparts
+///
+/// All playlist operations have mirrored publishers in `PlaylistsService+Combine.swift`—for
+/// example ``PlaylistsService/getPublisher(_:market:fields:additionalTypes:priority:)`` and
+/// ``PlaylistsService/addPublisher(to:uris:position:priority:)``. Import Combine to call those
+/// helpers without hunting for a different API surface.
 public struct PlaylistsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -161,13 +94,20 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
         fields: String? = nil,
         additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> Playlist {
-        let query = QueryBuilder()
-            .addingMarket(market)
-            .addingFields(fields)
-            .addingAdditionalTypes(additionalTypes)
-            .build()
-        let request = SpotifyRequest<Playlist>.get("/playlists/\(id)", query: query)
-        return try await client.perform(request)
+        var builder = client.get("/playlists/\(id)")
+        
+        if let market {
+            builder = builder.query("market", market)
+        }
+        if let fields {
+            builder = builder.query("fields", fields)
+        }
+        if let additionalTypes {
+            let value = additionalTypes.map { $0.rawValue }.sorted().joined(separator: ",")
+            builder = builder.query("additional_types", value)
+        }
+        
+        return try await builder.decode(Playlist.self)
     }
 
     /// Get the tracks or episodes in a playlist.
@@ -192,15 +132,23 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
         offset: Int = 0,
         additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> Page<PlaylistTrackItem> {
-        let query = try QueryBuilder()
-            .addingPagination(limit: limit, offset: offset)
-            .addingMarket(market)
-            .addingFields(fields)
-            .addingAdditionalTypes(additionalTypes)
-            .build()
-        let request = SpotifyRequest<Page<PlaylistTrackItem>>.get(
-            "/playlists/\(id)/tracks", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        var builder = client
+            .get("/playlists/\(id)/tracks")
+            .paginate(limit: limit, offset: offset)
+        
+        if let market {
+            builder = builder.query("market", market)
+        }
+        if let fields {
+            builder = builder.query("fields", fields)
+        }
+        if let additionalTypes {
+            let value = additionalTypes.map { $0.rawValue }.sorted().joined(separator: ",")
+            builder = builder.query("additional_types", value)
+        }
+        
+        return try await builder.decode(Page<PlaylistTrackItem>.self)
     }
 
     /// Get all tracks or episodes in a playlist.
@@ -326,10 +274,11 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     public func userPlaylists(userID: String, limit: Int = 20, offset: Int = 0)
         async throws -> Page<SimplifiedPlaylist>
     {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
-        let request = SpotifyRequest<Page<SimplifiedPlaylist>>.get(
-            "/users/\(userID)/playlists", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/users/\(userID)/playlists")
+            .paginate(limit: limit, offset: offset)
+            .decode(Page<SimplifiedPlaylist>.self)
     }
 
     /// Get the cover image for a playlist.
@@ -341,8 +290,9 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist-cover)
     public func coverImage(id: String) async throws -> [SpotifyImage] {
-        let request = SpotifyRequest<[SpotifyImage]>.get("/playlists/\(id)/images")
-        return try await client.perform(request)
+        return try await client
+            .get("/playlists/\(id)/images")
+            .decode([SpotifyImage].self)
     }
 }
 
@@ -363,9 +313,11 @@ extension PlaylistsService where Capability == UserAuthCapability {
     public func myPlaylists(limit: Int = 20, offset: Int = 0) async throws
         -> Page<SimplifiedPlaylist>
     {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
-        let request = SpotifyRequest<Page<SimplifiedPlaylist>>.get("/me/playlists", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/me/playlists")
+            .paginate(limit: limit, offset: offset)
+            .decode(Page<SimplifiedPlaylist>.self)
     }
 
     /// Get all playlists owned or followed by the current user.
@@ -430,8 +382,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
         let body = CreatePlaylistBody(
             name: name, isPublic: isPublic, collaborative: collaborative,
             description: description)
-        let request = SpotifyRequest<Playlist>.post("/users/\(userID)/playlists", body: body)
-        return try await client.perform(request)
+        return try await client
+            .post("/users/\(userID)/playlists")
+            .body(body)
+            .decode(Playlist.self)
     }
 
     /// Change a playlist's details.
@@ -460,8 +414,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
         let body = ChangePlaylistDetailsBody(
             name: name, isPublic: isPublic, collaborative: collaborative,
             description: description)
-        let request = SpotifyRequest<EmptyResponse>.put("/playlists/\(id)", body: body)
-        let _: EmptyResponse = try await client.perform(request)
+        try await client
+            .put("/playlists/\(id)")
+            .body(body)
+            .execute()
     }
 
     /// Add one or more items to a user's playlist.
@@ -479,9 +435,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     public func add(to id: String, uris: [String], position: Int? = nil) async throws -> String {
         try validateURICount(uris)
         let body = AddPlaylistItemsBody(uris: uris, position: position)
-        let request = SpotifyRequest<SnapshotResponse>.post(
-            "/playlists/\(id)/tracks", body: body)
-        let snapshot = try await client.perform(request)
+        let snapshot = try await client
+            .post("/playlists/\(id)/tracks")
+            .body(body)
+            .decode(SnapshotResponse.self)
         return snapshot.snapshotId
     }
 
@@ -502,9 +459,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     {
         try validateURICount(uris)
         let body = RemovePlaylistItemsBody.byURIs(uris, snapshotId: snapshotId)
-        let request = SpotifyRequest<SnapshotResponse>.delete(
-            "/playlists/\(id)/tracks", body: body)
-        let snapshot = try await client.perform(request)
+        let snapshot = try await client
+            .delete("/playlists/\(id)/tracks")
+            .body(body)
+            .decode(SnapshotResponse.self)
         return snapshot.snapshotId
     }
 
@@ -525,9 +483,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     {
         try validatePositionCount(positions)
         let body = RemovePlaylistItemsBody.byPositions(positions, snapshotId: snapshotId)
-        let request = SpotifyRequest<SnapshotResponse>.delete(
-            "/playlists/\(id)/tracks", body: body)
-        let snapshot = try await client.perform(request)
+        let snapshot = try await client
+            .delete("/playlists/\(id)/tracks")
+            .body(body)
+            .decode(SnapshotResponse.self)
         return snapshot.snapshotId
     }
 
@@ -555,9 +514,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
         let body = ReorderPlaylistItemsBody(
             rangeStart: rangeStart, insertBefore: insertBefore, rangeLength: rangeLength,
             snapshotId: snapshotId)
-        let request = SpotifyRequest<SnapshotResponse>.put(
-            "/playlists/\(id)/tracks", body: body)
-        let snapshot = try await client.perform(request)
+        let snapshot = try await client
+            .put("/playlists/\(id)/tracks")
+            .body(body)
+            .decode(SnapshotResponse.self)
         return snapshot.snapshotId
     }
 
@@ -573,9 +533,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/reorder-or-replace-playlists-tracks)
     public func replace(itemsIn id: String, with uris: [String]) async throws {
         try validateURICount(uris)
-        let query: [URLQueryItem] = [.init(name: "uris", value: uris.joined(separator: ","))]
-        let request = SpotifyRequest<EmptyResponse>.put("/playlists/\(id)/tracks", query: query)
-        let _: EmptyResponse = try await client.perform(request)
+        try await client
+            .put("/playlists/\(id)/tracks")
+            .query("uris", uris.joined(separator: ","))
+            .execute()
     }
 
     /// Upload a custom cover image for a playlist.
@@ -614,9 +575,10 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-playlist)
     public func follow(_ id: String, isPublic: Bool = true) async throws {
         let body = FollowPlaylistBody(isPublic: isPublic)
-        let request = SpotifyRequest<EmptyResponse>.put(
-            "/playlists/\(id)/followers", body: body)
-        let _: EmptyResponse = try await client.perform(request)
+        try await client
+            .put("/playlists/\(id)/followers")
+            .body(body)
+            .execute()
     }
 
     /// Remove the current user as a follower of a playlist.
@@ -627,8 +589,9 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-playlist)
     public func unfollow(_ id: String) async throws {
-        let request = SpotifyRequest<EmptyResponse>.delete("/playlists/\(id)/followers")
-        let _: EmptyResponse = try await client.perform(request)
+        try await client
+            .delete("/playlists/\(id)/followers")
+            .execute()
     }
 }
 

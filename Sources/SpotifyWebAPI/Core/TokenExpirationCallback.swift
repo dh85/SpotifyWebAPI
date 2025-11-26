@@ -5,7 +5,7 @@ import Foundation
 /// Use this to monitor token lifecycle or implement custom refresh logic:
 ///
 /// ```swift
-/// client.onTokenExpiring { expiresIn in
+/// client.events.onTokenExpiring { expiresIn in
 ///     if expiresIn < 300 {
 ///         print("⚠️ Token expires in \(expiresIn) seconds")
 ///     }

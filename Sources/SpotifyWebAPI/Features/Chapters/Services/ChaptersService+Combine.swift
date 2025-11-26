@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``ChaptersService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// Reach for ``ChaptersService/get(_:market:)`` or ``ChaptersService/several(ids:market:)`` when
+    /// you want async/await—the publishers here just wrap those calls.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension ChaptersService where Capability: PublicSpotifyCapability {
 

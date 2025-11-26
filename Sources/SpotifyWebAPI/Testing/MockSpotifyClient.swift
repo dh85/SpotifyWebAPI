@@ -102,6 +102,11 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
         set { state.withValue { $0.mockArtist = newValue } }
     }
 
+    public var mockSearchResult: SearchResults? {
+        get { state.withValue { $0.mockSearchResult } }
+        set { state.withValue { $0.mockSearchResult = newValue } }
+    }
+
     public var mockPlaybackState: PlaybackState? {
         get { state.withValue { $0.mockPlaybackState } }
         set { state.withValue { $0.mockPlaybackState = newValue } }
@@ -122,7 +127,7 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
             return services.usersService!
         }
     }
-    
+
     public var albumsAPI: any SpotifyAlbumsAPI {
         services.withValue { services in
             if services.albumsService == nil {
@@ -131,7 +136,7 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
             return services.albumsService!
         }
     }
-    
+
     public var tracksAPI: any SpotifyTracksAPI {
         services.withValue { services in
             if services.tracksService == nil {
@@ -140,7 +145,25 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
             return services.tracksService!
         }
     }
-    
+
+    public var artistsAPI: any SpotifyArtistsAPI {
+        services.withValue { services in
+            if services.artistsService == nil {
+                services.artistsService = ArtistsAPI(client: self)
+            }
+            return services.artistsService!
+        }
+    }
+
+    public var searchAPI: any SpotifySearchAPI {
+        services.withValue { services in
+            if services.searchService == nil {
+                services.searchService = SearchAPI(client: self)
+            }
+            return services.searchService!
+        }
+    }
+
     public var playlistsAPI: any SpotifyPlaylistsAPI {
         services.withValue { services in
             if services.playlistsService == nil {
@@ -149,7 +172,7 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
             return services.playlistsService!
         }
     }
-    
+
     public var playerAPI: any SpotifyPlayerAPI {
         services.withValue { services in
             if services.playerService == nil {
@@ -164,6 +187,12 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
     public var getUsersCalled: Bool { state.withValue { $0.getUsersCalled } }
     public var getAlbumCalled: Bool { state.withValue { $0.getAlbumCalled } }
     public var getTrackCalled: Bool { state.withValue { $0.getTrackCalled } }
+    public var getArtistCalled: Bool { state.withValue { $0.getArtistCalled } }
+    public var searchCalled: Bool { state.withValue { $0.searchCalled } }
+    public var searchParameters: [(query: String, types: Set<SearchType>, limit: Int, offset: Int)]
+    {
+        state.withValue { $0.searchParameters }
+    }
     public var getPlaylistCalled: Bool { state.withValue { $0.getPlaylistCalled } }
     public var myPlaylistsCalled: Bool { state.withValue { $0.myPlaylistsCalled } }
     public var myPlaylistsParameters: [(limit: Int, offset: Int)] {
@@ -173,15 +202,17 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
     public var playCalled: Bool { state.withValue { $0.playCalled } }
 
     // MARK: - Service Storage
-    
+
     private struct Services {
         var usersService: UsersAPI?
         var albumsService: AlbumsAPI?
         var tracksService: TracksAPI?
+        var artistsService: ArtistsAPI?
+        var searchService: SearchAPI?
         var playlistsService: PlaylistsAPI?
         var playerService: PlayerAPI?
     }
-    
+
     private let services = LockIsolated(Services())
 
     public init(playlistsHref: URL = URL(string: "https://api.spotify.com/v1/me/playlists")!) {
@@ -215,6 +246,8 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
     ///   - profile: Mock data for current user profile requests
     ///   - album: Mock data for album requests
     ///   - track: Mock data for track requests
+    ///   - artist: Mock data for artist requests
+    ///   - searchResult: Mock data for search requests
     ///   - playlist: Mock data for playlist requests
     ///   - playlists: Mock data for playlists collection
     ///   - playlistsTotal: Total count for playlists pagination
@@ -233,6 +266,7 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
         playlistsTotal: Int? = nil,
         playlistsHref: URL? = nil,
         artist: Artist? = nil,
+        searchResult: SearchResults? = nil,
         playbackState: PlaybackState? = nil,
         error: Error? = nil
     ) -> Self {
@@ -245,6 +279,7 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
             if let playlistsTotal { state.mockPlaylistsTotal = playlistsTotal }
             if let playlistsHref { state.mockPlaylistsHref = playlistsHref }
             if let artist { state.mockArtist = artist }
+            if let searchResult { state.mockSearchResult = searchResult }
             if let playbackState { state.mockPlaybackState = playbackState }
             if let error { state.mockError = error }
         }
@@ -338,6 +373,34 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
                     return state.mockProfile
                 }, label: "mockProfile")
         }
+
+        func topArtists(
+            timeRange: TimeRange,
+            limit: Int,
+            offset: Int
+        ) async throws -> Page<Artist> {
+            try client.mockResponse(
+                { state in
+                    state.topArtistsCalled = true
+                    state.topArtistsParameters.append(
+                        (range: timeRange, limit: limit, offset: offset))
+                    return state.mockTopArtists
+                }, label: "mockTopArtists")
+        }
+
+        func topTracks(
+            timeRange: TimeRange,
+            limit: Int,
+            offset: Int
+        ) async throws -> Page<Track> {
+            try client.mockResponse(
+                { state in
+                    state.topTracksCalled = true
+                    state.topTracksParameters.append(
+                        (range: timeRange, limit: limit, offset: offset))
+                    return state.mockTopTracks
+                }, label: "mockTopTracks")
+        }
     }
 
     private final class AlbumsAPI: SpotifyAlbumsAPI, MockAPIBase, @unchecked Sendable {
@@ -369,6 +432,44 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
                     state.getTrackCalled = true
                     return state.mockTrack
                 }, label: "mockTrack")
+        }
+    }
+
+    private final class ArtistsAPI: SpotifyArtistsAPI, MockAPIBase, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
+        }
+
+        func get(_ id: String) async throws -> Artist {
+            try client.mockResponse(
+                { state in
+                    state.getArtistCalled = true
+                    return state.mockArtist
+                }, label: "mockArtist")
+        }
+    }
+
+    private final class SearchAPI: SpotifySearchAPI, MockAPIBase, @unchecked Sendable {
+        unowned let client: MockSpotifyClient
+
+        init(client: MockSpotifyClient) {
+            self.client = client
+        }
+
+        func search(
+            query: String,
+            types: Set<SearchType>,
+            limit: Int,
+            offset: Int
+        ) async throws -> SearchResults {
+            try client.mockResponse(
+                { state in
+                    state.searchCalled = true
+                    state.searchParameters.append((query, types, limit, offset))
+                    return state.mockSearchResult
+                }, label: "mockSearchResult")
         }
     }
 
@@ -427,6 +528,20 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
                 return state.mockPlaybackState
             }
         }
+
+        func recentlyPlayed(
+            limit: Int,
+            after: Date?,
+            before: Date?
+        ) async throws -> CursorBasedPage<PlayHistoryItem> {
+            try client.mockResponse(
+                { state in
+                    state.recentlyPlayedCalled = true
+                    state.recentlyPlayedParameters.append(
+                        (limit: limit, after: after, before: before))
+                    return state.mockRecentlyPlayed
+                }, label: "mockRecentlyPlayed")
+        }
     }
 }
 
@@ -448,17 +563,30 @@ private struct MockState {
     var mockPlaylistsHref: URL
     let defaultPlaylistsHref: URL
     var mockArtist: Artist?
+    var mockSearchResult: SearchResults?
     var mockPlaybackState: PlaybackState?
+    var mockTopArtists: Page<Artist>?
+    var mockTopTracks: Page<Track>?
+    var mockRecentlyPlayed: CursorBasedPage<PlayHistoryItem>?
     var mockError: Error?
 
     var getUsersCalled = false
     var getAlbumCalled = false
     var getTrackCalled = false
+    var getArtistCalled = false
+    var searchCalled = false
+    var searchParameters: [(query: String, types: Set<SearchType>, limit: Int, offset: Int)] = []
     var getPlaylistCalled = false
     var myPlaylistsCalled = false
     var myPlaylistsParameters: [(limit: Int, offset: Int)] = []
     var pauseCalled = false
     var playCalled = false
+    var topArtistsCalled = false
+    var topArtistsParameters: [(range: TimeRange, limit: Int, offset: Int)] = []
+    var topTracksCalled = false
+    var topTracksParameters: [(range: TimeRange, limit: Int, offset: Int)] = []
+    var recentlyPlayedCalled = false
+    var recentlyPlayedParameters: [(limit: Int, after: Date?, before: Date?)] = []
 
     init(playlistsHref: URL) {
         self.mockPlaylists = []

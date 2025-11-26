@@ -30,7 +30,7 @@ struct TokenExpirationCallbackTests {
         let (client, http) = makeUserAuthClient()
         let tracker = CallbackTracker()
         
-        await client.onTokenExpiring { _ in
+        await client.events.onTokenExpiring { _ in
             Task { @MainActor in
                 await tracker.markCalled()
             }
@@ -53,7 +53,7 @@ struct TokenExpirationCallbackTests {
         let (client, http) = makeUserAuthClient()
         let tracker = CallbackTracker()
         
-        await client.onTokenExpiring { expiresIn in
+        await client.events.onTokenExpiring { expiresIn in
             Task { @MainActor in
                 await tracker.recordExpiration(expiresIn)
             }
@@ -92,7 +92,7 @@ struct TokenExpirationCallbackTests {
         let (client, http) = makeUserAuthClient()
         let tracker = CallbackTracker()
         
-        await client.onTokenExpiring { _ in
+        await client.events.onTokenExpiring { _ in
             Task { @MainActor in
                 await tracker.incrementCount()
             }

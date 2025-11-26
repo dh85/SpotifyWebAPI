@@ -34,7 +34,7 @@ private enum FollowType: String {
 /// ```swift
 /// // Get top artists from the last 6 months
 /// let topArtists = try await client.users.topArtists(
-///     range: .mediumTerm,
+///     timeRange: .mediumTerm,
 ///     limit: 20
 /// )
 /// print("Your top artists:")
@@ -44,11 +44,16 @@ private enum FollowType: String {
 ///
 /// // Get top tracks from all time
 /// let topTracks = try await client.users.topTracks(
-///     range: .longTerm,
+///     timeRange: .longTerm,
 ///     limit: 50
 /// )
 /// for track in topTracks.items {
-///     print("\(track.name) by \(track.artistNames)")
+///     print("\(track.name) by \(track.artistNames ?? "")")
+/// }
+///
+/// // Stream all top tracks efficiently
+/// for try await track in client.users.streamTopTracks(timeRange: .shortTerm) {
+///     print("\(track.name) - \(track.durationFormatted ?? "")")
 /// }
 /// ```
 ///
@@ -92,12 +97,22 @@ private enum FollowType: String {
 ///
 /// ## Time Ranges
 ///
-/// When fetching top artists/tracks, you can specify:
-/// - `.shortTerm` - Last 4 weeks
+/// When fetching top artists/tracks, specify the `timeRange` parameter:
+/// - `.shortTerm` - Last 4 weeks of listening history
 /// - `.mediumTerm` - Last 6 months (default)
-/// - `.longTerm` - All time
+/// - `.longTerm` - Several years of listening data
+///
+/// The `timeRange` parameter name makes it clear you're filtering by temporal data,
+/// improving API clarity over the generic "range" term.
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile)
+///
+/// ## Combine Counterparts
+///
+/// Publisher helpers such as ``UsersService/mePublisher(priority:)`` and
+/// ``UsersService/topArtistsPublisher(range:limit:offset:priority:)`` are declared in
+/// `UsersService+Combine.swift`. They call back into these async implementations so both
+/// concurrency models share behavior.
 public struct UsersService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -134,8 +149,10 @@ extension UsersService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-profile)
     public func get(_ id: String) async throws -> PublicUserProfile {
-        let request = SpotifyRequest<PublicUserProfile>.get("/users/\(id)")
-        return try await client.perform(request)
+        return
+            try await client
+            .get("/users/\(id)")
+            .decode(PublicUserProfile.self)
     }
 
     /// Check if one or more users are following a specified playlist.
@@ -152,12 +169,12 @@ extension UsersService where Capability: PublicSpotifyCapability {
         users userIDs: Set<String>
     ) async throws -> [Bool] {
         try validatePlaylistFollowUserIDs(userIDs)
-        let query = [URLQueryItem(name: "ids", value: userIDs.sorted().joined(separator: ","))]
-        let request = SpotifyRequest<[Bool]>.get(
-            "/playlists/\(playlistID)/followers/contains",
-            query: query
-        )
-        return try await client.perform(request)
+
+        return
+            try await client
+            .get("/playlists/\(playlistID)/followers/contains")
+            .query("ids", userIDs.sorted().joined(separator: ","))
+            .decode([Bool].self)
     }
 }
 
@@ -171,8 +188,10 @@ extension UsersService where Capability == UserAuthCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile)
     public func me() async throws -> CurrentUserProfile {
-        let request = SpotifyRequest<CurrentUserProfile>.get("/me")
-        return try await client.perform(request)
+        return
+            try await client
+            .get("/me")
+            .decode(CurrentUserProfile.self)
     }
 
     /// Get the current user's top artists based on calculated affinity.
@@ -186,42 +205,43 @@ extension UsersService where Capability == UserAuthCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks)
     public func topArtists(
-        range: TimeRange = .mediumTerm,
+        timeRange: TimeRange = .mediumTerm,
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<Artist> {
-        let query = try QueryBuilder()
-            .adding(name: "time_range", value: range.rawValue)
-            .addingPagination(limit: limit, offset: offset)
-            .build()
-        let request = SpotifyRequest<Page<Artist>>.get("/me/top/artists", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return
+            try await client
+            .get("/me/top/artists")
+            .query("time_range", timeRange.rawValue)
+            .paginate(limit: limit, offset: offset)
+            .decode(Page<Artist>.self)
     }
 
     /// Streams entire pages of the current user's top artists.
     ///
     /// - Parameters:
-    ///   - range: Time frame for affinity calculations.
+    ///   - timeRange: Time frame for affinity calculations.
     ///   - pageSize: Number of artists per request (clamped to 1...50). Default: 50.
     ///   - maxPages: Optional limit on the number of pages to emit.
     public func streamTopArtistPages(
-        range: TimeRange = .mediumTerm,
+        timeRange: TimeRange = .mediumTerm,
         pageSize: Int = 50,
         maxPages: Int? = nil
     ) -> AsyncThrowingStream<Page<Artist>, Error> {
         client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
-            try await self.topArtists(range: range, limit: limit, offset: offset)
+            try await self.topArtists(timeRange: timeRange, limit: limit, offset: offset)
         }
     }
 
-    /// Streams individual top artists for continuous affinity processing.
+    /// Streams individual top artists for sequential use (e.g., playlist generation, analytics).
     public func streamTopArtists(
-        range: TimeRange = .mediumTerm,
+        timeRange: TimeRange = .mediumTerm,
         pageSize: Int = 50,
         maxItems: Int? = nil
     ) -> AsyncThrowingStream<Artist, Error> {
         client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
-            try await self.topArtists(range: range, limit: limit, offset: offset)
+            try await self.topArtists(timeRange: timeRange, limit: limit, offset: offset)
         }
     }
 
@@ -236,42 +256,43 @@ extension UsersService where Capability == UserAuthCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks)
     public func topTracks(
-        range: TimeRange = .mediumTerm,
+        timeRange: TimeRange = .mediumTerm,
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<Track> {
-        let query = try QueryBuilder()
-            .adding(name: "time_range", value: range.rawValue)
-            .addingPagination(limit: limit, offset: offset)
-            .build()
-        let request = SpotifyRequest<Page<Track>>.get("/me/top/tracks", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return
+            try await client
+            .get("/me/top/tracks")
+            .query("time_range", timeRange.rawValue)
+            .paginate(limit: limit, offset: offset)
+            .decode(Page<Track>.self)
     }
 
     /// Streams entire pages of the current user's top tracks for chunked analytics.
     ///
     /// - Parameters:
-    ///   - range: Time frame for affinity calculations.
+    ///   - timeRange: Time frame for affinity calculations.
     ///   - pageSize: Desired number of tracks per request (clamped to 1...50). Default: 50.
     ///   - maxPages: Optional cap on total pages emitted.
     public func streamTopTrackPages(
-        range: TimeRange = .mediumTerm,
+        timeRange: TimeRange = .mediumTerm,
         pageSize: Int = 50,
         maxPages: Int? = nil
     ) -> AsyncThrowingStream<Page<Track>, Error> {
         client.streamPages(pageSize: pageSize, maxPages: maxPages) { limit, offset in
-            try await self.topTracks(range: range, limit: limit, offset: offset)
+            try await self.topTracks(timeRange: timeRange, limit: limit, offset: offset)
         }
     }
 
     /// Streams individual top tracks for sequential analytics.
     public func streamTopTracks(
-        range: TimeRange = .mediumTerm,
+        timeRange: TimeRange = .mediumTerm,
         pageSize: Int = 50,
         maxItems: Int? = nil
     ) -> AsyncThrowingStream<Track, Error> {
         client.streamItems(pageSize: pageSize, maxItems: maxItems) { limit, offset in
-            try await self.topTracks(range: range, limit: limit, offset: offset)
+            try await self.topTracks(timeRange: timeRange, limit: limit, offset: offset)
         }
     }
 
@@ -289,13 +310,18 @@ extension UsersService where Capability == UserAuthCapability {
         after: String? = nil
     ) async throws -> CursorBasedPage<Artist> {
         try validateLimit(limit)
-        let query = QueryBuilder()
-            .adding(name: "type", value: "artist")
-            .adding(name: "limit", value: limit)
-            .adding(name: "after", value: after)
-            .build()
-        let request = SpotifyRequest<FollowedArtistsWrapper>.get("/me/following", query: query)
-        return try await client.perform(request).artists
+        var builder =
+            client
+            .get("/me/following")
+            .query("type", "artist")
+            .query("limit", limit)
+
+        if let after {
+            builder = builder.query("after", after)
+        }
+
+        let wrapper = try await builder.decode(FollowedArtistsWrapper.self)
+        return wrapper.artists
     }
 
     /// Follow one or more artists.
@@ -365,33 +391,29 @@ extension UsersService where Capability == UserAuthCapability {
 
     private func follow(ids: Set<String>, type: FollowType) async throws {
         try validateUserIDs(ids)
-        let query = [URLQueryItem(name: "type", value: type.rawValue)]
-        let request = SpotifyRequest<EmptyResponse>.put(
-            "/me/following",
-            query: query,
-            body: IDsBody(ids: ids)
-        )
-        try await client.perform(request)
+        try await client
+            .put("/me/following")
+            .query("type", type.rawValue)
+            .body(IDsBody(ids: ids))
+            .execute()
     }
 
     private func unfollow(ids: Set<String>, type: FollowType) async throws {
         try validateUserIDs(ids)
-        let query = [URLQueryItem(name: "type", value: type.rawValue)]
-        let request = SpotifyRequest<EmptyResponse>.delete(
-            "/me/following",
-            query: query,
-            body: IDsBody(ids: ids)
-        )
-        try await client.perform(request)
+        try await client
+            .delete("/me/following")
+            .query("type", type.rawValue)
+            .body(IDsBody(ids: ids))
+            .execute()
     }
 
     private func check(ids: Set<String>, type: FollowType) async throws -> [Bool] {
         try validateUserIDs(ids)
-        let query = [
-            URLQueryItem(name: "type", value: type.rawValue),
-            URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ",")),
-        ]
-        let request = SpotifyRequest<[Bool]>.get("/me/following/contains", query: query)
-        return try await client.perform(request)
+        return
+            try await client
+            .get("/me/following/contains")
+            .query("type", type.rawValue)
+            .query("ids", ids.sorted().joined(separator: ","))
+            .decode([Bool].self)
     }
 }

@@ -3,6 +3,10 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 // MARK: - Testing Framework Helpers
 
 func makeSourceLocation(

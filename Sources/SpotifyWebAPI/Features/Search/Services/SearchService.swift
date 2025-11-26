@@ -13,7 +13,48 @@ import Foundation
 /// - Episodes
 /// - Audiobooks
 ///
-/// ## Examples
+/// ## Fluent Search API (Recommended)
+///
+/// Use the fluent builder API for type-safe, chainable search queries:
+///
+/// ```swift
+/// // Simple search
+/// let tracks = try await client.search
+///     .query("Bohemian Rhapsody")
+///     .forTracks()
+///     .execute()
+///
+/// // Advanced filtered search
+/// let results = try await client.search
+///     .query("rock")
+///     .byArtist("Queen")
+///     .inYear(1975...1980)
+///     .withGenre("rock")
+///     .forTracks()
+///     .inMarket("US")
+///     .withLimit(20)
+///     .execute()
+///
+/// // Direct result extraction
+/// let tracks = try await client.search
+///     .query("Taylor Swift")
+///     .executeTracks()
+///
+/// // Combine publisher (iOS 13+, macOS 10.15+)
+/// client.search
+///     .query("Bohemian Rhapsody")
+///     .forTracks()
+///     .executeTracksPublisher()
+///     .sink(
+///         receiveCompletion: { _ in },
+///         receiveValue: { tracks in
+///             print("Found \(tracks.items.count) tracks")
+///         }
+///     )
+///     .store(in: &cancellables)
+/// ```
+///
+/// ## Direct API Examples
 ///
 /// ### Search for Tracks
 /// ```swift
@@ -25,7 +66,7 @@ import Foundation
 ///
 /// if let tracks = results.tracks?.items {
 ///     for track in tracks {
-///         print("\(track.name) by \(track.artistNames)")
+///         print("\(track.name) by \(track.artistNames ?? "")")
 ///     }
 /// }
 /// ```
@@ -88,6 +129,12 @@ import Foundation
 /// - `upc:code` - Filter by UPC code
 ///
 /// [Spotify Search Guide](https://developer.spotify.com/documentation/web-api/reference/search)
+///
+/// ## Combine Counterparts
+///
+/// `SearchService+Combine.swift` exposes publisher helpers such as
+/// ``SearchService/executePublisher(query:types:market:limit:offset:includeExternal:priority:)`` so
+/// Combine-based code paths can call the same endpoints without duplicating logic.
 public struct SearchService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -122,23 +169,28 @@ extension SearchService where Capability: PublicSpotifyCapability {
         offset: Int = 0,
         includeExternal: ExternalContent? = nil
     ) async throws -> SearchResults {
-        let queryItems: [URLQueryItem] =
-            [
-                .init(name: "q", value: query),
-                .init(name: "type", value: types.spotifyQueryValue),
-            ] + (try buildPaginationQuery(limit: limit, offset: offset))
-            + makeMarketQueryItems(from: market)
-            + makeIncludeExternalQueryItems(from: includeExternal)
+        try validateLimit(limit)
+        var builder =
+            client
+            .get("/search")
+            .query("q", query)
+            .query("type", types.spotifyQueryValue)
+            .paginate(limit: limit, offset: offset)
+            .market(market)
 
-        let request = SpotifyRequest<SearchResults>.get("/search", query: queryItems)
-        return try await client.perform(request)
+        if let includeExternal = includeExternal {
+            builder = builder.query("include_external", includeExternal.rawValue)
+        }
+
+        return try await builder.decode(SearchResults.self)
     }
 }
 
 // MARK: - Helper Methods
 
 extension SearchService {
-    fileprivate func makeIncludeExternalQueryItems(from includeExternal: ExternalContent?) -> [URLQueryItem]
+    fileprivate func makeIncludeExternalQueryItems(from includeExternal: ExternalContent?)
+        -> [URLQueryItem]
     {
         guard let includeExternal else { return [] }
         return [.init(name: "include_external", value: includeExternal.rawValue)]

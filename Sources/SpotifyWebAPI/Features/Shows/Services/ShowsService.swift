@@ -3,6 +3,13 @@ import Foundation
 private typealias SeveralShowsWrapper = ArrayWrapper<SimplifiedShow>
 
 /// A service for fetching and managing Spotify Show (Podcast) resources and their episodes.
+///
+/// ## Combine Counterparts
+///
+/// `ShowsService+Combine.swift` exposes publisher helpers such as
+/// ``ShowsService/getPublisher(_:market:priority:)`` and
+/// ``ShowsService/savedPublisher(limit:offset:priority:)`` so Combine-heavy clients can call the
+/// same operations without duplicating logic.
 public struct ShowsService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
     init(client: SpotifyClient<Capability>) { self.client = client }
@@ -30,9 +37,10 @@ extension ShowsService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-show)
     public func get(_ id: String, market: String? = nil) async throws -> Show {
-        let query = makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Show>.get("/shows/\(id)", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/shows/\(id)")
+            .market(market)
+            .decode(Show.self)
     }
 
     /// Get Spotify catalog information for several shows identified by their Spotify IDs.
@@ -46,11 +54,12 @@ extension ShowsService where Capability: PublicSpotifyCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-shows)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [SimplifiedShow] {
         try validateShowIDs(ids)
-        let query =
-            [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<SeveralShowsWrapper>.get("/shows", query: query)
-        return try await client.perform(request).items
+        let wrapper = try await client
+            .get("/shows")
+            .query("ids", ids.sorted().joined(separator: ","))
+            .market(market)
+            .decode(SeveralShowsWrapper.self)
+        return wrapper.items
     }
 
     /// Get Spotify catalog information about a show's episodes.
@@ -70,12 +79,12 @@ extension ShowsService where Capability: PublicSpotifyCapability {
         offset: Int = 0,
         market: String? = nil
     ) async throws -> Page<SimplifiedEpisode> {
-        let query =
-            try buildPaginationQuery(limit: limit, offset: offset)
-            + makeMarketQueryItems(from: market)
-        let request = SpotifyRequest<Page<SimplifiedEpisode>>.get(
-            "/shows/\(id)/episodes", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/shows/\(id)/episodes")
+            .paginate(limit: limit, offset: offset)
+            .market(market)
+            .decode(Page<SimplifiedEpisode>.self)
     }
 
     /// Streams a show's episodes one page at a time for chunked updates.
@@ -132,9 +141,11 @@ extension ShowsService where Capability == UserAuthCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-shows)
     public func saved(limit: Int = 20, offset: Int = 0) async throws -> Page<SavedShow> {
-        let query = try buildPaginationQuery(limit: limit, offset: offset)
-        let request = SpotifyRequest<Page<SavedShow>>.get("/me/shows", query: query)
-        return try await client.perform(request)
+        try validateLimit(limit)
+        return try await client
+            .get("/me/shows")
+            .paginate(limit: limit, offset: offset)
+            .decode(Page<SavedShow>.self)
     }
 
     /// Fetch all shows saved in the current user's library.
@@ -200,8 +211,9 @@ extension ShowsService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-shows)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {
         try validateShowIDs(ids)
-        let query = [URLQueryItem(name: "ids", value: ids.sorted().joined(separator: ","))]
-        let request = SpotifyRequest<[Bool]>.get("/me/shows/contains", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/me/shows/contains")
+            .query("ids", ids.sorted().joined(separator: ","))
+            .decode([Bool].self)
     }
 }

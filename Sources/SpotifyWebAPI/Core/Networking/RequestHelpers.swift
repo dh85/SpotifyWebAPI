@@ -210,9 +210,7 @@ extension SpotifyClient {
 
         // Extract and notify rate limit info if available
         if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
-            if let rateLimitCallback = rateLimitInfoCallback {
-                rateLimitCallback(rateLimitInfo)
-            }
+            await events.invokeRateLimitInfo(rateLimitInfo)
             await logger.emit(.rateLimit(rateLimitInfo))
         }
 
@@ -294,6 +292,12 @@ extension SpotifyClient {
         }
 
         await logger.logResponse(response, data: data, error: nil, token: requestToken)
+
+        // Extract and notify rate limit info if available
+        if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
+            await events.invokeRateLimitInfo(rateLimitInfo)
+            await logger.emit(.rateLimit(rateLimitInfo))
+        }
 
         if response.statusCode == 204 || data.isEmpty {
             await measurement.finish()

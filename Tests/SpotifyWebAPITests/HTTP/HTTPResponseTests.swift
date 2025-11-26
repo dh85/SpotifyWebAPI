@@ -3,6 +3,10 @@ import Testing
 
 @testable import SpotifyWebAPI
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 @Suite("HTTPResponse Utility Tests")
 struct HTTPResponseTests {
 
@@ -93,7 +97,7 @@ struct HTTPResponseTests {
             headers: [
                 "Content-Type": "application/json",
                 "X-Custom-Header": "custom-value",
-                "Retry-After": "60"
+                "Retry-After": "60",
             ]
         )
 
@@ -124,7 +128,7 @@ struct HTTPResponseTests {
             headers: [
                 "Content-Length": "1234",
                 "Retry-After": "60",
-                "X-RateLimit-Remaining": "100"
+                "X-RateLimit-Remaining": "100",
             ]
         )
 
@@ -139,7 +143,7 @@ struct HTTPResponseTests {
             statusCode: 200,
             headers: [
                 "Content-Type": "application/json",
-                "X-Invalid": "not-a-number"
+                "X-Invalid": "not-a-number",
             ]
         )
 

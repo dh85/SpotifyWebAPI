@@ -72,6 +72,13 @@ private struct SeveralCategoriesResponse: Decodable {
 ///     limit: 20
 /// )
 /// ```
+///
+/// ## Combine Counterparts
+///
+/// Matching publishers such as ``BrowseService/newReleasesPublisher(country:limit:offset:priority:)``
+/// and ``BrowseService/categoriesPublisher(country:locale:limit:offset:priority:)`` live in
+/// `BrowseService+Combine.swift`. Import Combine to expose them; they call back into the async
+/// APIs so pagination, validation, and instrumentation stay in sync.
 public struct BrowseService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
     init(client: SpotifyClient<Capability>) { self.client = client }
@@ -97,13 +104,13 @@ extension BrowseService where Capability: PublicSpotifyCapability {
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<SimplifiedAlbum> {
-        let query = try QueryBuilder()
-            .addingPagination(limit: limit, offset: offset)
-            .addingCountry(country)
-            .build()
-
-        let request = SpotifyRequest<NewReleasesResponse>.get("/browse/new-releases", query: query)
-        return try await client.perform(request).albums
+        try validateLimit(limit)
+        let response = try await client
+            .get("/browse/new-releases")
+            .paginate(limit: limit, offset: offset)
+            .query("country", country)
+            .decode(NewReleasesResponse.self)
+        return response.albums
     }
 
     /// Streams Spotify's new releases a page at a time.
@@ -150,12 +157,11 @@ extension BrowseService where Capability: PublicSpotifyCapability {
         country: String? = nil,
         locale: String? = nil
     ) async throws -> SpotifyCategory {
-        let query = QueryBuilder()
-            .addingCountry(country)
-            .addingLocale(locale)
-            .build()
-        let request = SpotifyRequest<SpotifyCategory>.get("/browse/categories/\(id)", query: query)
-        return try await client.perform(request)
+        return try await client
+            .get("/browse/categories/\(id)")
+            .query("country", country)
+            .query("locale", locale)
+            .decode(SpotifyCategory.self)
     }
 
     /// Get a list of categories used to tag content in Spotify.
@@ -176,15 +182,14 @@ extension BrowseService where Capability: PublicSpotifyCapability {
         limit: Int = 20,
         offset: Int = 0
     ) async throws -> Page<SpotifyCategory> {
-        let query = try QueryBuilder()
-            .addingPagination(limit: limit, offset: offset)
-            .addingCountry(country)
-            .addingLocale(locale)
-            .build()
-
-        let request = SpotifyRequest<SeveralCategoriesResponse>.get(
-            "/browse/categories", query: query)
-        return try await client.perform(request).categories
+        try validateLimit(limit)
+        let response = try await client
+            .get("/browse/categories")
+            .paginate(limit: limit, offset: offset)
+            .query("country", country)
+            .query("locale", locale)
+            .decode(SeveralCategoriesResponse.self)
+        return response.categories
     }
 
     /// Streams Spotify browse categories for infinite-scroll style UIs.
@@ -235,7 +240,9 @@ extension BrowseService where Capability: PublicSpotifyCapability {
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-available-markets)
     public func availableMarkets() async throws -> [String] {
-        let request = SpotifyRequest<AvailableMarketsResponse>.get("/markets")
-        return try await client.perform(request).markets
+        let response = try await client
+            .get("/markets")
+            .decode(AvailableMarketsResponse.self)
+        return response.markets
     }
 }

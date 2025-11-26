@@ -97,6 +97,13 @@ import Foundation
 /// ```
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-information-about-the-users-current-playback)
+///
+/// ## Combine Counterparts
+///
+/// `PlayerService+Combine.swift` mirrors each async control/read method with a publisher, e.g.
+/// ``PlayerService/statePublisher(market:additionalTypes:priority:)`` and
+/// ``PlayerService/playPublisher(contextURI:uris:offset:positionMS:deviceID:priority:)``. Import
+/// Combine to surface them when your app uses publisher pipelines.
 public struct PlayerService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -124,18 +131,15 @@ extension PlayerService where Capability == UserAuthCapability {
         market: String? = nil,
         additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> PlaybackState? {
-        var query: [URLQueryItem] = []
-        if let market {
-            query.append(.init(name: "market", value: market))
-        }
-
+        var builder = client.get("/me/player")
+            .market(market)
+        
         if let additionalTypes {
             let value = additionalTypes.map { $0.rawValue }.sorted().joined(separator: ",")
-            query.append(.init(name: "additional_types", value: value))
+            builder = builder.query("additional_types", value)
         }
-
-        let request = SpotifyRequest<PlaybackState>.get("/me/player", query: query)
-        return try await client.requestOptionalJSON(PlaybackState.self, request: request)
+        
+        return try await builder.decodeOptional(PlaybackState.self)
     }
 
     /// Retrieves the user's currently playing track or episode.
@@ -153,21 +157,15 @@ extension PlayerService where Capability == UserAuthCapability {
         market: String? = nil,
         additionalTypes: Set<AdditionalItemType>? = nil
     ) async throws -> CurrentlyPlayingContext? {
-        var query: [URLQueryItem] = []
-        if let market {
-            query.append(.init(name: "market", value: market))
-        }
-
+        var builder = client.get("/me/player/currently-playing")
+            .market(market)
+        
         if let additionalTypes {
             let value = additionalTypes.map { $0.rawValue }.sorted().joined(separator: ",")
-            query.append(.init(name: "additional_types", value: value))
+            builder = builder.query("additional_types", value)
         }
-
-        let request = SpotifyRequest<CurrentlyPlayingContext>.get(
-            "/me/player/currently-playing",
-            query: query
-        )
-        return try await client.requestOptionalJSON(CurrentlyPlayingContext.self, request: request)
+        
+        return try await builder.decodeOptional(CurrentlyPlayingContext.self)
     }
 
     /// Retrieves information about the user's available Spotify Connect devices.
@@ -179,8 +177,10 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-read-playback-state`
     public func devices() async throws -> [SpotifyDevice] {
-        let request = SpotifyRequest<AvailableDevicesWrapper>.get("/me/player/devices")
-        return try await client.perform(request).items
+        let wrapper = try await client
+            .get("/me/player/devices")
+            .decode(AvailableDevicesWrapper.self)
+        return wrapper.items
     }
 
     // MARK: - Playback Control
@@ -197,8 +197,10 @@ extension PlayerService where Capability == UserAuthCapability {
     /// Required scope: `user-modify-playback-state`
     public func transfer(to deviceID: String, play: Bool? = nil) async throws {
         let body = TransferPlaybackBody(deviceIds: [deviceID], play: play)
-        let request = SpotifyRequest<EmptyResponse>.put("/me/player", body: body)
-        try await client.perform(request)
+        try await client
+            .put("/me/player")
+            .body(body)
+            .execute()
     }
 
     /// Resumes playback on the user's active device.
@@ -255,9 +257,11 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-modify-playback-state`
     public func pause(deviceID: String? = nil) async throws {
-        let query = makeDeviceQueryItems(deviceID)
-        let request = SpotifyRequest<EmptyResponse>.put("/me/player/pause", query: query)
-        try await client.perform(request)
+        var builder = client.put("/me/player/pause")
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        try await builder.execute()
     }
 
     /// Skips to the next track in the user's queue.
@@ -269,9 +273,11 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-modify-playback-state`
     public func skipToNext(deviceID: String? = nil) async throws {
-        let query = makeDeviceQueryItems(deviceID)
-        let request = SpotifyRequest<EmptyResponse>.post("/me/player/next", query: query)
-        try await client.perform(request)
+        var builder = client.post("/me/player/next")
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        try await builder.execute()
     }
 
     /// Skips to the previous track in the user's queue.
@@ -283,9 +289,11 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-modify-playback-state`
     public func skipToPrevious(deviceID: String? = nil) async throws {
-        let query = makeDeviceQueryItems(deviceID)
-        let request = SpotifyRequest<EmptyResponse>.post("/me/player/previous", query: query)
-        try await client.perform(request)
+        var builder = client.post("/me/player/previous")
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        try await builder.execute()
     }
 
     /// Seeks to a position in the currently playing track.
@@ -303,11 +311,15 @@ extension PlayerService where Capability == UserAuthCapability {
             throw SpotifyClientError.invalidRequest(reason: "positionMs must be >= 0")
         }
 
-        var query: [URLQueryItem] = [.init(name: "position_ms", value: String(positionMs))]
-        query.append(contentsOf: makeDeviceQueryItems(deviceID))
-
-        let request = SpotifyRequest<EmptyResponse>.put("/me/player/seek", query: query)
-        try await client.perform(request)
+        var builder = client
+            .put("/me/player/seek")
+            .query("position_ms", String(positionMs))
+        
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        
+        try await builder.execute()
     }
 
     /// Sets the repeat mode for playback.
@@ -321,11 +333,15 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-modify-playback-state`
     public func setRepeatMode(_ mode: RepeatMode, deviceID: String? = nil) async throws {
-        var query: [URLQueryItem] = [.init(name: "state", value: mode.rawValue)]
-        query.append(contentsOf: makeDeviceQueryItems(deviceID))
-
-        let request = SpotifyRequest<EmptyResponse>.put("/me/player/repeat", query: query)
-        try await client.perform(request)
+        var builder = client
+            .put("/me/player/repeat")
+            .query("state", mode.rawValue)
+        
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        
+        try await builder.execute()
     }
 
     /// Sets the volume for playback.
@@ -343,11 +359,15 @@ extension PlayerService where Capability == UserAuthCapability {
             throw SpotifyClientError.invalidRequest(reason: "Volume must be between 0 and 100")
         }
 
-        var query: [URLQueryItem] = [.init(name: "volume_percent", value: String(percent))]
-        query.append(contentsOf: makeDeviceQueryItems(deviceID))
-
-        let request = SpotifyRequest<EmptyResponse>.put("/me/player/volume", query: query)
-        try await client.perform(request)
+        var builder = client
+            .put("/me/player/volume")
+            .query("volume_percent", String(percent))
+        
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        
+        try await builder.execute()
     }
 
     /// Toggles shuffle mode for playback.
@@ -361,11 +381,15 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-modify-playback-state`
     public func setShuffle(_ state: Bool, deviceID: String? = nil) async throws {
-        var query: [URLQueryItem] = [.init(name: "state", value: String(state))]
-        query.append(contentsOf: makeDeviceQueryItems(deviceID))
-
-        let request = SpotifyRequest<EmptyResponse>.put("/me/player/shuffle", query: query)
-        try await client.perform(request)
+        var builder = client
+            .put("/me/player/shuffle")
+            .query("state", String(state))
+        
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        
+        try await builder.execute()
     }
 
     /// Get the list of objects that make up the user's queue.
@@ -377,8 +401,9 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-read-playback-state` or `user-read-currently-playing`
     public func getQueue() async throws -> UserQueue {
-        let request = SpotifyRequest<UserQueue>.get("/me/player/queue")
-        return try await client.perform(request)
+        return try await client
+            .get("/me/player/queue")
+            .decode(UserQueue.self)
     }
 
     /// Adds a track or episode to the playback queue.
@@ -392,11 +417,15 @@ extension PlayerService where Capability == UserAuthCapability {
     ///
     /// Required scope: `user-modify-playback-state`
     public func addToQueue(uri: String, deviceID: String? = nil) async throws {
-        var query: [URLQueryItem] = [.init(name: "uri", value: uri)]
-        query.append(contentsOf: makeDeviceQueryItems(deviceID))
-
-        let request = SpotifyRequest<EmptyResponse>.post("/me/player/queue", query: query)
-        try await client.perform(request)
+        var builder = client
+            .post("/me/player/queue")
+            .query("uri", uri)
+        
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        
+        try await builder.execute()
     }
 
     // MARK: - Recently Played
@@ -427,21 +456,19 @@ extension PlayerService where Capability == UserAuthCapability {
                 reason: "Cannot specify both 'after' and 'before'")
         }
 
-        var query: [URLQueryItem] = [.init(name: "limit", value: String(limit))]
+        var builder = client
+            .get("/me/player/recently-played")
+            .query("limit", String(limit))
 
         if let after {
-            query.append(.init(name: "after", value: String(dateToUnixMilliseconds(after))))
+            builder = builder.query("after", String(dateToUnixMilliseconds(after)))
         }
 
         if let before {
-            query.append(.init(name: "before", value: String(dateToUnixMilliseconds(before))))
+            builder = builder.query("before", String(dateToUnixMilliseconds(before)))
         }
 
-        let request = SpotifyRequest<CursorBasedPage<PlayHistoryItem>>.get(
-            "/me/player/recently-played",
-            query: query
-        )
-        return try await client.perform(request)
+        return try await builder.decode(CursorBasedPage<PlayHistoryItem>.self)
     }
 
     // MARK: - Private Helpers
@@ -451,63 +478,26 @@ extension PlayerService where Capability == UserAuthCapability {
     }
 
     private func sendPlayRequest(deviceID: String?, body: StartPlaybackBody) async throws {
-        let query = makeDeviceQueryItems(deviceID)
         let path = "/me/player/play"
 
         let isResumeOnly =
             body.contextUri == nil && body.uris == nil && body.offset == nil
             && body.positionMs == nil
 
+        var builder = client.put(path)
+        
+        if let deviceID {
+            builder = builder.query("device_id", deviceID)
+        }
+        
         if isResumeOnly {
-            let request = SpotifyRequest<EmptyResponse>.put(path, query: query)
-            try await client.perform(request)
+            try await builder.execute()
         } else {
-            let request = SpotifyRequest<EmptyResponse>.put(path, query: query, body: body)
-            try await client.perform(request)
+            try await builder.body(body).execute()
         }
     }
 }
 
 // MARK: - Private Types
-
-private struct StartPlaybackBody: Encodable, Sendable {
-    let contextUri: String?
-    let uris: [String]?
-    let offset: PlaybackOffset?
-    let positionMs: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case contextUri = "context_uri"
-        case uris
-        case offset
-        case positionMs = "position_ms"
-    }
-
-    static var resume: StartPlaybackBody {
-        StartPlaybackBody(contextUri: nil, uris: nil, offset: nil, positionMs: nil)
-    }
-
-    static func context(
-        _ uri: String,
-        offset: PlaybackOffset? = nil,
-        positionMs: Int? = nil
-    ) -> StartPlaybackBody {
-        StartPlaybackBody(contextUri: uri, uris: nil, offset: offset, positionMs: positionMs)
-    }
-
-    static func tracks(_ uris: [String], positionMs: Int? = nil) -> StartPlaybackBody {
-        StartPlaybackBody(contextUri: nil, uris: uris, offset: nil, positionMs: positionMs)
-    }
-}
-
-private struct TransferPlaybackBody: Encodable, Sendable {
-    let deviceIds: [String]
-    let play: Bool?
-
-    enum CodingKeys: String, CodingKey {
-        case deviceIds = "device_ids"
-        case play
-    }
-}
 
 private typealias AvailableDevicesWrapper = ArrayWrapper<SpotifyDevice>

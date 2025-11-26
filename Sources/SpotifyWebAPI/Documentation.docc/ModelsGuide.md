@@ -5,8 +5,27 @@ SpotifyWebAPI ships battle-tested Swift models so you can bind Spotify payloads 
 ## Everyday Usage
 
 - Every endpoint call returns typed models (`Album`, `Playlist`, `PlaybackState`, etc.) so you can `switch` over enums, format durations, or diff collections without touching dictionaries.
+- Models include convenient computed properties for common operations:
+  - `artistNames`: Comma-separated artist names (e.g., "Artist 1, Artist 2")
+  - `durationFormatted`: Human-readable duration (e.g., "3:45")
+  - `primaryImageURL`: First available image URL for quick access
+  - `followerCount`: Follower total for artists and users
+  - `ownerName`: Playlist owner display name
+  - `trackCount`: Total tracks in playlists and albums
 - ``Models/Core/Paging`` and ``Models/Core/CursorPaging`` expose helpers such as ``Models/Core/Paging/hasNextPage-swift.property`` and `nextOffset` to drive `List`/`CollectionView` pagination.
 - Conformance to `Codable`, `Sendable`, and `Hashable` means you can cache results, share data across actors, and use models as dictionary keys safely.
+
+### Example: Using Convenience Properties
+
+```swift
+let track = try await client.tracks.get("track_id")
+print("\(track.name) by \(track.artistNames ?? "Unknown")")
+print("Duration: \(track.durationFormatted ?? "Unknown")")
+
+if let imageURL = track.album?.primaryImageURL {
+    // Load album artwork
+}
+```
 
 ## Detailed vs. Simplified Payloads
 

@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``EpisodesService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// When you would rather use async/await, stick with ``EpisodesService/get(_:market:)`` and
+    /// friends—these publishers simply wrap the async implementations.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension EpisodesService where Capability: PublicSpotifyCapability {
 

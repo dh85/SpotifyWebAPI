@@ -32,7 +32,7 @@ public struct TokenRefreshInfo: Sendable, Equatable {
 /// Use this to show loading indicators or prepare your app for a token refresh:
 ///
 /// ```swift
-/// client.onTokenRefreshWillStart { info in
+/// client.events.onTokenRefreshWillStart { info in
 ///     if info.reason == .automatic {
 ///         print("🔄 Auto-refreshing expired token...")
 ///     } else {
@@ -47,7 +47,7 @@ public typealias TokenRefreshWillStartCallback = @Sendable (TokenRefreshInfo) ->
 /// Use this to update UI, persist new tokens, or send analytics:
 ///
 /// ```swift
-/// client.onTokenRefreshDidSucceed { newTokens in
+/// client.events.onTokenRefreshDidSucceed { newTokens in
 ///     print("✅ Token refreshed, expires at \(newTokens.expiresAt)")
 ///
 ///     // Persist to secure storage
@@ -66,7 +66,7 @@ public typealias TokenRefreshDidSucceedCallback = @Sendable (SpotifyTokens) -> V
 /// Use this to handle authentication failures, show login screens, or retry logic:
 ///
 /// ```swift
-/// client.onTokenRefreshDidFail { error in
+/// client.events.onTokenRefreshDidFail { error in
 ///     print("❌ Token refresh failed: \(error)")
 ///
 ///     if case SpotifyAuthError.missingRefreshToken = error {

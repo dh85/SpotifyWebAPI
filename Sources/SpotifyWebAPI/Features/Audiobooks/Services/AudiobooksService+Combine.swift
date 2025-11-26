@@ -2,6 +2,11 @@
     import Combine
     import Foundation
 
+    /// Combine publishers that mirror ``AudiobooksService`` async APIs.
+    ///
+    /// ## Async Counterparts
+    /// Call ``AudiobooksService/get(_:market:)`` or ``AudiobooksService/saved(limit:offset:)`` when
+    /// you prefer async/await—these publisher helpers simply wrap those implementations.
     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
     extension AudiobooksService where Capability: PublicSpotifyCapability {
 

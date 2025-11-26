@@ -48,7 +48,7 @@ Token persistence is abstracted by ``Models/Tokens/SpotifyTokenStore`` implement
 - ``RestrictedFileTokenStore`` applies POSIX permission hardening for production or simulator use.
 - ``InMemoryTokenStore`` keeps tokens ephemeral for tests and previews.
 
-Every authenticator conforms to ``SpotifyTokenRefreshing`` so you can swap the backing storage without touching the calling code. Token refresh is coordinated through ``SpotifyClient/tokenExpirationCallback`` which fires whenever a new access token is issued.
+Every authenticator conforms to ``SpotifyTokenRefreshing`` so you can swap the backing storage without touching the calling code. Token refresh is coordinated through ``SpotifyClientEvents/onTokenExpiring(_:)`` which fires whenever a new access token is issued.
 
 ## Best Practices
 
