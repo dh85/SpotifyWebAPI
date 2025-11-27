@@ -14,12 +14,14 @@ jobs:
       - name: Build DocC archive
         run: |
             rm -rf docs
+            rm -rf .build/docc
             swift package generate-documentation \
               --target SpotifyKit \
               --disable-indexing \
               --transform-for-static-hosting \
               --hosting-base-path SpotifyKit \
-              --output-path docs
+              --output-path .build/docc
+            mv .build/docc docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
