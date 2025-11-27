@@ -6,11 +6,13 @@ Every async endpoint has a matching Combine publisher when `Combine` is availabl
 
 Publisher methods live alongside async variants by appending `Publisher`:
 
-- ``Features/Playlists/PlaylistServiceProtocol/itemsPublisher(_:limit:offset:market:)`` mirrors `items(...)`.
-- ``Features/Users/UserProfileServiceProtocol/mePublisher()`` mirrors `me()`.
-- ``Features/Artists/ArtistServiceProtocol/severalPublisher(_:)`` mirrors `several(_:)`.
+- ``PlaylistsService/itemsPublisher(_:market:fields:limit:offset:additionalTypes:priority:)`` mirrors `items(...)`.
+- ``UsersService/mePublisher(priority:)`` mirrors `me()`.
+- ``ArtistsService/severalPublisher(ids:priority:)`` mirrors `several(_:)`.
 
-Under the hood, the publisher simply wraps the async implementation inside ``Publishers.SpotifyRequest`` so you get identical validation, retry behaviour, and logging whether you use async/await or Combine.
+Under the hood, the publisher simply wraps the async implementation inside the `CombineTaskPublisher`
+helper so you get identical validation, retry behaviour, and logging whether you use async/await or
+Combine.
 
 ## Discoverability
 
@@ -32,7 +34,7 @@ let cancellable = client.playlists.itemsPublisher("playlistID", limit: 50)
 
 ## Testing Publishers
 
-Point your app code at ``Testing/MockSpotifyClient`` when unit testing Combine pipelines. You control each publisher by providing closures, making it easy to assert UI state without touching the network:
+Point your app code at ``MockSpotifyClient`` when unit testing Combine pipelines. You control each publisher by providing closures, making it easy to assert UI state without touching the network:
 
 ```swift
 let mock = MockSpotifyClient()

@@ -49,7 +49,7 @@ private typealias SeveralTracksWrapper = ArrayWrapper<Track>
 /// }
 /// ```
 ///
-/// - SeeAlso: ``LibraryServiceExtensions`` for batch operations
+/// - Note: Batch save/remove helpers for user libraries live in `LibraryServiceExtensions.swift`.
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
 ///
@@ -84,7 +84,7 @@ extension TracksService where Capability: PublicSpotifyCapability {
     ///   - id: The Spotify ID for the track.
     ///   - market: An [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
     /// - Returns: A full `Track` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
     public func get(_ id: String, market: String? = nil) async throws -> Track {
@@ -100,7 +100,7 @@ extension TracksService where Capability: PublicSpotifyCapability {
     ///   - ids: A list of Spotify IDs (max 50).
     ///   - market: An [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
     /// - Returns: A list of `Track` objects.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-tracks)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [Track] {
@@ -121,7 +121,7 @@ extension TracksService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter trackId: The Spotify ID for the track.
     /// - Returns: `AudioFeatures` object with audio analysis.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audio-features)
     public func audioFeatures(trackId: String) async throws -> AudioFeatures {
@@ -134,7 +134,7 @@ extension TracksService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter trackIds: A list of Spotify IDs (max 100).
     /// - Returns: A list of `AudioFeatures` objects (nullable).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-audio-features)
     public func audioFeatures(trackIds: Set<String>) async throws -> [AudioFeatures?] {
@@ -151,7 +151,7 @@ extension TracksService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter trackId: The Spotify ID for the track.
     /// - Returns: `AudioAnalysis` object with detailed analysis.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audio-analysis)
     public func audioAnalysis(trackId: String) async throws -> AudioAnalysis {
@@ -172,7 +172,7 @@ extension TracksService where Capability == UserAuthCapability {
     ///   - offset: The index of the first item to return. Default: 0.
     ///   - market: An [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
     /// - Returns: A paginated list of `SavedTrack` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-tracks)
     public func saved(limit: Int = 20, offset: Int = 0, market: String? = nil) async throws -> Page<
@@ -192,7 +192,7 @@ extension TracksService where Capability == UserAuthCapability {
     ///   - market: Optional market filter for track relinking.
     ///   - maxItems: Total number of tracks to fetch. Default: 5,000. Pass `nil` to fetch everything.
     /// - Returns: Array containing every `SavedTrack` up to the requested limit.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     public func allSavedTracks(
         market: String? = nil,
         maxItems: Int? = 5000
@@ -238,7 +238,7 @@ extension TracksService where Capability == UserAuthCapability {
     /// Save one or more tracks to the current user's library.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/save-tracks-user)
     public func save(_ ids: Set<String>) async throws {
@@ -249,7 +249,7 @@ extension TracksService where Capability == UserAuthCapability {
     /// Remove one or more tracks from the current user's library.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-tracks-user)
     public func remove(_ ids: Set<String>) async throws {
@@ -261,7 +261,7 @@ extension TracksService where Capability == UserAuthCapability {
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-tracks)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {

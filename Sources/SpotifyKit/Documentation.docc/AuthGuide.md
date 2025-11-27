@@ -6,16 +6,17 @@ Authenticate with Spotify using the built-in helpers and capabilities.
 
 | Capability | Use Case | Key Types |
 | --- | --- | --- |
-| Authorization Code | Full user access with refresh tokens | ``Auth/SpotifyAuthorizationCodeAuthenticator``, ``Auth/UserAuthCapability`` |
-| Authorization Code + PKCE | Client-side SwiftUI/macOS/iOS apps without a client secret | ``Auth/SpotifyPKCEAuthenticator``, ``Auth/PKCEAuthConfiguration`` |
-| Client Credentials | Server-to-server or tooling jobs | ``Auth/SpotifyClientCredentialsAuthenticator``, ``Auth/AppOnlyAuthCapability`` |
+| Authorization Code | Full user access with refresh tokens | ``SpotifyAuthorizationCodeAuthenticator``, ``UserAuthCapability`` |
+| Authorization Code + PKCE | Client-side SwiftUI/macOS/iOS apps without a client secret | ``SpotifyPKCEAuthenticator``, ``UserAuthCapability`` |
+| Client Credentials | Server-to-server or tooling jobs | ``SpotifyClientCredentialsAuthenticator``, ``AppOnlyAuthCapability`` |
 
 ## Selecting a Capability
 
 ``SpotifyClient`` now ships fluent builders that keep the capability selection, HTTP client, token store, and configuration switches in one place:
 
-- ``Auth/UserAuthCapability`` wraps the Authorization Code flow (with or without PKCE) for user-scoped APIs.
-- ``Auth/AppOnlyAuthCapability`` performs the Client Credentials flow for server-to-server tools.
+- ``UserAuthCapability`` wraps the Authorization Code flow (with or without PKCE) for user-scoped
+  APIs.
+- ``AppOnlyAuthCapability`` performs the Client Credentials flow for server-to-server tools.
 
 ```swift
 let userClient = UserSpotifyClient
@@ -50,13 +51,17 @@ Use ``SpotifyClientConfiguration`` when you need to tweak retries, debug logging
 
 ## Token Management
 
-Token persistence is abstracted by ``Models/Tokens/SpotifyTokenStore`` implementations:
+Token persistence is abstracted by ``TokenStore`` implementations:
 
-- ``TokenStoreFactory`` provides secure defaults (Keychain on Apple platforms, restricted files elsewhere).
+- ``TokenStoreFactory`` provides secure defaults (Keychain on Apple platforms, restricted files
+  elsewhere).
 - ``RestrictedFileTokenStore`` applies POSIX permission hardening for production or simulator use.
-- ``InMemoryTokenStore`` keeps tokens ephemeral for tests and previews.
+- An in-memory token store (like the helper used throughout the test suite) keeps tokens ephemeral for
+  tests and previews.
 
-Every authenticator conforms to ``SpotifyTokenRefreshing`` so you can swap the backing storage without touching the calling code. Token refresh is coordinated through ``SpotifyClientEvents/onTokenExpiring(_:)`` which fires whenever a new access token is issued.
+Every authenticator conforms to a shared token-refreshing protocol so you can swap the backing storage
+without touching the calling code. Token refresh is coordinated through
+``SpotifyClientEvents/onTokenExpiring(_:)`` which fires whenever a new access token is issued.
 
 ## Best Practices
 

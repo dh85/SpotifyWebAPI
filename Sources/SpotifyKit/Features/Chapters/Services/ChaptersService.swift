@@ -35,7 +35,7 @@ extension ChaptersService where Capability: PublicSpotifyCapability {
     ///   - id: The Spotify ID for the chapter.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A full `Chapter` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-chapter)
     public func get(_ id: String, market: String? = nil) async throws -> Chapter {
@@ -51,7 +51,7 @@ extension ChaptersService where Capability: PublicSpotifyCapability {
     ///   - ids: A list of Spotify IDs (max 50).
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A list of `Chapter` objects.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-chapters)
     public func several(ids: [String], market: String? = nil) async throws -> [Chapter] {

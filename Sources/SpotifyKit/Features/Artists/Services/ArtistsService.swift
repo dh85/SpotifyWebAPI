@@ -79,7 +79,7 @@ private typealias TopTracksWrapper = ArrayWrapper<Track>
 ///
 /// ## Combine Counterparts
 ///
-/// Publisher variants such as ``ArtistsService/getPublisher(_:)`` and
+/// Publisher variants such as `getPublisher` and
 /// ``ArtistsService/albumsPublisher(for:includeGroups:market:limit:offset:priority:)`` live in
 /// `ArtistsService+Combine.swift`. They call into these async methods so you can switch between
 /// async/await and Combine without relearning the API surface.
@@ -98,7 +98,7 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter id: The Spotify ID for the artist.
     /// - Returns: A full `Artist` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artist)
     public func get(_ id: String) async throws -> Artist {
@@ -111,7 +111,7 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: A list of `Artist` objects.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-artists)
     public func several(ids: Set<String>) async throws -> [Artist] {
@@ -127,13 +127,13 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     /// Get Spotify catalog information about an artist's albums.
     ///
     /// - Parameters:
-    ///   - id: The Spotify ID for the artist.
-    ///   - includeGroups: Filter by album types.
+    ///   - artistId: The Spotify ID for the artist.
+    ///   - groups: Filter by album types.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of `SimplifiedAlbum` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artists-albums)
     public func albums(
@@ -216,10 +216,10 @@ extension ArtistsService where Capability: PublicSpotifyCapability {
     /// Get Spotify catalog information about an artist's top tracks by country.
     ///
     /// - Parameters:
-    ///   - id: The Spotify ID for the artist.
+    ///   - artistId: The Spotify ID for the artist.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A list of `Track` objects.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artists-top-tracks)
     public func topTracks(artistId: String, market: String) async throws -> [Track] {

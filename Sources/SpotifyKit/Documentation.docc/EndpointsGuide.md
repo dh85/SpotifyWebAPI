@@ -30,11 +30,11 @@ behaviour, validation, and instrumentation are identical either way.
 
 Use any of the following helpers depending on your scenario:
 
-- ``SpotifyClient/collectAllPages(maximumItems:fetchPage:)`` for eagerly collecting items.
-- ``Pagination/PagingStreamBuilder`` for streaming pages asynchronously with cancellation.
-- Combine equivalents under ``Core/Pagination/Combine``.
+- The `collectAllPages(pageSize:maxItems:fetchPage:)` helper for eagerly collecting items.
+- ``PaginationStreamBuilder`` for streaming pages asynchronously with cancellation.
+- Combine equivalents live alongside each service in the `Service+Combine.swift` extensions.
 
-Requests accept `limit`, `offset`, `after`, and `before` parameters where Spotify supports them. The client enforces documented bounds (usually 1...50) before firing the HTTP call, returning ``SpotifyClientError/invalidRequest(_: )`` when inputs violate the spec.
+Requests accept `limit`, `offset`, `after`, and `before` parameters where Spotify supports them. The client enforces documented bounds (usually 1...50) before firing the HTTP call, returning ``SpotifyClientError/invalidRequest(reason:)`` when inputs violate the spec.
 
 ### Pagination Examples
 

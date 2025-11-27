@@ -110,7 +110,7 @@ private enum FollowType: String {
 /// ## Combine Counterparts
 ///
 /// Publisher helpers such as ``UsersService/mePublisher(priority:)`` and
-/// ``UsersService/topArtistsPublisher(range:limit:offset:priority:)`` are declared in
+/// ``UsersService/topArtistsPublisher(timeRange:limit:offset:priority:)`` are declared in
 /// `UsersService+Combine.swift`. They call back into these async implementations so both
 /// concurrency models share behavior.
 public struct UsersService<Capability: Sendable>: Sendable {
@@ -145,7 +145,7 @@ extension UsersService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter id: The Spotify ID for the user.
     /// - Returns: A `PublicUserProfile` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-profile)
     public func get(_ id: String) async throws -> PublicUserProfile {
@@ -161,7 +161,7 @@ extension UsersService where Capability: PublicSpotifyCapability {
     ///   - playlistID: The Spotify ID for the playlist.
     ///   - userIDs: A list of Spotify User IDs (max 5).
     /// - Returns: An array of booleans indicating follow status.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-if-user-follows-playlist)
     public func checkFollowing(
@@ -184,7 +184,7 @@ extension UsersService where Capability == UserAuthCapability {
     /// Get detailed profile information about the current user.
     ///
     /// - Returns: A `CurrentUserProfile` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile)
     public func me() async throws -> CurrentUserProfile {
@@ -197,11 +197,11 @@ extension UsersService where Capability == UserAuthCapability {
     /// Get the current user's top artists based on calculated affinity.
     ///
     /// - Parameters:
-    ///   - range: The time frame for affinity calculation. Default: `.mediumTerm`.
+    ///   - timeRange: The time frame for affinity calculation. Default: `.mediumTerm`.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of `Artist` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks)
     public func topArtists(
@@ -248,11 +248,11 @@ extension UsersService where Capability == UserAuthCapability {
     /// Get the current user's top tracks based on calculated affinity.
     ///
     /// - Parameters:
-    ///   - range: The time frame for affinity calculation. Default: `.mediumTerm`.
+    ///   - timeRange: The time frame for affinity calculation. Default: `.mediumTerm`.
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of `Track` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks)
     public func topTracks(
@@ -302,7 +302,7 @@ extension UsersService where Capability == UserAuthCapability {
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - after: The last artist ID retrieved for cursor-based paging.
     /// - Returns: A cursor-based page of `Artist` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-followed)
     public func followedArtists(
@@ -327,7 +327,7 @@ extension UsersService where Capability == UserAuthCapability {
     /// Follow one or more artists.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-artists-users)
     public func follow(artists ids: Set<String>) async throws {
@@ -337,7 +337,7 @@ extension UsersService where Capability == UserAuthCapability {
     /// Follow one or more users.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-artists-users)
     public func follow(users ids: Set<String>) async throws {
@@ -347,7 +347,7 @@ extension UsersService where Capability == UserAuthCapability {
     /// Unfollow one or more artists.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-artists-users)
     public func unfollow(artists ids: Set<String>) async throws {
@@ -357,7 +357,7 @@ extension UsersService where Capability == UserAuthCapability {
     /// Unfollow one or more users.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-artists-users)
     public func unfollow(users ids: Set<String>) async throws {
@@ -368,7 +368,7 @@ extension UsersService where Capability == UserAuthCapability {
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-current-user-follows)
     public func checkFollowing(artists ids: Set<String>) async throws -> [Bool] {
@@ -379,7 +379,7 @@ extension UsersService where Capability == UserAuthCapability {
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-current-user-follows)

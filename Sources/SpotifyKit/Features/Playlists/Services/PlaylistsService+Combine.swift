@@ -349,7 +349,7 @@
         ///
         /// - Parameters:
         ///   - id: The Spotify ID for the playlist.
-        ///   - imageData: The image data (JPEG, max 256KB).
+        ///   - jpegData: The image data (JPEG, max 256KB).
         ///   - priority: The priority of the task.
         /// - Returns: A publisher that emits `Void` when successful.
         public func uploadCoverImagePublisher(

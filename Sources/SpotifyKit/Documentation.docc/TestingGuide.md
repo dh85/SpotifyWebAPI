@@ -4,11 +4,11 @@ SpotifyKit is designed to fit cleanly into dependency-injected apps, so you can 
 
 ## Protocol-Oriented Client
 
-All services conform to ``Testing/SpotifyClientProtocol``. Construct your app against the protocol, then provide one of the following at runtime:
+All services conform to ``SpotifyClientProtocol``. Construct your app against the protocol, then provide one of the following at runtime:
 
 - ``SpotifyClient`` for real HTTP traffic.
-- ``Testing/MockSpotifyClient`` for deterministic responses without having to implement each endpoint yourself. Provide closures for the calls your test cares about and leave the rest untouched.
-- ``Testing/SpotifyClientProtocol`` also works great with your own lightweight mocks if you prefer to use a testing framework.
+- ``MockSpotifyClient`` for deterministic responses without having to implement each endpoint yourself. Provide closures for the calls your test cares about and leave the rest untouched.
+- ``SpotifyClientProtocol`` also works great with your own lightweight mocks if you prefer to use a testing framework.
 
 ## Sample Data
 
@@ -74,4 +74,4 @@ buffering automatically so analytics sinks can stay reactive without manual obse
 
 1. Create a shared test target that owns your mock client implementations so apps and frameworks reuse them.
 2. Run long-haul stress loops (multiple `swift test` passes) when touching concurrency or networking sensitive features.
-3. Capture the requests your app issues by wrapping ``HTTP/HTTPClient``—helpful for snapshotting payloads or ensuring scopes stay minimal.
+3. Capture the requests your app issues by wrapping ``HTTPClient``—helpful for snapshotting payloads or ensuring scopes stay minimal.

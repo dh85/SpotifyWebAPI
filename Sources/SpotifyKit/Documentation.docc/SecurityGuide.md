@@ -4,7 +4,10 @@ Ship consumer apps with confidence by keeping tokens, scopes, and traffic locked
 
 ## Keep Transport Locked Down
 
-- ``HTTP/URLSessionHTTPClient`` forces HTTPS and accepts a custom `URLSession` so you can add ATS exceptions, certificate pinning, or enterprise trust evaluators. On Apple platforms you can call ``HTTP/URLSessionHTTPClient/makePinnedSession(configuration:pinnedCertificates:)`` with DER certificates bundled in your app:
+- ``URLSessionHTTPClient`` forces HTTPS and accepts a custom `URLSession` so you can add ATS
+  exceptions, certificate pinning, or enterprise trust evaluators. On Apple platforms you can call
+  ``URLSessionHTTPClient/makePinnedSession(configuration:pinnedCertificates:allowsSelfSignedCertificates:delegateQueue:)``
+  with DER certificates bundled in your app:
 
 ```swift
 let pins = try [
@@ -17,9 +20,12 @@ let pinnedSession = try URLSessionHTTPClient.makePinnedSession(
 let client = URLSessionHTTPClient(session: pinnedSession)
 ```
 
-- Rate-limit aware retries come from ``Core/Networking/NetworkRecoveryConfiguration``. Tune the backoff to match your UX (fast retries for playback controls, slower retries for background sync).
-- Interceptors under ``Core/Networking`` let you redact bodies or headers before anything touches your logging pipeline.
-- When injecting custom headers via ``Core/SpotifyClientConfiguration``, prefer ``Core/SpotifyClientConfiguration/settingCustomHeader(name:value:)`` so restricted headers (`Authorization`, `Host`, `Cookie`, …) remain protected.
+- Rate-limit aware retries come from ``NetworkRecoveryConfiguration``. Tune the backoff to match your
+  UX (fast retries for playback controls, slower retries for background sync).
+- Request interceptors let you redact bodies or headers before anything touches your logging pipeline.
+- When injecting custom headers via ``SpotifyClientConfiguration``, prefer
+  ``SpotifyClientConfiguration/settingCustomHeader(name:value:)`` so restricted headers (`Authorization`,
+  `Host`, `Cookie`, …) remain protected.
 
 ## Protect Tokens & Scopes
 
@@ -29,8 +35,8 @@ let client = URLSessionHTTPClient(session: pinnedSession)
 
 | Platform | Implementation | Notes |
 | --- | --- | --- |
-| Apple OSes | ``Auth/KeychainTokenStore`` | Stored with `kSecAttrAccessibleAfterFirstUnlock`. |
-| Linux / other | ``Auth/RestrictedFileTokenStore`` | Directories forced to 0700, files to 0600. |
+| Apple OSes | ``KeychainTokenStore`` | Stored with `kSecAttrAccessibleAfterFirstUnlock`. |
+| Linux / other | ``RestrictedFileTokenStore`` | Directories forced to 0700, files to 0600. |
 
 Usage pattern (always provide unique `service` + `account` identifiers):
 
@@ -106,13 +112,15 @@ struct SpotifyConfig {
 
 ## Safe Testing & Sandboxes
 
-- ``SpotifyMockAPIServer`` runs a local HTTPS server with canned responses—perfect for UI tests or demos without touching real accounts.
-- ``Testing/MockSpotifyClient`` works in SwiftUI previews, snapshot tests, or offline development. Inject it wherever your app expects ``Core/SpotifyClientProtocol``.
+- `SpotifyMockAPIServer` runs a local HTTPS server with canned responses—perfect for UI tests or demos without touching real accounts.
+- ``MockSpotifyClient`` works in SwiftUI previews, snapshot tests, or offline development. Inject it wherever your app expects ``SpotifyClientProtocol``.
 
 ## Observability Without Leaks
 
-- Enable ``Debug/SpotifyRequestLogger`` only in debug builds and configure its redaction rules to strip Authorization headers and customer identifiers.
-- ``Debug/NetworkRetryObserver`` surfaces retry events so you can forward them to telemetry without exposing payloads.
+- Use ``DebugLogger`` only in debug builds and configure its redaction rules to strip Authorization
+  headers and customer identifiers.
+- Observe ``SpotifyClientEvents`` to surface retry events so you can forward them to telemetry without
+  exposing payloads.
 
 ## Release Checklist
 
@@ -125,11 +133,13 @@ struct SpotifyConfig {
 
 **Transport**
 
-- ``HTTP/URLSessionHTTPClient`` defaults to an ephemeral session (no cookies/cache) and exposes `makePinnedSession` for Apple platforms. Linux deployments should inject a custom ``HTTP/HTTPClient`` when `Security` APIs are unavailable.
+- ``URLSessionHTTPClient`` defaults to an ephemeral session (no cookies/cache) and exposes
+  `makePinnedSession` for Apple platforms. Linux deployments should inject a custom ``HTTPClient`` when
+  `Security` APIs are unavailable.
 
 **Token Storage**
 
-- ``TokenStoreFactory`` selects Keychain-backed storage on Apple OSes and ``Auth/RestrictedFileTokenStore`` elsewhere. The file store enforces POSIX permissions but intentionally writes JSON in plaintext; use a custom store if disks are untrusted or FDE is disabled.
+- ``TokenStoreFactory`` selects Keychain-backed storage on Apple OSes and ``RestrictedFileTokenStore`` elsewhere. The file store enforces POSIX permissions but intentionally writes JSON in plaintext; use a custom store if disks are untrusted or FDE is disabled.
 - For Linux/Windows deployments that need at-rest encryption, implement a ``TokenStore`` that wraps libsodium/NaCl, envelope encryption (AWS KMS, Azure Key Vault), or encrypts with a locally managed key.
 
 **Logging & Telemetry**
@@ -139,15 +149,16 @@ struct SpotifyConfig {
 
 **Configuration & Headers**
 
-- ``Core/SpotifyClientConfiguration/validate()`` rejects protected headers (`Authorization`, `Host`, `Cookie`, …) and enforces the safe `settingCustomHeader` workflow.
+- ``SpotifyClientConfiguration/validate()`` rejects protected headers (`Authorization`, `Host`,
+  `Cookie`, …) and enforces the safe `settingCustomHeader` workflow.
 
 **Interceptors & Middleware**
 
-- Request interceptors (``Core/Networking/RequestHelpers``) execute after the SDK applies auth headers but before transport. Register only trusted interceptors and keep them side-effect free—they can still strip security headers if misused.
+- Request interceptors execute after the SDK applies auth headers but before transport. Register only trusted interceptors and keep them side-effect free—they can still strip security headers if misused.
 
 **Open Follow-Ups**
 
-1. Provide a pinning helper for Linux/Windows or document a full ``HTTP/HTTPClient`` sample.
+1. Provide a pinning helper for Linux/Windows or document a full ``HTTPClient`` sample.
 2. Offer an encrypted token-store implementation (Secure Enclave, File Protection Complete, libsodium) for high-sensitivity backends.
 3. Expand automated tests that verify ``DebugLogger`` never surfaces sensitive payloads when `allowSensitivePayloads` is false.
 
@@ -194,5 +205,5 @@ Key considerations:
 
 - Manage `wrappingKey` via a secure source (Keychain, KMS, environment secret). Never check it into source control.
 - Rotate keys periodically and support migrating existing ciphertexts.
-- Combine this with the directory-permission hardening already enforced by ``Auth/RestrictedFileTokenStore``.
+- Combine this with the directory-permission hardening already enforced by ``RestrictedFileTokenStore``.
 - The sample uses [Swift Crypto](https://github.com/apple/swift-crypto) so it works the same on Apple and Linux.

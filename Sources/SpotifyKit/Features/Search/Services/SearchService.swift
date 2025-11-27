@@ -158,7 +158,7 @@ extension SearchService where Capability: PublicSpotifyCapability {
     ///   - offset: The index of the first result to return. Default: 0.
     ///   - includeExternal: If specified, the response will include any relevant audio content that is hosted externally.
     /// - Returns: A `SearchResults` object containing paginated results for the requested types.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/search)
     public func execute(

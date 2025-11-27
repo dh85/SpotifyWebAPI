@@ -33,7 +33,7 @@ extension ShowsService where Capability: PublicSpotifyCapability {
     ///   - id: The Spotify ID for the show.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A full `Show` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-show)
     public func get(_ id: String, market: String? = nil) async throws -> Show {
@@ -49,7 +49,7 @@ extension ShowsService where Capability: PublicSpotifyCapability {
     ///   - ids: A list of Spotify IDs (max 50).
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A list of `SimplifiedShow` objects.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-shows)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [SimplifiedShow] {
@@ -70,7 +70,7 @@ extension ShowsService where Capability: PublicSpotifyCapability {
     ///   - offset: The index of the first item to return. Default: 0.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A paginated list of `SimplifiedEpisode` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-shows-episodes)
     public func episodes(
@@ -137,7 +137,7 @@ extension ShowsService where Capability == UserAuthCapability {
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of `SavedShow` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-shows)
     public func saved(limit: Int = 20, offset: Int = 0) async throws -> Page<SavedShow> {
@@ -183,7 +183,7 @@ extension ShowsService where Capability == UserAuthCapability {
     /// Save one or more shows to the current Spotify user's library.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/save-shows-user)
     public func save(_ ids: Set<String>) async throws {
@@ -194,7 +194,7 @@ extension ShowsService where Capability == UserAuthCapability {
     /// Remove one or more shows from the current Spotify user's library.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-shows-user)
     public func remove(_ ids: Set<String>) async throws {
@@ -206,7 +206,7 @@ extension ShowsService where Capability == UserAuthCapability {
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-shows)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {

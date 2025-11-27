@@ -96,7 +96,7 @@ extension BrowseService where Capability: PublicSpotifyCapability {
     ///   - limit: The number of albums to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of ``SimplifiedAlbum`` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-new-releases)
     public func newReleases(
@@ -149,7 +149,7 @@ extension BrowseService where Capability: PublicSpotifyCapability {
     ///   - country: An ISO 3166-1 alpha-2 country code.
     ///   - locale: The desired language, e.g., "es_MX".
     /// - Returns: A single ``SpotifyCategory`` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-category)
     public func category(
@@ -173,7 +173,7 @@ extension BrowseService where Capability: PublicSpotifyCapability {
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of ``SpotifyCategory`` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-categories)
     public func categories(
@@ -236,7 +236,7 @@ extension BrowseService where Capability: PublicSpotifyCapability {
     /// Corresponds to: `GET /v1/markets`
     ///
     /// - Returns: A list of ISO 3166-1 alpha-2 country codes.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-available-markets)
     public func availableMarkets() async throws -> [String] {

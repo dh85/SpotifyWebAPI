@@ -155,7 +155,10 @@ import Foundation
 /// - CloudKit or iCloud for multi-device sync
 /// - Server-side storage for web apps
 ///
-/// - SeeAlso: ``SpotifyClientConfiguration``, ``RequestInterceptor``, ``TokenExpirationCallback``, ``TokenRefreshCallbacks``
+/// - SeeAlso: ``SpotifyClientConfiguration``, ``RequestInterceptor``, ``TokenExpirationCallback``,
+///   ``SpotifyClientEvents/onTokenRefreshWillStart(_:)``,
+///   ``SpotifyClientEvents/onTokenRefreshDidSucceed(_:)``,
+///   ``SpotifyClientEvents/onTokenRefreshDidFail(_:)``
 public actor SpotifyClient<Capability: Sendable> {
     let httpClient: HTTPClient
     private let backend: TokenGrantAuthenticator
@@ -519,7 +522,7 @@ public struct SpotifyUserClientBuilder {
         return copy
     }
 
-    /// Override the token store (defaults to ``TokenStoreFactory/defaultStore``).
+    /// Override the token store (defaults to ``TokenStoreFactory/defaultStore(service:account:)``).
     public func withTokenStore(_ store: TokenStore) -> SpotifyUserClientBuilder {
         var copy = self
         copy.tokenStore = store
@@ -630,7 +633,8 @@ public struct SpotifyAppClientBuilder {
         return copy
     }
 
-    /// Build the configured client. ``withClientCredentials`` must be called first.
+    /// Build the configured client. ``withClientCredentials(clientID:clientSecret:scopes:)`` must be
+    /// called first.
     public func build() -> AppSpotifyClient {
         guard let flow else {
             preconditionFailure(
