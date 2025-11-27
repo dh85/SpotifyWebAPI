@@ -8,7 +8,7 @@ Successfully implemented "Opportunity #2: Fluent Request Builder" from the code 
 
 ### Core Components
 
-1. **`RequestBuilder<Capability>`** (`Sources/SpotifyWebAPI/Core/Networking/FluentRequest.swift`)
+1. **`RequestBuilder<Capability>`** (`Sources/SpotifyKit/Core/Networking/FluentRequest.swift`)
    - Generic builder struct that maintains request state
    - Implements the builder pattern with immutable state
    - Sendable for safe concurrent usage
@@ -127,9 +127,9 @@ To fully adopt the fluent API across the codebase:
 
 ## Files Modified
 
-- `Sources/SpotifyWebAPI/Core/Networking/FluentRequest.swift` (NEW)
-- `Sources/SpotifyWebAPI/Features/Albums/Services/AlbumsService.swift`
-- `Sources/SpotifyWebAPI/Features/Users/Services/UsersService.swift`
+- `Sources/SpotifyKit/Core/Networking/FluentRequest.swift` (NEW)
+- `Sources/SpotifyKit/Features/Albums/Services/AlbumsService.swift`
+- `Sources/SpotifyKit/Features/Users/Services/UsersService.swift`
 - `Docs/FluentRequestAPI.md` (NEW)
 
 ## Test Results

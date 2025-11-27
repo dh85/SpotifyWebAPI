@@ -10,14 +10,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
-        .package(name: "SpotifyWebAPI", path: "../.."),
+        .package(name: "SpotifyKit", path: "../.."),
     ],
     targets: [
         .executableTarget(
             name: "HummingbirdServer",
             dependencies: [
                 .product(name: "Hummingbird", package: "hummingbird"),
-                "SpotifyWebAPI",
+                "SpotifyKit",
             ]
         )
     ]

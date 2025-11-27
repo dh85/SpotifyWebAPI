@@ -1,0 +1,7 @@
+{
+    "access_token": "ACCESS_TOKEN_FROM_MOCK",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "refresh_token": "REFRESH_TOKEN_FROM_MOCK",
+    "scope": "user-read-private"
+}

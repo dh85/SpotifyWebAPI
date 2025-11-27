@@ -1,6 +1,6 @@
 # Security Checklist
 
-Practical steps to keep Spotify user data private while you ship iOS, macOS, and server apps with SpotifyWebAPI.
+Practical steps to keep Spotify user data private while you ship iOS, macOS, and server apps with SpotifyKit.
 
 ## Keep Transport Locked Down
 
@@ -17,7 +17,7 @@ let pinnedSession = try URLSessionHTTPClient.makePinnedSession(
 let client = URLSessionHTTPClient(session: pinnedSession)
 ```
 - Adjust `NetworkRecoveryConfiguration` to balance UX and rate-limit protection. Quick retries feel great for playback controls; slower retries avoid hammering the API during sync jobs.
-- Add interceptors (`Sources/SpotifyWebAPI/Core/Networking/Interceptors`) to redact headers or bodies before logs leave the device.
+- Add interceptors (`Sources/SpotifyKit/Core/Networking/Interceptors`) to redact headers or bodies before logs leave the device.
 - When injecting custom headers via `SpotifyClientConfiguration`, prefer `settingCustomHeader(name:value:)` so restricted headers (`Authorization`, `Host`, `Cookie`, etc.) remain protected. Attempts to override those headers now throw `SpotifyClientConfigurationError.restrictedCustomHeader`.
 
 ## Protect Tokens & Scopes
@@ -105,21 +105,21 @@ struct SpotifyConfig {
 ## Security Audit (November 2025)
 
 **Transport**
-- `Sources/SpotifyWebAPI/HTTP/URLSessionHTTPClient.swift` defaults to an ephemeral `URLSession` (no cookies/cache) and now exposes `makePinnedSession(pinnedCertificates:)` for Apple platforms. Linux deployments still need a custom `HTTPClient` implementation for pinning, so plan for an injected client when `Security` APIs are unavailable.
+- `Sources/SpotifyKit/HTTP/URLSessionHTTPClient.swift` defaults to an ephemeral `URLSession` (no cookies/cache) and now exposes `makePinnedSession(pinnedCertificates:)` for Apple platforms. Linux deployments still need a custom `HTTPClient` implementation for pinning, so plan for an injected client when `Security` APIs are unavailable.
 
 **Token Storage**
-- `TokenStoreFactory` chooses Keychain-backed storage on Apple OSes and `RestrictedFileTokenStore` elsewhere (`Sources/SpotifyWebAPI/Auth/Core/TokenStore.swift`). The file store enforces 0700/0600 permissions and surfaces hardening failures, but it intentionally stores JSON in plaintext. Use a custom `TokenStore` if disks are untrusted or if full-disk encryption is disabled.
+- `TokenStoreFactory` chooses Keychain-backed storage on Apple OSes and `RestrictedFileTokenStore` elsewhere (`Sources/SpotifyKit/Auth/Core/TokenStore.swift`). The file store enforces 0700/0600 permissions and surfaces hardening failures, but it intentionally stores JSON in plaintext. Use a custom `TokenStore` if disks are untrusted or if full-disk encryption is disabled.
 - For Linux/Windows deployments that need at-rest encryption, implement a custom `TokenStore` that wraps libsodium/NaCl, envelope encryption (AWS KMS, Azure Key Vault), or encrypts with a locally managed key before writing to disk. See the example below for a simple envelope pattern.
 
 **Logging & Telemetry**
-- `DebugLogger` (`Sources/SpotifyWebAPI/Core/Debug/DebugLogger.swift`) redacts headers/bodies by default and only emits payload previews when `allowSensitivePayloads` is true. Production configs should leave this off and rely on observers/metrics instead. Enabling verbose logging now prints an explicit exposure warning.
+- `DebugLogger` (`Sources/SpotifyKit/Core/Debug/DebugLogger.swift`) redacts headers/bodies by default and only emits payload previews when `allowSensitivePayloads` is true. Production configs should leave this off and rely on observers/metrics instead. Enabling verbose logging now prints an explicit exposure warning.
 - Keep CI/CD profiles pinned to configurations with `allowSensitivePayloads == false`. Add configuration snapshot tests (see `DebugToolingTests`) so any attempt to enable sensitive logging in release builds fails fast.
 
 **Configuration & Headers**
 - `SpotifyClientConfiguration.validate()` rejects protected headers (`Authorization`, `Host`, `Cookie`, etc.) and offers `settingCustomHeader(name:value:)` for safe injection. Favor that API over mutating the `customHeaders` dictionary so denial rules stay enforced.
 
 **Interceptors & Middleware**
-- Request interceptors (see `Sources/SpotifyWebAPI/Core/Networking/RequestHelpers.swift`) execute after the SDK applies auth headers but before the transport runs. Only register trusted interceptors and keep them side-effect free; they can still strip security headers if misused.
+- Request interceptors (see `Sources/SpotifyKit/Core/Networking/RequestHelpers.swift`) execute after the SDK applies auth headers but before the transport runs. Only register trusted interceptors and keep them side-effect free; they can still strip security headers if misused.
 
 **Open Follow-Ups**
 - Provide a pinning helper for Linux/Windows (`Security` is unavailable there) or expand the docs with a full `HTTPClient` sample.

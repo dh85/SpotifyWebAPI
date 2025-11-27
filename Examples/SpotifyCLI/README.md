@@ -1,6 +1,6 @@
 # Spotify CLI Example
 
-A comprehensive command-line interface demonstrating the SpotifyWebAPI library features.
+A comprehensive command-line interface demonstrating the SpotifyKit library features.
 
 ## Features
 
@@ -273,7 +273,7 @@ swift run spotify-cli top-items --help
 ⚠️ **Important**: This example requires manual OAuth token setup. In a production application, you would implement the full OAuth flow to obtain access tokens. 
 
 For testing, you can:
-1. Use the SpotifyWebAPI library's built-in auth flows
+1. Use the SpotifyKit library's built-in auth flows
 2. Manually obtain tokens through Spotify's developer console
 3. Implement a web-based OAuth callback handler
 
@@ -290,7 +290,7 @@ The CLI demonstrates:
 ## Dependencies
 
 - **swift-argument-parser**: Apple's official CLI framework
-- **SpotifyWebAPI**: The library being demonstrated
+- **SpotifyKit**: The library being demonstrated
 
 ## Building for Release
 
@@ -342,8 +342,8 @@ spotify-cli player recent --limit 20
 
 ## Contributing
 
-This is an example application demonstrating the SpotifyWebAPI library. Feel free to extend it with additional commands and features!
+This is an example application demonstrating the SpotifyKit library. Feel free to extend it with additional commands and features!
 
 ## License
 
-Same as the parent SpotifyWebAPI library.
+Same as the parent SpotifyKit library.

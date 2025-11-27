@@ -1,0 +1,74 @@
+{
+    "track": {
+        "id": "track_1",
+        "name": "History Track",
+        "duration_ms": 200000,
+        "explicit": false,
+        "uri": "spotify:track:track_1",
+        "href": "https://api.spotify.com/v1/tracks/track_1",
+        "type": "track",
+        "disc_number": 1,
+        "track_number": 1,
+        "popularity": 50,
+        "is_local": false,
+        "external_ids": {
+            "isrc": "US123"
+        },
+        "external_urls": {
+            "spotify": "https://open.spotify.com/track/track_1"
+        },
+        "artists": [
+            {
+                "id": "artist_1",
+                "name": "History Artist",
+                "type": "artist",
+                "href": "https://api.spotify.com/v1/artists/artist_1",
+                "uri": "spotify:artist:artist_1",
+                "external_urls": {
+                    "spotify": "https://open.spotify.com/artist/artist_1"
+                }
+            }
+        ],
+        "album": {
+            "id": "album_1",
+            "name": "History Album",
+            "href": "https://api.spotify.com/v1/albums/album_1",
+            "uri": "spotify:album:album_1",
+            "images": [],
+            "external_urls": {
+                "spotify": "https://open.spotify.com/album/album_1"
+            },
+            "album_type": "album",
+            "total_tracks": 10,
+            "available_markets": [
+                "US",
+                "GB"
+            ],
+            "release_date": "2023-01-01",
+            "release_date_precision": "day",
+            "type": "album",
+            "album_group": "album",
+            "artists": [
+                {
+                    "id": "artist_1",
+                    "name": "History Artist",
+                    "href": "https://api.spotify.com/v1/artists/artist_1",
+                    "uri": "spotify:artist:artist_1",
+                    "type": "artist",
+                    "external_urls": {
+                        "spotify": "https://open.spotify.com/artist/artist_1"
+                    }
+                }
+            ]
+        }
+    },
+    "played_at": "2023-11-15T10:00:00Z",
+    "context": {
+        "type": "playlist",
+        "href": "https://api.spotify.com/v1/playlists/playlist_history",
+        "external_urls": {
+            "spotify": "https://open.spotify.com/playlist/playlist_history"
+        },
+        "uri": "spotify:playlist:playlist_history"
+    }
+}

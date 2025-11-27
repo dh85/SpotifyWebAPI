@@ -1,7 +1,7 @@
 # Integration Tests Summary
 
 ## Overview
-This document tracks the comprehensive integration testing strategy for SpotifyWebAPI, covering all three phases of integration testing: authentication flows, error handling & resilience, and concurrent operations.
+This document tracks the comprehensive integration testing strategy for SpotifyKit, covering all three phases of integration testing: authentication flows, error handling & resilience, and concurrent operations.
 
 ## Test Status
 
@@ -260,8 +260,8 @@ OAuthConfig(
 
 ### File Changes
 1. `Tests/Support/SpotifyMockAPIServer.swift` - Enhanced with OAuth, errors, rate limiting
-2. `Tests/SpotifyWebAPITests/Integration/PaginationEdgeCasesIntegrationTests.swift` - New file (11 tests)
-3. `Tests/SpotifyWebAPITests/Integration/ConcurrentRequestsIntegrationTests.swift` - New file (6 tests)
+2. `Tests/SpotifyKitTests/Integration/PaginationEdgeCasesIntegrationTests.swift` - New file (11 tests)
+3. `Tests/SpotifyKitTests/Integration/ConcurrentRequestsIntegrationTests.swift` - New file (6 tests)
 4. `INTEGRATION_TESTS_SUMMARY.md` - Updated status
 5. `Docs/MockServerEnhancements.md` - New comprehensive documentation
 
@@ -272,7 +272,7 @@ OAuthConfig(
 ```
 Building for debugging...
 [0/1] Write swift-version--58304C5D6DBC2206.txt
-Build of target: 'SpotifyWebAPITests' complete! (0.38s)
+Build of target: 'SpotifyKitTests' complete! (0.38s)
 ```
 
 ### Test Status

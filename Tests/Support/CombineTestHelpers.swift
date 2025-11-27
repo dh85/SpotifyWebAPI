@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import SpotifyWebAPI
+@testable import SpotifyKit
 
 #if canImport(Combine)
     import Combine

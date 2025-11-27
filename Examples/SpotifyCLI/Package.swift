@@ -10,14 +10,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
-        .package(name: "SpotifyWebAPI", path: "../.."),
+        .package(name: "SpotifyKit", path: "../.."),
     ],
     targets: [
         .executableTarget(
             name: "SpotifyCLI",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                "SpotifyWebAPI",
+                "SpotifyKit",
             ]
         )
     ]

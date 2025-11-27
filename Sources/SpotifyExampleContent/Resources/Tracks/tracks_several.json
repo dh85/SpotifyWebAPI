@@ -1,0 +1,88 @@
+{
+  "tracks": [
+    {
+      "id": "track1",
+      "name": "Track One",
+      "album": {
+        "album_type": "album",
+        "total_tracks": 10,
+        "available_markets": [
+          "US"
+        ],
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/album1"
+        },
+        "href": "https://api.spotify.com/v1/albums/album1",
+        "id": "album1",
+        "images": [],
+        "name": "Album One",
+        "release_date": "2023-01-01",
+        "release_date_precision": "day",
+        "type": "album",
+        "uri": "spotify:album:album1",
+        "artists": []
+      },
+      "artists": [],
+      "available_markets": [
+        "US"
+      ],
+      "disc_number": 1,
+      "duration_ms": 180000,
+      "explicit": false,
+      "external_ids": {},
+      "external_urls": {
+        "spotify": "https://open.spotify.com/track/track1"
+      },
+      "href": "https://api.spotify.com/v1/tracks/track1",
+      "is_local": false,
+      "is_playable": true,
+      "popularity": 70,
+      "preview_url": null,
+      "track_number": 1,
+      "type": "track",
+      "uri": "spotify:track:track1"
+    },
+    {
+      "id": "track2",
+      "name": "Track Two",
+      "album": {
+        "album_type": "album",
+        "total_tracks": 10,
+        "available_markets": [
+          "US"
+        ],
+        "external_urls": {
+          "spotify": "https://open.spotify.com/album/album2"
+        },
+        "href": "https://api.spotify.com/v1/albums/album2",
+        "id": "album2",
+        "images": [],
+        "name": "Album Two",
+        "release_date": "2023-02-01",
+        "release_date_precision": "day",
+        "type": "album",
+        "uri": "spotify:album:album2",
+        "artists": []
+      },
+      "artists": [],
+      "available_markets": [
+        "US"
+      ],
+      "disc_number": 1,
+      "duration_ms": 200000,
+      "explicit": false,
+      "external_ids": {},
+      "external_urls": {
+        "spotify": "https://open.spotify.com/track/track2"
+      },
+      "href": "https://api.spotify.com/v1/tracks/track2",
+      "is_local": false,
+      "is_playable": true,
+      "popularity": 80,
+      "preview_url": null,
+      "track_number": 2,
+      "type": "track",
+      "uri": "spotify:track:track2"
+    }
+  ]
+}

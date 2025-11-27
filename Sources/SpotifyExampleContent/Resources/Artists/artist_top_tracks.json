@@ -1,0 +1,47 @@
+{
+  "tracks": [
+    {
+      "album": {
+        "album_type": "album",
+        "artists": [],
+        "available_markets": ["US"],
+        "external_urls": { "spotify": "..." },
+        "href": "...",
+        "id": "album_id",
+        "images": [],
+        "name": "Album Name",
+        "release_date": "2024-01-01",
+        "release_date_precision": "day",
+        "total_tracks": 10,
+        "type": "album",
+        "uri": "...",
+        "album_group": "album"
+      },
+      "artists": [
+        {
+          "external_urls": { "spotify": "..." },
+          "href": "...",
+          "id": "artist_id",
+          "name": "Test Artist",
+          "type": "artist",
+          "uri": "..."
+        }
+      ],
+      "available_markets": ["US"],
+      "disc_number": 1,
+      "duration_ms": 200000,
+      "explicit": false,
+      "external_ids": { "isrc": "..." },
+      "external_urls": { "spotify": "..." },
+      "href": "...",
+      "id": "track_id",
+      "is_local": false,
+      "is_playable": true,
+      "name": "Top Track 1",
+      "popularity": 90,
+      "track_number": 1,
+      "type": "track",
+      "uri": "spotify:track:track_id"
+    }
+  ]
+}

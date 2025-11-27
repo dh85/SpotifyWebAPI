@@ -3,16 +3,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "SpotifyWebAPI",
+    name: "SpotifyKit",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v15),
+        .iOS(.v16),
+        .macOS(.v13),
     ],
     products: [
         .library(
-            name: "SpotifyWebAPI",
-            targets: ["SpotifyWebAPI"]
-        )
+            name: "SpotifyKit",
+            targets: ["SpotifyKit"]
+        ),
+        .library(
+            name: "SpotifyExampleContent",
+            targets: ["SpotifyExampleContent"]
+        ),
     ],
     dependencies: [
         .package(
@@ -26,21 +30,28 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "SpotifyWebAPI",
+            name: "SpotifyKit",
             dependencies: [
                 .product(name: "Crypto", package: "swift-crypto")
             ]
         ),
+        .target(
+            name: "SpotifyExampleContent",
+            dependencies: ["SpotifyKit"],
+            resources: [
+                .process("Resources")
+            ]
+        ),
         .testTarget(
-            name: "SpotifyWebAPITests",
+            name: "SpotifyKitTests",
             dependencies: [
-                "SpotifyWebAPI",
+                "SpotifyKit",
                 .product(name: "Hummingbird", package: "hummingbird"),
             ],
             path: "Tests",
             // Sources will only look in these folders
             sources: [
-                "SpotifyWebAPITests",
+                "SpotifyKitTests",
                 "Support",
             ],
             // Resources now points to the sibling folder "Mocks"

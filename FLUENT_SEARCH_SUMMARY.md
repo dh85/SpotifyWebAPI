@@ -54,7 +54,7 @@ The `SearchQueryBuilder` provides a type-safe, chainable fluent API for building
 
 ### Execution Methods
 
-#### Async/Await (iOS 13+, macOS 10.15+)
+#### Async/Await (iOS 16+, macOS 13+)
 
 ```swift
 func execute() async throws -> SearchResults
@@ -64,7 +64,7 @@ func executeArtists() async throws -> PagingObject<Artist>
 func executePlaylists() async throws -> PagingObject<Playlist>
 ```
 
-#### Combine Publishers (iOS 13+, macOS 10.15+)
+#### Combine Publishers (iOS 16+, macOS 13+)
 
 ```swift
 func executePublisher() -> AnyPublisher<SearchResults, Error>
@@ -389,7 +389,7 @@ The fluent builder API provides the best balance of type safety, readability, an
 
 ## Summary
 
-The `SearchQueryBuilder` represents a significant improvement to the SpotifyWebAPI library:
+The `SearchQueryBuilder` represents a significant improvement to the SpotifyKit library:
 
 - **882 tests passing** (24 new SearchQueryBuilder tests)
 - **Dual execution modes** (async/await + Combine publishers)

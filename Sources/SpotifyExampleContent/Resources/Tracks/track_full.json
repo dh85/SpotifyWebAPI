@@ -1,0 +1,72 @@
+{
+  "album": {
+    "album_type": "album",
+    "total_tracks": 12,
+    "available_markets": [
+      "US",
+      "GB"
+    ],
+    "external_urls": {
+      "spotify": "https://open.spotify.com/album/album_id"
+    },
+    "href": "https://api.spotify.com/v1/albums/album_id",
+    "id": "album_id",
+    "images": [],
+    "name": "Test Album",
+    "release_date": "2023-01-01",
+    "release_date_precision": "day",
+    "type": "album",
+    "uri": "spotify:album:album_id",
+    "artists": [],
+    "album_group": "album"
+  },
+  "artists": [
+    {
+      "id": "artist_id",
+      "name": "Test Artist",
+      "href": "https://api.spotify.com/v1/artists/artist_id",
+      "type": "artist",
+      "uri": "spotify:artist:artist_id",
+      "external_urls": {
+        "spotify": "https://open.spotify.com/artist/artist_id"
+      }
+    }
+  ],
+  "available_markets": [
+    "US",
+    "GB"
+  ],
+  "disc_number": 1,
+  "duration_ms": 200000,
+  "explicit": false,
+  "external_ids": {
+    "isrc": "US-S1Z-23-00001",
+    "ean": "1234567890",
+    "upc": "0987654321"
+  },
+  "external_urls": {
+    "spotify": "https://open.spotify.com/track/track_id"
+  },
+  "href": "https://api.spotify.com/v1/tracks/track_id",
+  "id": "track_id",
+  "is_local": false,
+  "is_playable": true,
+  "linked_from": {
+    "external_urls": {
+      "spotify": "https://open.spotify.com/track/linked_id"
+    },
+    "href": "https://api.spotify.com/v1/tracks/linked_id",
+    "id": "linked_id",
+    "type": "track",
+    "uri": "spotify:track:linked_id"
+  },
+  "name": "Test Track",
+  "popularity": 75,
+  "preview_url": "https://p.scdn.co/mp3-preview/url",
+  "track_number": 5,
+  "type": "track",
+  "uri": "spotify:track:track_id",
+  "restrictions": {
+    "reason": "market"
+  }
+}

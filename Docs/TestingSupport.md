@@ -1,6 +1,6 @@
 # Testing & Tooling
 
-Treat SpotifyWebAPI as a protocol-oriented dependency so production code, previews, and unit tests can swap implementations freely.
+Treat SpotifyKit as a protocol-oriented dependency so production code, previews, and unit tests can swap implementations freely.
 
 ## Core Abstractions
 
@@ -62,4 +62,4 @@ briefly fall behind without losing critical telemetry.
 
 1. Run targeted suites (`swift test --filter PlaylistsServiceTests`) when iterating on a feature.
 2. Execute repeated stress runs (20x or 100x) before merging concurrency or networking changes.
-3. Collect coverage reports for `Tests/SpotifyWebAPITests/Features` to ensure new endpoints ship with matching tests.
+3. Collect coverage reports for `Tests/SpotifyKitTests/Features` to ensure new endpoints ship with matching tests.

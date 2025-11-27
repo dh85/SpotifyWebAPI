@@ -1,7 +1,7 @@
 import Foundation
 import Hummingbird
 import NIOCore
-import SpotifyWebAPI
+import SpotifyKit
 
 /// Build and configure the application
 func buildApplication() async throws -> some ApplicationProtocol {
@@ -35,7 +35,7 @@ func buildApplication() async throws -> some ApplicationProtocol {
         router: router,
         configuration: .init(
             address: .hostname("127.0.0.1", port: 8080),
-            serverName: "SpotifyWebAPI-Hummingbird-Example"
+            serverName: "SpotifyKit-Hummingbird-Example"
         )
     )
 

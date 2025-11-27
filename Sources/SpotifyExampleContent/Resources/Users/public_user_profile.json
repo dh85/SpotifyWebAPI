@@ -1,0 +1,15 @@
+{
+  "id": "user123",
+  "display_name": "Test User",
+  "href": "https://api.spotify.com/v1/users/user123",
+  "uri": "spotify:user:user123",
+  "type": "user",
+  "external_urls": {
+    "spotify": "https://open.spotify.com/user/user123"
+  },
+  "followers": {
+    "href": null,
+    "total": 100
+  },
+  "images": []
+}

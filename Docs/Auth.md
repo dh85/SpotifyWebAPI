@@ -1,6 +1,6 @@
 # Authentication Guide
 
-SpotifyWebAPI wraps every Spotify Web API auth flow so you can pick the capability that matches your app.
+SpotifyKit wraps every Spotify Web API auth flow so you can pick the capability that matches your app.
 
 ## Capabilities at a Glance
 

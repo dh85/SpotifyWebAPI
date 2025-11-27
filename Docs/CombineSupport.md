@@ -1,6 +1,6 @@
 # Combine Support
 
-SpotifyWebAPI exposes optional Combine publisher variants that mirror the async/await APIs. Everything is wrapped in `#if canImport(Combine)` so Linux builds remain untouched, while Apple platforms running macOS 10.15+/iOS 13+/tvOS 13+/watchOS 6+ can opt into Combine.
+SpotifyKit exposes optional Combine publisher variants that mirror the async/await APIs. Everything is wrapped in `#if canImport(Combine)` so Linux builds remain untouched, while Apple platforms running macOS 13+/iOS 16+/tvOS 16+/watchOS 9+ can opt into Combine.
 
 ## Discoverability
 
@@ -17,7 +17,7 @@ authorization logic.
 
 ```swift
 import Combine
-import SpotifyWebAPI
+import SpotifyKit
 
 let client = SpotifyClient.pkce(...)
 
@@ -74,7 +74,7 @@ Use the helpers in `Tests/Support/TestHelpers.swift`:
 - `assertAggregatesPages` verifies pagination helpers aggregate items correctly.
 - `assertIDsMutationPublisher`, `assertLimitOutOfRange`, and `assertIDBatchTooLarge` keep validation tests concise.
 
-Combine-focused suites live under `Tests/SpotifyWebAPITests/**/CombineTests.swift`; they double as reference implementations for your own publisher extensions.
+Combine-focused suites live under `Tests/SpotifyKitTests/**/CombineTests.swift`; they double as reference implementations for your own publisher extensions.
 
 ## Platform Availability
 
