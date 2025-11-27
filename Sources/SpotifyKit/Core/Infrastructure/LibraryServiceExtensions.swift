@@ -24,7 +24,7 @@ extension AlbumsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Album IDs to save.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize)
         let total = batches.count
@@ -54,7 +54,7 @@ extension AlbumsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Album IDs to remove.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(from: ids, chunkSize: SpotifyAPILimits.Albums.batchSize)
         let total = batches.count
@@ -89,7 +89,7 @@ extension TracksService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Track IDs to save.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(
             from: ids,
@@ -122,7 +122,7 @@ extension TracksService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Track IDs to remove.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(
             from: ids,
@@ -160,7 +160,7 @@ extension ShowsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Show IDs to save.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(
             from: ids,
@@ -193,7 +193,7 @@ extension ShowsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Show IDs to remove.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(
             from: ids,
@@ -231,7 +231,7 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Episode IDs to save.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func saveAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(
             from: ids,
@@ -264,7 +264,7 @@ extension EpisodesService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - ids: Episode IDs to remove.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func removeAll(_ ids: [String], progress: BatchProgressCallback? = nil) async throws {
         let batches = chunkedUniqueSets(
             from: ids,

@@ -102,8 +102,9 @@ import Foundation
 ///
 /// `PlayerService+Combine.swift` mirrors each async control/read method with a publisher, e.g.
 /// ``PlayerService/statePublisher(market:additionalTypes:priority:)`` and
-/// ``PlayerService/playPublisher(contextURI:uris:offset:positionMS:deviceID:priority:)``. Import
-/// Combine to surface them when your app uses publisher pipelines.
+/// ``PlayerService/playPublisher(contextURI:deviceID:offset:priority:)`` or
+/// ``PlayerService/playPublisher(uris:deviceID:priority:)``. Import Combine to surface them when your
+/// app uses publisher pipelines.
 public struct PlayerService<Capability: Sendable>: Sendable {
     let client: SpotifyClient<Capability>
 
@@ -124,7 +125,7 @@ extension PlayerService where Capability == UserAuthCapability {
     ///   - market: An ISO 3166-1 alpha-2 country code.
     ///   - additionalTypes: Item types to include in the response.
     /// - Returns: The current playback state, or `nil` if nothing is playing.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-read-playback-state`
     public func state(
@@ -150,7 +151,7 @@ extension PlayerService where Capability == UserAuthCapability {
     ///   - market: An ISO 3166-1 alpha-2 country code.
     ///   - additionalTypes: Item types to include in the response.
     /// - Returns: The currently playing context, or `nil` if nothing is playing.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-read-currently-playing`
     public func currentlyPlaying(
@@ -173,7 +174,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-users-available-devices)
     ///
     /// - Returns: An array of available devices.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-read-playback-state`
     public func devices() async throws -> [SpotifyDevice] {
@@ -193,7 +194,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - deviceID: The ID of the device to transfer playback to.
     ///   - play: Whether to start playback immediately on the new device.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func transfer(to deviceID: String, play: Bool? = nil) async throws {
@@ -209,7 +210,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/start-a-users-playback)
     ///
     /// - Parameter deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func resume(deviceID: String? = nil) async throws {
@@ -224,7 +225,7 @@ extension PlayerService where Capability == UserAuthCapability {
     ///   - contextURI: The Spotify URI of the context to play.
     ///   - deviceID: The ID of the device to target.
     ///   - offset: Where to start playback within the context.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func play(
@@ -243,7 +244,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - uris: An array of Spotify track URIs to play.
     ///   - deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func play(uris: [String], deviceID: String? = nil) async throws {
@@ -256,7 +257,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/pause-a-users-playback)
     ///
     /// - Parameter deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func pause(deviceID: String? = nil) async throws {
@@ -272,7 +273,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/skip-users-playback-to-next-track)
     ///
     /// - Parameter deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func skipToNext(deviceID: String? = nil) async throws {
@@ -288,7 +289,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/skip-users-playback-to-previous-track)
     ///
     /// - Parameter deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func skipToPrevious(deviceID: String? = nil) async throws {
@@ -306,7 +307,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - positionMs: The position in milliseconds to seek to (must be >= 0).
     ///   - deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails or position is negative.
+    /// - Throws: `SpotifyClientError` if the request fails or position is negative.
     ///
     /// Required scope: `user-modify-playback-state`
     public func seek(to positionMs: Int, deviceID: String? = nil) async throws {
@@ -333,7 +334,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - mode: The repeat mode (track, context, or off).
     ///   - deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func setRepeatMode(_ mode: RepeatMode, deviceID: String? = nil) async throws {
@@ -356,7 +357,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - percent: The volume to set (0-100).
     ///   - deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails or volume is out of range.
+    /// - Throws: `SpotifyClientError` if the request fails or volume is out of range.
     ///
     /// Required scope: `user-modify-playback-state`
     public func setVolume(_ percent: Int, deviceID: String? = nil) async throws {
@@ -383,7 +384,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - state: Whether to enable shuffle.
     ///   - deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func setShuffle(_ state: Bool, deviceID: String? = nil) async throws {
@@ -404,7 +405,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-queue)
     ///
     /// - Returns: Information about the queue.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-read-playback-state` or `user-read-currently-playing`
     public func getQueue() async throws -> UserQueue {
@@ -421,7 +422,7 @@ extension PlayerService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - uri: The Spotify URI of the track or episode to add.
     ///   - deviceID: The ID of the device to target.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// Required scope: `user-modify-playback-state`
     public func addToQueue(uri: String, deviceID: String? = nil) async throws {
@@ -449,7 +450,7 @@ extension PlayerService where Capability == UserAuthCapability {
     ///   - after: Return items played after this timestamp.
     ///   - before: Return items played before this timestamp.
     /// - Returns: A cursor-based page of play history items.
-    /// - Throws: `SpotifyError` if the request fails or parameters are invalid.
+    /// - Throws: `SpotifyClientError` if the request fails or parameters are invalid.
     ///
     /// Required scope: `user-read-recently-played`
     ///

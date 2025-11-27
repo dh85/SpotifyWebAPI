@@ -32,7 +32,7 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
     ///   - id: The Spotify ID for the audiobook.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A full `Audiobook` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-an-audiobook)
     public func get(_ id: String, market: String? = nil) async throws -> Audiobook {
@@ -48,7 +48,7 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
     ///   - ids: A list of Spotify IDs (max 50).
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A list of `Audiobook` objects (may contain nil for invalid IDs).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-multiple-audiobooks)
     public func several(ids: Set<String>, market: String? = nil) async throws -> [Audiobook?] {
@@ -69,7 +69,7 @@ extension AudiobooksService where Capability: PublicSpotifyCapability {
     ///   - offset: The index of the first item to return. Default: 0.
     ///   - market: An ISO 3166-1 alpha-2 country code.
     /// - Returns: A paginated list of `SimplifiedChapter` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audiobook-chapters)
     public func chapters(
@@ -136,7 +136,7 @@ extension AudiobooksService where Capability == UserAuthCapability {
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A paginated list of `SavedAudiobook` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-users-saved-audiobooks)
     public func saved(limit: Int = 20, offset: Int = 0) async throws -> Page<SavedAudiobook> {
@@ -185,7 +185,7 @@ extension AudiobooksService where Capability == UserAuthCapability {
     /// Save one or more audiobooks to the current Spotify user's library.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/save-audiobooks-user)
     public func save(_ ids: Set<String>) async throws {
@@ -197,7 +197,7 @@ extension AudiobooksService where Capability == UserAuthCapability {
     /// Remove one or more audiobooks from the Spotify user's library.
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-audiobooks-user)
     public func remove(_ ids: Set<String>) async throws {
@@ -210,7 +210,7 @@ extension AudiobooksService where Capability == UserAuthCapability {
     ///
     /// - Parameter ids: A list of Spotify IDs (max 50).
     /// - Returns: An array of booleans corresponding to the IDs requested.
-    /// - Throws: `SpotifyError` if the request fails or ID limit is exceeded.
+    /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/check-users-saved-audiobooks)
     public func checkSaved(_ ids: Set<String>) async throws -> [Bool] {

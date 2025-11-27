@@ -67,5 +67,5 @@ For comprehensive patterns and best practices, see <doc:CommonPatterns>.
 
 ### Examples
 
-- [Hummingbird Server Example](https://github.com/dh85/SpotifyKit/tree/main/Examples/HummingbirdServer)
-- [CLI Example](https://github.com/dh85/SpotifyKit/tree/main/Examples/SpotifyCLI)
+Review the repository's `Examples/HummingbirdServer` and `Examples/SpotifyCLI` folders for end-to-end
+reference implementations.

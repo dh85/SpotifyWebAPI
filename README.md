@@ -165,4 +165,4 @@ This project is licensed under the MIT License.
 
 ## Contributing
 
-New to the codebase? Start with the [Contributor Guide](Docs/ContributorGuide.md) for architecture diagrams, checklists, and a “how to add a service” walkthrough.
+New to the codebase? Start with the [Contributor Guide](DeveloperDocs/ContributorGuide.md) for architecture diagrams, checklists, and a “how to add a service” walkthrough.

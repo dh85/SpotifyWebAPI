@@ -57,7 +57,7 @@ import Foundation
 /// try await client.playlists.addTracks(manyTracks, to: "playlist_id")
 /// ```
 ///
-/// - SeeAlso: ``PlaylistsServiceExtensions`` for batch operations
+/// - Note: Batch helpers for adding/removing many tracks live in `PlaylistsServiceExtensions.swift`.
 ///
 /// ## Combine Counterparts
 ///
@@ -85,7 +85,7 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     ///   - fields: A comma-separated list of fields to filter the response.
     ///   - additionalTypes: A set of item types to include (track, episode).
     /// - Returns: A full `Playlist` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist)
     public func get(
@@ -121,7 +121,7 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     ///   - offset: The index of the first item to return. Default: 0.
     ///   - additionalTypes: A set of item types to include (track, episode).
     /// - Returns: A `Page` object containing `PlaylistTrackItem` items.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlists-tracks)
     public func items(
@@ -165,7 +165,7 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     ///   - additionalTypes: A set of item types to include (track, episode).
     ///   - maxItems: Limit on total items to fetch. Default: 5,000. Use `nil` for unlimited.
     /// - Returns: Array of all `PlaylistTrackItem` objects.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlists-tracks)
     public func allItems(
@@ -223,7 +223,8 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
 
     /// Streams entire `Page` batches of playlist items for scenarios that prefer chunked updates.
     ///
-    /// - Parameters mirror ``streamItems`` but replace `maxItems` with `maxPages`.
+    /// - Parameters mirror ``streamItems(_:market:fields:additionalTypes:maxItems:)`` but replace
+    ///   `maxItems` with `maxPages`.
     /// - Returns: Async sequence yielding raw playlist item pages.
     public func streamItemPages(
         _ id: String,
@@ -269,7 +270,7 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A `Page` of `SimplifiedPlaylist` objects.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-list-users-playlists)
     public func userPlaylists(userID: String, limit: Int = 20, offset: Int = 0)
@@ -288,7 +289,7 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     ///
     /// - Parameter id: The Spotify ID for the playlist.
     /// - Returns: A list of `SpotifyImage` objects.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlist-cover)
     public func coverImage(id: String) async throws -> [SpotifyImage] {
@@ -310,7 +311,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - limit: The number of items to return (1-50). Default: 20.
     ///   - offset: The index of the first item to return. Default: 0.
     /// - Returns: A `Page` of `SimplifiedPlaylist` objects.
-    /// - Throws: `SpotifyError` if the request fails or limit is out of bounds.
+    /// - Throws: `SpotifyClientError` if the request fails or limit is out of bounds.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
     public func myPlaylists(limit: Int = 20, offset: Int = 0) async throws
@@ -332,7 +333,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///
     /// - Parameter maxItems: Limit on total playlists to fetch. Default: 1,000. Use `nil` for unlimited.
     /// - Returns: Array of all `SimplifiedPlaylist` objects.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
     public func allMyPlaylists(maxItems: Int? = 1000) async throws -> [SimplifiedPlaylist] {
@@ -373,7 +374,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - collaborative: `true` to make collaborative (defaults to false).
     ///   - description: The playlist description.
     /// - Returns: The newly created `Playlist` object.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/create-playlist)
     public func create(
@@ -403,7 +404,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - isPublic: `true` for public, `false` for private.
     ///   - collaborative: `true` to make collaborative.
     ///   - description: The new description.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/change-playlist-details)
     public func changeDetails(
@@ -434,7 +435,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - uris: A list of track/episode URIs to add (max 100).
     ///   - position: The 0-indexed position to insert the items. If omitted, items are appended.
     /// - Returns: A new `snapshotId` for the playlist.
-    /// - Throws: `SpotifyError` if the request fails or URI count exceeds 100.
+    /// - Throws: `SpotifyClientError` if the request fails or URI count exceeds 100.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/add-tracks-to-playlist)
     public func add(to id: String, uris: [String], position: Int? = nil) async throws -> String {
@@ -457,7 +458,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - uris: A list of track/episode URIs to remove (max 100).
     ///   - snapshotId: The playlist's snapshot ID.
     /// - Returns: A new `snapshotId` for the playlist.
-    /// - Throws: `SpotifyError` if the request fails or URI count exceeds 100.
+    /// - Throws: `SpotifyClientError` if the request fails or URI count exceeds 100.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-tracks-playlist)
     public func remove(from id: String, uris: [String], snapshotId: String? = nil) async throws
@@ -482,7 +483,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - positions: An array of 0-indexed positions of tracks to remove (max 100).
     ///   - snapshotId: The playlist's snapshot ID.
     /// - Returns: A new `snapshotId` for the playlist.
-    /// - Throws: `SpotifyError` if the request fails or position count exceeds 100.
+    /// - Throws: `SpotifyClientError` if the request fails or position count exceeds 100.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/remove-tracks-playlist)
     public func remove(from id: String, positions: [Int], snapshotId: String? = nil) async throws
@@ -509,7 +510,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - rangeLength: The number of items to move. Defaults to 1.
     ///   - snapshotId: The playlist's snapshot ID.
     /// - Returns: A new `snapshotId` for the playlist.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/reorder-or-replace-playlists-tracks)
     public func reorder(
@@ -537,7 +538,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
     ///   - uris: A list of track/episode URIs to set (max 100).
-    /// - Throws: `SpotifyError` if the request fails or URI count exceeds 100.
+    /// - Throws: `SpotifyClientError` if the request fails or URI count exceeds 100.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/reorder-or-replace-playlists-tracks)
     public func replace(itemsIn id: String, with uris: [String]) async throws {
@@ -554,7 +555,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
     ///   - jpegData: The raw image data (must be a JPEG).
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/upload-custom-playlist-cover)
     public func uploadCoverImage(for id: String, jpegData: Data) async throws {
@@ -579,7 +580,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// - Parameters:
     ///   - id: The Spotify ID for the playlist.
     ///   - isPublic: If true, the playlist will be public.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/follow-playlist)
     public func follow(_ id: String, isPublic: Bool = true) async throws {
@@ -594,7 +595,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     /// Corresponds to: `DELETE /v1/playlists/{id}/followers`.
     ///
     /// - Parameter id: The Spotify ID for the playlist.
-    /// - Throws: `SpotifyError` if the request fails.
+    /// - Throws: `SpotifyClientError` if the request fails.
     ///
     /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/unfollow-playlist)
     public func unfollow(_ id: String) async throws {

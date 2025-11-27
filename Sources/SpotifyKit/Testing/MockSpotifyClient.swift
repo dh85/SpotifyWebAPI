@@ -252,7 +252,6 @@ public final class MockSpotifyClient: SpotifyClientProtocol, @unchecked Sendable
     ///   - playlists: Mock data for playlists collection
     ///   - playlistsTotal: Total count for playlists pagination
     ///   - playlistsHref: Base URL for playlists pagination
-    ///   - artist: Mock data for artist requests
     ///   - playbackState: Mock data for playback state requests
     ///   - error: Mock error to throw from all requests
     /// - Returns: Self for method chaining

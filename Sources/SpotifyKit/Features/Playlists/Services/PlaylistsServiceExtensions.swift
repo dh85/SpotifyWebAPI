@@ -26,7 +26,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - trackURIs: Track/episode URIs to add (e.g., "spotify:track:abc123").
     ///   - playlistID: The Spotify ID for the playlist.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func addTracks(
         _ trackURIs: [String],
         to playlistID: String,
@@ -65,7 +65,7 @@ extension PlaylistsService where Capability == UserAuthCapability {
     ///   - trackURIs: Track/episode URIs to remove (e.g., "spotify:track:abc123").
     ///   - playlistID: The Spotify ID for the playlist.
     ///   - progress: Optional callback invoked before processing each batch.
-    /// - Throws: ``SpotifyError`` if any request fails.
+    /// - Throws: ``SpotifyClientError`` if any request fails.
     public func removeTracks(
         _ trackURIs: [String],
         from playlistID: String,
