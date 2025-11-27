@@ -86,7 +86,7 @@ struct PlaylistsServiceTests {
         await http.addMockResponse(data: first, statusCode: 200)
         await http.addMockResponse(data: second, statusCode: 200)
 
-        let stream = await client.playlists.streamItemPages("playlist123")
+        let stream = client.playlists.streamItemPages("playlist123")
         let pages = try await collectStreamItems(stream)
 
         #expect(pages.count == 2)
@@ -182,7 +182,7 @@ struct PlaylistsServiceTests {
         await http.addMockResponse(data: first, statusCode: 200)
         await http.addMockResponse(data: second, statusCode: 200)
 
-        let stream = await client.playlists.streamMyPlaylistPages()
+        let stream = client.playlists.streamMyPlaylistPages()
         let pages = try await collectStreamItems(stream)
         let totalItems = pages.reduce(0) { $0 + $1.items.count }
 
@@ -659,7 +659,7 @@ struct PlaylistsServiceTests {
             // Mock 2 pages (one already queued)
             await http.addMockResponse(data: itemsData, statusCode: 200)
 
-            let stream = await client.playlists.streamItems("playlist123")
+            let stream = client.playlists.streamItems("playlist123")
             let items = try await collectStreamItems(stream)
 
             #expect(items.count > 0)
@@ -676,7 +676,7 @@ struct PlaylistsServiceTests {
 
             await http.addMockResponse(data: itemsData, statusCode: 200)
 
-            let stream = await client.playlists.streamItems("playlist123", maxItems: 1)
+            let stream = client.playlists.streamItems("playlist123", maxItems: 1)
             let items = try await collectStreamItems(stream)
 
             // Should stop at maxItems
@@ -694,7 +694,7 @@ struct PlaylistsServiceTests {
 
             await http.addMockResponse(data: itemsData, statusCode: 200)
 
-            let stream = await client.playlists.streamItems(
+            let stream = client.playlists.streamItems(
                 "playlist123",
                 market: "US",
                 fields: "items(track(name))",

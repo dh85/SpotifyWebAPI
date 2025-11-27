@@ -123,7 +123,7 @@ struct AudiobooksServiceTests {
             hasNext: false
         )
 
-        let stream = await client.audiobooks.streamChapterPages(
+        let stream = client.audiobooks.streamChapterPages(
             for: "audiobook123",
             market: "GB",
             pageSize: 40,
@@ -149,7 +149,7 @@ struct AudiobooksServiceTests {
             hasNext: false
         )
 
-        let stream = await client.audiobooks.streamChapters(
+        let stream = client.audiobooks.streamChapters(
             for: "audiobook123",
             market: "DE",
             pageSize: 35,
@@ -229,7 +229,7 @@ struct AudiobooksServiceTests {
             http: http
         )
 
-        let stream = await client.audiobooks.streamSavedAudiobooks(maxItems: 1)
+        let stream = client.audiobooks.streamSavedAudiobooks(maxItems: 1)
         let collected = try await collectStreamItems(stream)
 
         #expect(collected.count == 1)
@@ -245,7 +245,7 @@ struct AudiobooksServiceTests {
             http: http
         )
 
-        let stream = await client.audiobooks.streamSavedAudiobookPages(maxPages: 2)
+        let stream = client.audiobooks.streamSavedAudiobookPages(maxPages: 2)
         let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0, 50])

@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US"]
             ) { client in
-                let episodes = await client.episodes
+                let episodes = client.episodes
                 return episodes.getPublisher("episode123", market: "US")
             }
 
@@ -40,7 +40,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let episodesService = await client.episodes
+                let episodesService = client.episodes
                 return episodesService.severalPublisher(ids: ids, market: "ES")
             }
 
@@ -50,7 +50,7 @@
         @Test("severalPublisher validates ID limit")
         func severalPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let episodes = await client.episodes
+            let episodes = client.episodes
 
             await expectPublisherIDBatchLimit(max: 50) { ids in
                 episodes.severalPublisher(ids: ids)
@@ -68,7 +68,7 @@
                     expectMarketParameter(request, market: "DE")
                 }
             ) { client in
-                let episodes = await client.episodes
+                let episodes = client.episodes
                 return episodes.savedPublisher(limit: 10, offset: 5, market: "DE")
             }
 
@@ -78,7 +78,7 @@
         @Test("savedPublisher validates limit")
         func savedPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let episodes = await client.episodes
+            let episodes = client.episodes
 
             await expectPublisherLimitValidation { limit in
                 episodes.savedPublisher(limit: limit)
@@ -94,7 +94,7 @@
                     expectSavedStreamRequest(request, path: "/v1/me/episodes", market: "CA")
                 }
             ) { client in
-                let episodes = await client.episodes
+                let episodes = client.episodes
                 return episodes.allSavedEpisodesPublisher(market: "CA", maxItems: 100)
             }
         }
@@ -107,7 +107,7 @@
                 method: "PUT",
                 ids: ids
             ) { client, ids in
-                let episodes = await client.episodes
+                let episodes = client.episodes
                 return episodes.savePublisher(ids)
             }
         }
@@ -115,7 +115,7 @@
         @Test("savePublisher validates limit")
         func savePublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let episodes = await client.episodes
+            let episodes = client.episodes
 
             await expectPublisherIDBatchLimit(max: 50) { ids in
                 episodes.savePublisher(ids)
@@ -130,7 +130,7 @@
                 method: "DELETE",
                 ids: ids
             ) { client, ids in
-                let episodes = await client.episodes
+                let episodes = client.episodes
                 return episodes.removePublisher(ids)
             }
         }
@@ -146,7 +146,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let episodes = await client.episodes
+                let episodes = client.episodes
                 return episodes.checkSavedPublisher(ids)
             }
 

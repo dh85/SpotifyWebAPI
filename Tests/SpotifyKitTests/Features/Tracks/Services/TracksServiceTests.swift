@@ -139,7 +139,7 @@ struct TracksServiceTests {
             http: http
         )
 
-        let stream = await client.tracks.streamSavedTracks(maxItems: 1)
+        let stream = client.tracks.streamSavedTracks(maxItems: 1)
         let collected = try await collectStreamItems(stream)
 
         #expect(collected.count == 1)
@@ -155,7 +155,7 @@ struct TracksServiceTests {
             http: http
         )
 
-        let stream = await client.tracks.streamSavedTrackPages(market: "US")
+        let stream = client.tracks.streamSavedTrackPages(market: "US")
         let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0, 50])

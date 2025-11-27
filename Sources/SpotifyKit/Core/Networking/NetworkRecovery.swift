@@ -89,7 +89,7 @@ actor NetworkRecoveryHandler {
     }
 
     /// Executes a network operation with automatic retry on failure.
-    func executeWithRecovery<T>(
+    func executeWithRecovery<T: Sendable>(
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
         var lastError: Error?

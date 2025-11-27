@@ -20,7 +20,7 @@
                 path: "/v1/artists/artist123",
                 method: "GET"
             ) { client in
-                let artists = await client.artists
+                let artists = client.artists
                 return artists.getPublisher("artist123")
             }
 
@@ -38,7 +38,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let artistsService = await client.artists
+                let artistsService = client.artists
                 return artistsService.severalPublisher(ids: ids)
             }
 
@@ -48,7 +48,7 @@
         @Test("severalPublisher surfaces validation errors")
         func severalPublisherValidationErrors() async {
             let (client, _) = makeUserAuthClient()
-            let artistsService = await client.artists
+            let artistsService = client.artists
 
             await expectPublisherIDBatchLimit(max: 50) { ids in
                 artistsService.severalPublisher(ids: ids)
@@ -68,7 +68,7 @@
                     "include_groups=appears_on,single",
                 ]
             ) { client in
-                let artists = await client.artists
+                let artists = client.artists
                 return artists.albumsPublisher(
                     for: "artist123",
                     includeGroups: [.single, .appearsOn],
@@ -93,7 +93,7 @@
                     #expect(query?.contains("include_groups=") == false)
                 }
             ) { client in
-                let artists = await client.artists
+                let artists = client.artists
                 return artists.albumsPublisher(
                     for: "artist123",
                     includeGroups: [],
@@ -105,7 +105,7 @@
         @Test("albumsPublisher validates limits")
         func albumsPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let artists = await client.artists
+            let artists = client.artists
 
             await expectPublisherLimitValidation { limit in
                 artists.albumsPublisher(for: "artist123", limit: limit)
@@ -120,7 +120,7 @@
                 method: "GET",
                 queryContains: ["market=GB"]
             ) { client in
-                let artists = await client.artists
+                let artists = client.artists
                 return artists.topTracksPublisher(for: "artist123", market: "GB")
             }
 

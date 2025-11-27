@@ -140,7 +140,7 @@ struct EpisodesServiceTests {
             http: http
         )
 
-        let stream = await client.episodes.streamSavedEpisodes(market: "US", maxItems: 1)
+        let stream = client.episodes.streamSavedEpisodes(market: "US", maxItems: 1)
         let collected = try await collectStreamItems(stream)
 
         #expect(collected.count == 1)
@@ -156,7 +156,7 @@ struct EpisodesServiceTests {
             http: http
         )
 
-        let stream = await client.episodes.streamSavedEpisodePages(market: "CA", maxPages: 2)
+        let stream = client.episodes.streamSavedEpisodePages(market: "CA", maxPages: 2)
         let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0, 50])

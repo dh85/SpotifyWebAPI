@@ -205,37 +205,6 @@
             }
         }
 
-        /// Follow a playlist.
-        ///
-        /// - Parameters:
-        ///   - id: The Spotify ID for the playlist.
-        ///   - isPublic: Whether the playlist should be public.
-        ///   - priority: The priority of the task.
-        /// - Returns: A publisher that emits `Void` when successful.
-        public func followPublisher(
-            playlist id: String,
-            isPublic: Bool = true,
-            priority: TaskPriority? = nil
-        ) -> AnyPublisher<Void, Error> {
-            publisher(priority: priority) { service in
-                try await service.follow(playlist: id, isPublic: isPublic)
-            }
-        }
-
-        /// Unfollow a playlist.
-        ///
-        /// - Parameters:
-        ///   - id: The Spotify ID for the playlist.
-        ///   - priority: The priority of the task.
-        /// - Returns: A publisher that emits `Void` when successful.
-        public func unfollowPublisher(
-            playlist id: String,
-            priority: TaskPriority? = nil
-        ) -> AnyPublisher<Void, Error> {
-            publisher(priority: priority) { service in
-                try await service.unfollow(playlist: id)
-            }
-        }
     }
 
 #endif

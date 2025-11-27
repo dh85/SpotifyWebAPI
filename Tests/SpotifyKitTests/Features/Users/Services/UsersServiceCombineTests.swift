@@ -20,7 +20,7 @@
                 path: "/v1/me",
                 method: "GET"
             ) { client in
-                let users = await client.users
+                let users = client.users
                 return users.mePublisher()
             }
 
@@ -39,7 +39,7 @@
                     "offset=5",
                 ]
             ) { client in
-                let users = await client.users
+                let users = client.users
                 return users.topArtistsPublisher(timeRange: .shortTerm, limit: 10, offset: 5)
             }
 
@@ -49,7 +49,7 @@
         @Test("followPublisher surfaces validation errors")
         func followPublisherPropagatesValidationErrors() async {
             let (client, _) = makeUserAuthClient()
-            let users = await client.users
+            let users = client.users
             let ids = makeIDs(count: 51)
             let publisher = users.followPublisher(artists: ids)
 
@@ -65,7 +65,7 @@
                 path: "/v1/users/user123",
                 method: "GET"
             ) { client in
-                let users = await client.users
+                let users = client.users
                 return users.getPublisher("user123")
             }
 
@@ -78,7 +78,7 @@
             let response = "[true,false]".data(using: .utf8)!
             await http.addMockResponse(data: response, statusCode: 200)
 
-            let users = await client.users
+            let users = client.users
             let ids: Set<String> = ["userA", "userB"]
             let results = try await awaitFirstValue(
                 users.checkFollowingPublisher(playlist: "playlist123", users: ids)
@@ -106,7 +106,7 @@
                     "offset=2",
                 ]
             ) { client in
-                let users = await client.users
+                let users = client.users
                 return users.topTracksPublisher(timeRange: .longTerm, limit: 15, offset: 2)
             }
 
@@ -125,7 +125,7 @@
                     "after=artist123",
                 ]
             ) { client in
-                let users = await client.users
+                let users = client.users
                 return users.followedArtistsPublisher(limit: 10, after: "artist123")
             }
 
@@ -142,7 +142,7 @@
                 queryContains: ["type=artist"],
                 statusCode: 204
             ) { client, ids in
-                let users = await client.users
+                let users = client.users
                 return users.followPublisher(artists: ids)
             }
         }
@@ -157,7 +157,7 @@
                 queryContains: ["type=user"],
                 statusCode: 204
             ) { client, ids in
-                let users = await client.users
+                let users = client.users
                 return users.followPublisher(users: ids)
             }
         }
@@ -172,7 +172,7 @@
                 queryContains: ["type=artist"],
                 statusCode: 204
             ) { client, ids in
-                let users = await client.users
+                let users = client.users
                 return users.unfollowPublisher(artists: ids)
             }
         }
@@ -187,7 +187,7 @@
                 queryContains: ["type=user"],
                 statusCode: 204
             ) { client, ids in
-                let users = await client.users
+                let users = client.users
                 return users.unfollowPublisher(users: ids)
             }
         }
@@ -198,7 +198,7 @@
             let response = "[true,false,true]".data(using: .utf8)!
             await http.addMockResponse(data: response, statusCode: 200)
 
-            let users = await client.users
+            let users = client.users
             let ids = makeIDs(prefix: "artist_", count: 3)
             let result = try await awaitFirstValue(users.checkFollowingPublisher(artists: ids))
 
@@ -219,7 +219,7 @@
             let response = "[false,true]".data(using: .utf8)!
             await http.addMockResponse(data: response, statusCode: 200)
 
-            let users = await client.users
+            let users = client.users
             let ids = makeIDs(prefix: "user_", count: 2)
             let result = try await awaitFirstValue(users.checkFollowingPublisher(users: ids))
 

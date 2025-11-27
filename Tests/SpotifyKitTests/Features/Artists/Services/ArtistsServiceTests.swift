@@ -168,7 +168,7 @@ struct ArtistsServiceTests {
             hasNext: false
         )
 
-        let stream = await client.artists.streamAlbumPages(
+        let stream = client.artists.streamAlbumPages(
             for: "artist123",
             includeGroups: [.album],
             market: "US",
@@ -195,7 +195,7 @@ struct ArtistsServiceTests {
             hasNext: false
         )
 
-        let stream = await client.artists.streamAlbums(
+        let stream = client.artists.streamAlbums(
             for: "artist123",
             includeGroups: [.album],
             market: "FR",

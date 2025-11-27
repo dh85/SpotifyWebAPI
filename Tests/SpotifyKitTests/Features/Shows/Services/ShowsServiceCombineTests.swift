@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US"]
             ) { client in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.getPublisher("showid", market: "US")
             }
 
@@ -40,7 +40,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.severalPublisher(ids: ids, market: "ES")
             }
 
@@ -55,7 +55,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=5", "market=CA"]
             ) { client in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.episodesPublisher(
                     for: "showid",
                     limit: 10,
@@ -70,7 +70,7 @@
         @Test("episodesPublisher validates limits")
         func episodesPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let shows = await client.shows
+            let shows = client.shows
 
             await expectPublisherLimitValidation { limit in
                 shows.episodesPublisher(for: "showid", limit: limit)
@@ -85,7 +85,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=5"]
             ) { client in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.savedPublisher(limit: 10, offset: 5)
             }
 
@@ -95,7 +95,7 @@
         @Test("savedPublisher validates limits")
         func savedPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let shows = await client.shows
+            let shows = client.shows
 
             await expectPublisherLimitValidation { limit in
                 shows.savedPublisher(limit: limit)
@@ -108,7 +108,7 @@
                 fixture: "shows_saved.json",
                 of: SavedShow.self
             ) { client in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.allSavedShowsPublisher()
             }
         }
@@ -121,7 +121,7 @@
                 method: "PUT",
                 ids: ids
             ) { client, ids in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.savePublisher(ids)
             }
         }
@@ -134,7 +134,7 @@
                 method: "DELETE",
                 ids: ids
             ) { client, ids in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.removePublisher(ids)
             }
         }
@@ -150,7 +150,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let shows = await client.shows
+                let shows = client.shows
                 return shows.checkSavedPublisher(ids)
             }
 

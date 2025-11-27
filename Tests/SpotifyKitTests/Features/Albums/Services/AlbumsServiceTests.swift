@@ -123,7 +123,7 @@ struct AlbumsServiceTests {
             hasNext: false
         )
 
-        let stream = await client.albums.streamTrackPages(
+        let stream = client.albums.streamTrackPages(
             "album123",
             market: "US",
             pageSize: 25,
@@ -149,7 +149,7 @@ struct AlbumsServiceTests {
             hasNext: false
         )
 
-        let stream = await client.albums.streamTracks(
+        let stream = client.albums.streamTracks(
             "album123",
             market: "SE",
             pageSize: 30,
@@ -231,7 +231,7 @@ struct AlbumsServiceTests {
             http: http
         )
 
-        let stream = await client.albums.streamSavedAlbums(maxItems: 1)
+        let stream = client.albums.streamSavedAlbums(maxItems: 1)
         let collected = try await collectStreamItems(stream)
 
         #expect(collected.count == 1)
@@ -247,7 +247,7 @@ struct AlbumsServiceTests {
             http: http
         )
 
-        let stream = await client.albums.streamSavedAlbumPages(maxPages: 2)
+        let stream = client.albums.streamSavedAlbumPages(maxPages: 2)
         let offsets = try await collectPageOffsets(stream)
         #expect(offsets == [0, 50])
         expectSavedStreamRequest(await http.firstRequest, path: "/v1/me/albums")

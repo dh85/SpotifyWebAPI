@@ -117,7 +117,7 @@ struct ShowsServiceTests {
             hasNext: false
         )
 
-        let stream = await client.shows.streamEpisodePages(
+        let stream = client.shows.streamEpisodePages(
             for: "showid",
             market: "CA",
             pageSize: 30,
@@ -143,7 +143,7 @@ struct ShowsServiceTests {
             hasNext: false
         )
 
-        let stream = await client.shows.streamEpisodes(
+        let stream = client.shows.streamEpisodes(
             for: "show123",
             market: "CA",
             pageSize: 30,
@@ -216,7 +216,7 @@ struct ShowsServiceTests {
             http: http
         )
 
-        let stream = await client.shows.streamSavedShows(maxItems: 1)
+        let stream = client.shows.streamSavedShows(maxItems: 1)
         let collected = try await collectStreamItems(stream)
 
         #expect(collected.count == 1)
@@ -232,7 +232,7 @@ struct ShowsServiceTests {
             http: http
         )
 
-        let stream = await client.shows.streamSavedShowPages(maxPages: 2)
+        let stream = client.shows.streamSavedShowPages(maxPages: 2)
         let offsets = try await collectPageOffsets(stream)
 
         #expect(offsets == [0, 50])

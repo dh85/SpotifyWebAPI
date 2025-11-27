@@ -67,7 +67,7 @@ public struct SpotifyClientConfiguration: Sendable {
         requestTimeout: TimeInterval = 30,
         maxRateLimitRetries: Int = 1,
         networkRecovery: NetworkRecoveryConfiguration = .default,
-        customHeaders: consuming [String: String] = [:],
+        customHeaders: [String: String] = [:],
         debug: DebugConfiguration = .disabled,
         apiBaseURL: URL = URL(string: "https://api.spotify.com/v1")!
     ) {
@@ -88,7 +88,7 @@ public struct SpotifyClientConfiguration: Sendable {
         maxRateLimitRetries: Int = 1,
         networkRecovery: NetworkRecoveryConfiguration = .default,
         requestDeduplicationEnabled: Bool,
-        customHeaders: consuming [String: String] = [:],
+        customHeaders: [String: String] = [:],
         debug: DebugConfiguration = .disabled,
         apiBaseURL: URL = URL(string: "https://api.spotify.com/v1")!
     ) {

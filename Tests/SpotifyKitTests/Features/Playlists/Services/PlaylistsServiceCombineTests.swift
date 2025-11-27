@@ -25,7 +25,7 @@
                     "additional_types=episode,track",
                 ]
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.getPublisher(
                     "playlist123",
                     market: "US",
@@ -51,7 +51,7 @@
                     "additional_types=episode",
                 ]
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.itemsPublisher(
                     "playlist123",
                     market: "US",
@@ -68,7 +68,7 @@
         @Test("itemsPublisher validates limits")
         func itemsPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let playlists = await client.playlists
+            let playlists = client.playlists
             await expectPublisherLimitValidation { limit in
                 playlists.itemsPublisher("playlist123", limit: limit)
             }
@@ -80,7 +80,7 @@
                 fixture: "playlist_tracks.json",
                 of: PlaylistTrackItem.self
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.allItemsPublisher("playlist123")
             }
         }
@@ -93,7 +93,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=5"]
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.userPlaylistsPublisher(userID: "user123", limit: 10, offset: 5)
             }
 
@@ -107,7 +107,7 @@
                 path: "/v1/playlists/playlist123/images",
                 method: "GET"
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.coverImagePublisher(id: "playlist123")
             }
 
@@ -122,7 +122,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=5"]
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.myPlaylistsPublisher(limit: 10, offset: 5)
             }
 
@@ -135,7 +135,7 @@
                 fixture: "playlists_user.json",
                 of: SimplifiedPlaylist.self
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.allMyPlaylistsPublisher()
             }
         }
@@ -148,7 +148,7 @@
                 method: "POST",
                 statusCode: 201
             ) { client in
-                let playlists = await client.playlists
+                let playlists = client.playlists
                 return playlists.createPublisher(
                     for: "user123",
                     name: "My Playlist",
@@ -163,7 +163,7 @@
         func changeDetailsPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 200)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             _ = try await awaitFirstValue(
                 playlists.changeDetailsPublisher(
@@ -182,7 +182,7 @@
             let (client, http) = makeUserAuthClient()
             let snapshotData = "{\"snapshot_id\":\"snap123\"}".data(using: .utf8)!
             await http.addMockResponse(data: snapshotData, statusCode: 201)
-            let playlists = await client.playlists
+            let playlists = client.playlists
             let ids = ["spotify:track:1", "spotify:track:2"]
 
             let snapshot = try await awaitFirstValue(
@@ -199,7 +199,7 @@
         @Test("addPublisher validates URI count")
         func addPublisherValidatesURICount() async {
             let (client, _) = makeUserAuthClient()
-            let playlists = await client.playlists
+            let playlists = client.playlists
             let uris = Array(repeating: "spotify:track:1", count: 101)
 
             do {
@@ -222,7 +222,7 @@
             let (client, http) = makeUserAuthClient()
             let snapshotData = "{\"snapshot_id\":\"snap456\"}".data(using: .utf8)!
             await http.addMockResponse(data: snapshotData, statusCode: 200)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             let snapshot = try await awaitFirstValue(
                 playlists.removePublisher(from: "playlist123", uris: ["spotify:track:1"])
@@ -241,11 +241,11 @@
             let (client, http) = makeUserAuthClient()
             let snapshotData = "{\"snapshot_id\":\"snap789\"}".data(using: .utf8)!
             await http.addMockResponse(data: snapshotData, statusCode: 200)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             let snapshot = try await awaitFirstValue(
                 playlists.removePublisher(
-                    from: "playlist123", positions: [0, 2], snapshotId: "snap123")
+                    from: "playlist123", positions: [0, 2], snapshotID: "snap123")
             )
 
             #expect(snapshot == "snap789")
@@ -261,11 +261,11 @@
             let (client, http) = makeUserAuthClient()
             let snapshotData = "{\"snapshot_id\":\"snap999\"}".data(using: .utf8)!
             await http.addMockResponse(data: snapshotData, statusCode: 200)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             let snapshot = try await awaitFirstValue(
                 playlists.reorderPublisher(
-                    id: "playlist123",
+                    in: "playlist123",
                     rangeStart: 0,
                     insertBefore: 5,
                     rangeLength: 2
@@ -280,14 +280,14 @@
             )
         }
 
-        @Test("replaceItemsPublisher builds correct request")
-        func replaceItemsPublisherBuildsRequest() async throws {
+        @Test("replacePublisher builds correct request")
+        func replacePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 201)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             _ = try await awaitFirstValue(
-                playlists.replaceItemsPublisher(in: "playlist123", with: ["spotify:track:1"])
+                playlists.replacePublisher(in: "playlist123", with: ["spotify:track:1"])
             )
 
             expectRequest(
@@ -302,7 +302,7 @@
         func uploadCoverImagePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 202)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             _ = try await awaitFirstValue(
                 playlists.uploadCoverImagePublisher(
@@ -318,7 +318,7 @@
         func followPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 200)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             _ = try await awaitFirstValue(playlists.followPublisher("playlist123", isPublic: true))
 
@@ -333,7 +333,7 @@
         func unfollowPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 200)
-            let playlists = await client.playlists
+            let playlists = client.playlists
 
             _ = try await awaitFirstValue(playlists.unfollowPublisher("playlist123"))
 
