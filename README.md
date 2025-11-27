@@ -26,6 +26,7 @@ Full API documentation is available here:
 - 📄 **Pagination Helpers**: AsyncSequences for streaming large collections of data effortlessly.
 - 🔌 **Offline Mode**: Toggle network access for testing or low-data environments.
 - ⚡ **Performance Optimised**: Uses modern Swift features like `consuming` parameters and Regex literals for maximum efficiency.
+- 🔐 **Secure Token Storage**: Defaults to Keychain on Apple platforms and restricted-file storage on Linux; plug in your own `TokenStore` if you need envelope encryption.
 
 ## Requirements
 
@@ -98,6 +99,8 @@ try await client.player.play(uri: "spotify:track:...")
 
 The library uses an Actor-based architecture to manage state safely across threads.
 
+### High-Level Components
+
 ```mermaid
 graph TD
     User[Your Code] --> Client["SpotifyClient (Actor)"]
@@ -118,6 +121,40 @@ graph TD
     end
 ```
 
+### Token & Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    actor App
+    App->>SpotifyClient: albums.saved(limit: 20)
+    SpotifyClient->>Authenticator: refreshAccessTokenIfNeeded()
+    Authenticator-->>SpotifyClient: SpotifyTokens
+    SpotifyClient->>Network: PreparedRequest
+    Network->>Spotify Web API: HTTPS Request
+    Spotify Web API-->>Network: HTTPURLResponse
+    Network-->>SpotifyClient: Decoded Page<Album>
+    SpotifyClient-->>App: Async response
+```
+
+### Layered View (ASCII)
+
+```
++---------------------------+     +-----------------------------+
+|   Your Feature / UI Layer | --> |   SpotifyClient (Actor)     |
++---------------------------+     +-----------------------------+
+                                       |
+                                       v
++---------------------------+     +-----------------------------+
+|   Service APIs (albums,   | --> |   Networking & Auth Stack   |
+|   playlists, search, ...) |     |   (Token store, retries)    |
++---------------------------+     +-----------------------------+
+                                       |
+                                       v
++---------------------------------------------------------------+
+|                   Spotify Web API over HTTPS                  |
++---------------------------------------------------------------+
+```
+
 - **SpotifyClient**: The central actor. It holds the `TokenStore` and `Authenticator`.
 - **Services**: Lightweight structs (e.g., `AlbumsService`) that expose specific API endpoints.
 - **Network Layer**: Handles URLSession tasks, JSON decoding, and error mapping. It automatically intercepts 401 errors to refresh tokens and 429 errors to back off and retry.
@@ -125,3 +162,7 @@ graph TD
 ## License
 
 This project is licensed under the MIT License.
+
+## Contributing
+
+New to the codebase? Start with the [Contributor Guide](Docs/ContributorGuide.md) for architecture diagrams, checklists, and a “how to add a service” walkthrough.

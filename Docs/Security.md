@@ -22,7 +22,34 @@ let client = URLSessionHTTPClient(session: pinnedSession)
 
 ## Protect Tokens & Scopes
 
-- Use `TokenStoreFactory.defaultStore()` for platform-appropriate secure storage (Keychain on Apple platforms, restricted file storage elsewhere).
+### Default Token Store Behaviour
+
+SpotifyKit automatically selects the most secure storage available on each platform:
+
+```mermaid
+graph LR
+    A[TokenStoreFactory.defaultStore()] -->|Apple OSes| B[KeychainTokenStore]
+    A -->|Linux / other| C[RestrictedFileTokenStore]
+```
+
+- **Apple platforms**: `KeychainTokenStore` stores credentials in the user keychain with `kSecAttrAccessibleAfterFirstUnlock`.
+- **Linux & other platforms**: `RestrictedFileTokenStore` persists JSON into a permissions-hardened directory (0700 folders / 0600 files).
+
+Usage pattern (always provide unique service & account identifiers):
+
+```swift
+let tokenStore = TokenStoreFactory.defaultStore(
+    service: "com.yourcompany.spotify.\(environment)",
+    account: currentUserID
+)
+```
+
+**Best practices**
+
+1. Use per-user `account` names so shared devices cannot load another user's tokens.
+2. For Apple platforms, share keychain groups via `service` if you embed extensions.
+3. On Linux, ensure the app runs under a dedicated user and that the filesystem is encrypted; otherwise, implement a custom token store (see envelope-encrypted example below).
+
 - Listen to `client.events.onTokenExpiring` to refresh UI widgets or expire sessions without printing raw tokens.
 - Build scope lists with the `SpotifyScope` enums and request only what the current feature needs.
 
