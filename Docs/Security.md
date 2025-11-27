@@ -111,6 +111,7 @@ struct SpotifyConfig {
         )
     }
 }
+```
 
 ## Test Without Real Accounts
 
