@@ -28,8 +28,8 @@ SpotifyKit automatically selects the most secure storage available on each platf
 
 ```mermaid
 graph LR
-    A[TokenStoreFactory.defaultStore()] -->|Apple OSes| B[KeychainTokenStore]
-    A -->|Linux / other| C[RestrictedFileTokenStore]
+    A[defaultStore()] -->|Apple| B[KeychainTokenStore]
+    A -->|Linux| C[RestrictedFileTokenStore]
 ```
 
 - **Apple platforms**: `KeychainTokenStore` stores credentials in the user keychain with `kSecAttrAccessibleAfterFirstUnlock`.
