@@ -14,7 +14,6 @@ jobs:
       - name: Build DocC archive
         run: |
             rm -rf docs
-            mkdir -p docs
             swift package generate-documentation \
               --target SpotifyKit \
               --disable-indexing \
