@@ -1,4 +1,4 @@
-# Modeling Spotify Data
+# Modelling Spotify Data
 
 You get strongly typed Swift models for every Spotify payload, so you can move straight from network responses to SwiftUI lists, Core Data, or widgets without manual JSON parsing.
 

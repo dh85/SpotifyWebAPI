@@ -88,7 +88,7 @@ for try await page in client.playlists.streamMyPlaylistPages() {
 
 Prefer the page-based APIs when you need progress updates, want to batch analytics, or plan to cache responses verbatim. Stick with the item variants when you simply need to process each entity sequentially.
 
-The same streaming ergonomics now cover the rest of Spotify's catalog endpoints. A few examples:
+The same streaming ergonomics now cover the rest of Spotify's catalogue endpoints. A few examples:
 
 ```swift
 // Artist discography filters (albums, singles, etc.)
@@ -119,7 +119,7 @@ for try await page in client.browse.streamCategoryPages(locale: "es_MX") {
 }
 ```
 
-Need item-by-item back-pressure instead? Every catalog helper that streams pages now has an item counterpart built on `streamItems`:
+Need item-by-item back-pressure instead? Every catalogue helper that streams pages now has an item counterpart built on `streamItems`:
 
 ```swift
 for try await album in client.artists.streamAlbums(for: artistID, pageSize: 40) {

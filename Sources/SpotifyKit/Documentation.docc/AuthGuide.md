@@ -44,7 +44,7 @@ let appOnlyClient = AppSpotifyClient
     .build()
 ```
 
-Prefer the fluent ``SpotifyClientConfiguration/withRequestTimeout(_:)`` and related helpers when you need a single tweak—they keep call sites concise and avoid spelling out every initializer argument.
+Prefer the fluent ``SpotifyClientConfiguration/withRequestTimeout(_:)`` and related helpers when you need a single tweak—they keep call sites concise and avoid spelling out every initialiser argument.
 
 Use ``SpotifyClientConfiguration`` when you need to tweak retries, debug logging, pinned hosts, or network recovery. The builder feeds that configuration directly into the resulting client so every flow shares the same resilience and telemetry policy.
 
