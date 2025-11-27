@@ -79,10 +79,12 @@
             let backend = MockTokenAuthenticator(token: AuthTestFixtures.sampleTokens())
             let client = SpotifyClient<UserAuthCapability>(backend: backend)
 
-                        // Filter for our specific test event to avoid noise from other tests
+            // Filter for our specific test event to avoid noise from other tests
             let performancePublisher = client.observerPublisher(bufferSize: 4)
                 .filter { event in
-                    if case .performance(let metrics) = event, metrics.operationName == "observer-test" {
+                    if case .performance(let metrics) = event,
+                        metrics.operationName == "observer-test"
+                    {
                         return true
                     }
                     return false
@@ -102,12 +104,12 @@
 
             let emitted = try await awaitFirstValue(performancePublisher)
             emitterTask.cancel()
-            
+
             guard case .performance(let emittedMetrics) = emitted else {
                 Issue.record("Expected performance event")
                 return
             }
-            
+
             #expect(emittedMetrics.operationName == metrics.operationName)
         }
     }
