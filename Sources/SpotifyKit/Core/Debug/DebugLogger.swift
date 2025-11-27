@@ -248,9 +248,6 @@ public struct DebugLogObserver: Hashable, Sendable {
 /// Debug logger for SpotifyKit
 @globalActor
 public actor DebugLogger {
-    @available(
-        *, deprecated, message: "Use instance-based logging via SpotifyClient.logger instead."
-    )
     public static let shared = DebugLogger()
 
     #if DEBUG
@@ -841,11 +838,6 @@ public struct PerformanceMeasurement {
         self.operationName = operationName
         self.startTime = Date()
         self.logger = logger
-    }
-
-    @available(*, deprecated, message: "Pass a DebugLogger instance explicitly.")
-    public init(_ operationName: String) {
-        self.init(operationName, logger: DebugLogger())
     }
 
     public mutating func incrementRetryCount() {
