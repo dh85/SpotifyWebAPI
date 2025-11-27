@@ -1,6 +1,6 @@
 import Foundation
 import Hummingbird
-import SpotifyWebAPI
+import SpotifyKit
 
 /// Controller that handles all Spotify-related endpoints
 struct SpotifyController {

@@ -1,4 +1,4 @@
-# SpotifyWebAPI Improvements Summary
+# SpotifyKit Improvements Summary
 
 This document summarizes the 5 major API improvements made to enhance developer experience and code clarity.
 
@@ -330,7 +330,7 @@ let results = try await client.search
     .inMarket("GB")
     .execute()
 
-// Combine publisher (iOS 13+, macOS 10.15+)
+// Combine publisher (iOS 16+, macOS 13+)
 var cancellables = Set<AnyCancellable>()
 
 client.search
@@ -390,7 +390,7 @@ All improvements include comprehensive test coverage:
 
 Updated the following documentation files:
 
-1. **SpotifyWebAPI.md** - Added convenience properties mention, fluent search example, Common Patterns guide reference
+1. **SpotifyKit.md** - Added convenience properties mention, fluent search example, Common Patterns guide reference
 2. **ModelsGuide.md** - Documented all convenience properties with examples
 3. **EndpointsGuide.md** - Added comprehensive usage examples for all major features
 4. **SearchService.swift** - Added fluent API documentation and examples

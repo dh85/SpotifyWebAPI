@@ -1,6 +1,6 @@
 # Network Security & TLS Customization
 
-Some deployments must enforce certificate pinning, custom trust stores, or stricter TLS protocol settings than the system defaults. The SpotifyWebAPI package keeps the transport stack swappable so you can inject those policies without forking the library.
+Some deployments must enforce certificate pinning, custom trust stores, or stricter TLS protocol settings than the system defaults. The SpotifyKit package keeps the transport stack swappable so you can inject those policies without forking the library.
 
 ## Default Transport
 
@@ -17,7 +17,7 @@ import Foundation
 #if canImport(Security)
 import Security
 #endif
-import SpotifyWebAPI
+import SpotifyKit
 
 final class PinnedCertificatesDelegate: NSObject, URLSessionDelegate {
     private let pinnedCertificates: Set<Data>
@@ -81,7 +81,7 @@ let client = SpotifyClient.authorizationCode(
 ```
 
 Key points:
-- The `sessionFactory` closure exposes the `URLSessionConfiguration` that SpotifyWebAPI already tunes (ephemeral cache policy, timeouts). You can further adjust TLS-only knobs before creating the session.
+- The `sessionFactory` closure exposes the `URLSessionConfiguration` that SpotifyKit already tunes (ephemeral cache policy, timeouts). You can further adjust TLS-only knobs before creating the session.
 - Keep the delegate out of `URLSessionHTTPClient` so reused Spotify clients share the same pin set.
 - Consider shipping multiple pins (primary + backups) to avoid downtime when Spotify rotates certificates.
 
@@ -98,7 +98,7 @@ struct MyHTTPClient: HTTPClient {
 }
 ```
 
-Inject that client into every `SpotifyClient` you create. This keeps all certificate logic inside your own networking stack while the rest of SpotifyWebAPI remains unchanged.
+Inject that client into every `SpotifyClient` you create. This keeps all certificate logic inside your own networking stack while the rest of SpotifyKit remains unchanged.
 
 ### Pinning on Linux/Windows (No `Security` Framework)
 
@@ -163,4 +163,4 @@ Key takeaways:
 
 ## Operational Guidance
 
-- Re-run your TLS tests whenever you upgrade SpotifyWebAPI, since HTTP defaults (timeouts, cache policy) may evolve.
+- Re-run your TLS tests whenever you upgrade SpotifyKit, since HTTP defaults (timeouts, cache policy) may evolve.

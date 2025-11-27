@@ -1,0 +1,24 @@
+{
+    "devices": [
+        {
+            "id": "device_1",
+            "is_active": true,
+            "is_private_session": false,
+            "is_restricted": false,
+            "name": "Test Computer",
+            "type": "computer",
+            "volume_percent": 75,
+            "supports_volume": true
+        },
+        {
+            "id": "device_2",
+            "is_active": false,
+            "is_private_session": false,
+            "is_restricted": false,
+            "name": "Test Phone",
+            "type": "smartphone",
+            "volume_percent": 50,
+            "supports_volume": true
+        }
+    ]
+}

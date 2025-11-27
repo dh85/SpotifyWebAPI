@@ -1,7 +1,7 @@
 import Foundation
-import SpotifyWebAPI
+import SpotifyKit
 
-// MARK: - Mappers: Convert SpotifyWebAPI models to Response models
+// MARK: - Mappers: Convert SpotifyKit models to Response models
 
 // Typealias to resolve naming conflict with nested PlayHistoryItem type
 typealias SpotifyPlayHistoryItem = PlayHistoryItem

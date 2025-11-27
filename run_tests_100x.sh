@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cd /Users/davidhughes/dev/SpotifyWebAPI
+cd /Users/davidhughes/dev/SpotifyKit
 
 echo "Running tests 100 times to check for flakiness..."
 echo ""

@@ -1,6 +1,6 @@
 # Async Sequence Utilities
 
-SpotifyWebAPI leans on Swift's `AsyncSequence` APIs to expose long-running pagination work in a safe and cancellable way. This guide highlights the core helpers now available along with small code samples you can copy into your app.
+SpotifyKit leans on Swift's `AsyncSequence` APIs to expose long-running pagination work in a safe and cancellable way. This guide highlights the core helpers now available along with small code samples you can copy into your app.
 
 ## PaginationStreamBuilder
 

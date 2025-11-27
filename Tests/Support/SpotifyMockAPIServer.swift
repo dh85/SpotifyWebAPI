@@ -1,12 +1,12 @@
-import Foundation
 import Crypto
+import Foundation
 import HTTPTypes
 import Hummingbird
 import Logging
 import NIOCore
 import ServiceLifecycle
 
-@testable import SpotifyWebAPI
+@testable import SpotifyKit
 
 /// Light-weight HTTP server that mimics a subset of the Spotify Web API for integration tests.
 ///
@@ -33,7 +33,7 @@ actor SpotifyMockAPIServer {
         let errorInjection: ErrorInjectionConfig?
         let rateLimitConfig: RateLimitConfig?
         let oauthConfig: OAuthConfig
-        
+
         init(
             port: Int = 0,
             expectedAccessToken: String = "integration-access-token",
@@ -62,7 +62,7 @@ actor SpotifyMockAPIServer {
             self.oauthConfig = oauthConfig
         }
     }
-    
+
     /// Configuration for injecting specific HTTP errors into responses
     struct ErrorInjectionConfig: Sendable {
         enum ErrorBehavior: Sendable {
@@ -71,12 +71,12 @@ actor SpotifyMockAPIServer {
             case nthRequest(Int)
             case everyNthRequest(Int)
         }
-        
+
         let statusCode: Int
         let errorMessage: String?
-        let affectedEndpoints: Set<String>? // nil means all endpoints
+        let affectedEndpoints: Set<String>?  // nil means all endpoints
         let behavior: ErrorBehavior
-        
+
         init(
             statusCode: Int,
             errorMessage: String? = nil,
@@ -89,13 +89,13 @@ actor SpotifyMockAPIServer {
             self.behavior = behavior
         }
     }
-    
+
     /// Configuration for rate limiting simulation
     struct RateLimitConfig: Sendable {
         let maxRequestsPerWindow: Int
         let windowDuration: TimeInterval
         let retryAfterSeconds: Int
-        
+
         init(
             maxRequestsPerWindow: Int = 5,
             windowDuration: TimeInterval = 30,
@@ -106,7 +106,7 @@ actor SpotifyMockAPIServer {
             self.retryAfterSeconds = retryAfterSeconds
         }
     }
-    
+
     /// Configuration for OAuth flow simulation
     struct OAuthConfig: Sendable {
         let clientID: String
@@ -114,15 +114,15 @@ actor SpotifyMockAPIServer {
         let enablePKCE: Bool
         let enableAuthorizationCode: Bool
         let refreshTokenExpiry: TimeInterval
-        
+
         static let `default` = OAuthConfig(
             clientID: "test-client-id",
             clientSecret: "test-client-secret",
             enablePKCE: true,
             enableAuthorizationCode: true,
-            refreshTokenExpiry: 3600 * 24 * 30 // 30 days
+            refreshTokenExpiry: 3600 * 24 * 30  // 30 days
         )
-        
+
         init(
             clientID: String,
             clientSecret: String,
@@ -290,7 +290,7 @@ actor SpotifyMockAPIServer {
         router.get("health") { _, _ -> Response in
             Response(status: .ok)
         }
-        
+
         // OAuth endpoints
         router.get("authorize") { request, _ in
             try await self.handleAuthorizeRequest(request)
@@ -301,7 +301,7 @@ actor SpotifyMockAPIServer {
         }
 
         let v1 = router.group("v1")
-        
+
         v1.get("me") { request, _ in
             try await self.handleProfileRequest(request)
         }
@@ -330,49 +330,51 @@ actor SpotifyMockAPIServer {
 
         return router
     }
-    
+
     // MARK: - OAuth Handlers
-    
+
     private func handleAuthorizeRequest(_ request: Request) async throws -> Response {
         // Extract OAuth parameters
         let params = request.uri.queryParameters
-        
+
         guard let clientID = params["client_id"] else {
             return try errorResponse(status: .badRequest, message: "Missing client_id")
         }
-        
+
         guard clientID == configuration.oauthConfig.clientID else {
             return try errorResponse(status: .unauthorized, message: "Invalid client_id")
         }
-        
+
         guard let redirectURIValue = params["redirect_uri"],
-              let redirectURL = URL(string: String(redirectURIValue)) else {
+            let redirectURL = URL(string: String(redirectURIValue))
+        else {
             return try errorResponse(status: .badRequest, message: "Invalid redirect_uri")
         }
-        
+
         guard let stateValue = params["state"], !stateValue.isEmpty else {
             return try errorResponse(status: .badRequest, message: "Missing state parameter")
         }
-        
+
         let state = String(stateValue)
         let redirectURI = String(redirectURIValue)
-        
+
         let responseType = params["response_type"] ?? "code"
         guard responseType == "code" else {
             return try errorResponse(status: .badRequest, message: "Unsupported response_type")
         }
-        
+
         // Check for PKCE parameters
         if let codeChallengeValue = params["code_challenge"],
-           let codeChallengeMethodValue = params["code_challenge_method"] {
+            let codeChallengeMethodValue = params["code_challenge_method"]
+        {
             guard configuration.oauthConfig.enablePKCE else {
                 return try errorResponse(status: .badRequest, message: "PKCE not supported")
             }
-            
+
             let codeChallenge = String(codeChallengeValue)
             let codeChallengeMethod = String(codeChallengeMethodValue)
             let scope = params["scope"].map(String.init) ?? configuration.tokenScope
-            
+
             // Store PKCE challenge for later verification
             let authCode = generateAuthorizationCode()
             oauthState.pkceData[authCode] = PKCEData(
@@ -383,40 +385,41 @@ actor SpotifyMockAPIServer {
                 state: state,
                 expiresAt: Date().addingTimeInterval(600)
             )
-            
+
             // Redirect with authorization code
             var components = URLComponents(url: redirectURL, resolvingAgainstBaseURL: false)!
             components.queryItems = [
                 URLQueryItem(name: "code", value: authCode),
-                URLQueryItem(name: "state", value: state)
+                URLQueryItem(name: "state", value: state),
             ]
-            
+
             return Response(
                 status: .found,
                 headers: [.location: components.url!.absoluteString]
             )
         }
-        
+
         // Standard Authorization Code flow
         guard configuration.oauthConfig.enableAuthorizationCode else {
-            return try errorResponse(status: .badRequest, message: "Authorization Code flow not enabled")
+            return try errorResponse(
+                status: .badRequest, message: "Authorization Code flow not enabled")
         }
-        
+
         let scope = params["scope"].map(String.init) ?? configuration.tokenScope
         let authCode = generateAuthorizationCode()
         oauthState.authCodes[authCode] = AuthCodeData(
             redirectURI: redirectURI,
             scope: scope,
             state: state,
-            expiresAt: Date().addingTimeInterval(600) // 10 minutes
+            expiresAt: Date().addingTimeInterval(600)  // 10 minutes
         )
-        
+
         var components = URLComponents(url: redirectURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "code", value: authCode),
-            URLQueryItem(name: "state", value: state)
+            URLQueryItem(name: "state", value: state),
         ]
-        
+
         return Response(
             status: .found,
             headers: [.location: components.url!.absoluteString]
@@ -428,9 +431,9 @@ actor SpotifyMockAPIServer {
         let body = try await mutableRequest.collectBody(upTo: Self.maxBodyBytes)
         let bodyString = String(buffer: body)
         let params = parseFormURLEncoded(bodyString)
-        
+
         let grantType = params["grant_type"] ?? ""
-        
+
         switch grantType {
         case "authorization_code":
             return try await handleAuthorizationCodeGrant(params: params)
@@ -439,52 +442,54 @@ actor SpotifyMockAPIServer {
         case "client_credentials":
             return try await handleClientCredentialsGrant(params: params)
         default:
-            return try errorResponse(status: .badRequest, message: "Unsupported grant_type: \(grantType)")
+            return try errorResponse(
+                status: .badRequest, message: "Unsupported grant_type: \(grantType)")
         }
     }
-    
+
     private func handleAuthorizationCodeGrant(params: [String: String]) async throws -> Response {
         guard let code = params["code"] else {
             return try errorResponse(status: .badRequest, message: "Missing code")
         }
-        
+
         guard let redirectURI = params["redirect_uri"] else {
             return try errorResponse(status: .badRequest, message: "Missing redirect_uri")
         }
-        
+
         // Check if this is a PKCE flow
         if let pkceData = oauthState.pkceData[code] {
             guard let codeVerifier = params["code_verifier"] else {
-                return try errorResponse(status: .badRequest, message: "Missing code_verifier for PKCE flow")
+                return try errorResponse(
+                    status: .badRequest, message: "Missing code_verifier for PKCE flow")
             }
-            
+
             // Verify PKCE challenge
             let isValid = verifyPKCEChallenge(
                 verifier: codeVerifier,
                 challenge: pkceData.codeChallenge,
                 method: pkceData.codeChallengeMethod
             )
-            
+
             guard isValid else {
                 return try errorResponse(status: .badRequest, message: "Invalid code_verifier")
             }
-            
+
             guard redirectURI == pkceData.redirectURI else {
                 return try errorResponse(status: .badRequest, message: "redirect_uri mismatch")
             }
-            
+
             // Generate tokens
             let accessToken = generateAccessToken()
             let refreshToken = generateRefreshToken()
-            
+
             oauthState.refreshTokens[refreshToken] = RefreshTokenData(
                 accessToken: accessToken,
                 scope: pkceData.scope,
                 expiresAt: Date().addingTimeInterval(configuration.oauthConfig.refreshTokenExpiry)
             )
-            
+
             oauthState.pkceData.removeValue(forKey: code)
-            
+
             let payload = TokenResponse(
                 accessToken: accessToken,
                 tokenType: "Bearer",
@@ -494,41 +499,44 @@ actor SpotifyMockAPIServer {
             )
             return try jsonResponse(payload)
         }
-        
+
         // Standard Authorization Code flow
         guard let authData = oauthState.authCodes[code] else {
-            return try errorResponse(status: .badRequest, message: "Invalid or expired authorization code")
+            return try errorResponse(
+                status: .badRequest, message: "Invalid or expired authorization code")
         }
-        
+
         guard Date() < authData.expiresAt else {
             oauthState.authCodes.removeValue(forKey: code)
             return try errorResponse(status: .badRequest, message: "Authorization code expired")
         }
-        
+
         guard redirectURI == authData.redirectURI else {
             return try errorResponse(status: .badRequest, message: "redirect_uri mismatch")
         }
-        
+
         // Verify client credentials for non-PKCE flow
         let clientID = params["client_id"] ?? ""
         let clientSecret = params["client_secret"] ?? ""
-        
-        guard clientID == configuration.oauthConfig.clientID &&
-              clientSecret == configuration.oauthConfig.clientSecret else {
+
+        guard
+            clientID == configuration.oauthConfig.clientID
+                && clientSecret == configuration.oauthConfig.clientSecret
+        else {
             return try errorResponse(status: .unauthorized, message: "Invalid client credentials")
         }
-        
+
         let accessToken = generateAccessToken()
         let refreshToken = generateRefreshToken()
-        
+
         oauthState.refreshTokens[refreshToken] = RefreshTokenData(
             accessToken: accessToken,
             scope: authData.scope,
             expiresAt: Date().addingTimeInterval(configuration.oauthConfig.refreshTokenExpiry)
         )
-        
+
         oauthState.authCodes.removeValue(forKey: code)
-        
+
         let payload = TokenResponse(
             accessToken: accessToken,
             tokenType: "Bearer",
@@ -538,31 +546,31 @@ actor SpotifyMockAPIServer {
         )
         return try jsonResponse(payload)
     }
-    
+
     private func handleRefreshTokenGrant(params: [String: String]) async throws -> Response {
         guard let refreshToken = params["refresh_token"] else {
             return try errorResponse(status: .badRequest, message: "Missing refresh_token")
         }
-        
+
         guard let tokenData = oauthState.refreshTokens[refreshToken] else {
             return try errorResponse(status: .badRequest, message: "Invalid refresh_token")
         }
-        
+
         guard Date() < tokenData.expiresAt else {
             oauthState.refreshTokens.removeValue(forKey: refreshToken)
             return try errorResponse(status: .badRequest, message: "Refresh token expired")
         }
-        
+
         // Generate new access token
         let newAccessToken = generateAccessToken()
-        
+
         // Update the refresh token data with new access token
         oauthState.refreshTokens[refreshToken] = RefreshTokenData(
             accessToken: newAccessToken,
             scope: tokenData.scope,
             expiresAt: tokenData.expiresAt
         )
-        
+
         let payload = TokenResponse(
             accessToken: newAccessToken,
             tokenType: "Bearer",
@@ -572,7 +580,7 @@ actor SpotifyMockAPIServer {
         )
         return try jsonResponse(payload)
     }
-    
+
     private func handleClientCredentialsGrant(params: [String: String]) async throws -> Response {
         // Simple client credentials flow (existing behavior)
         let payload = TokenResponse(
@@ -587,13 +595,13 @@ actor SpotifyMockAPIServer {
 
     private func handleProfileRequest(_ request: Request) async throws -> Response {
         try validateAuthorizationHeader(on: request)
-        
+
         // Check and increment rate limit
         let endpoint = "/v1/me"
         if !checkAndIncrementRateLimit(for: endpoint) {
             return try rateLimitResponse()
         }
-        
+
         // Check error injection
         if shouldInjectError(for: endpoint) {
             guard let config = configuration.errorInjection else {
@@ -604,19 +612,19 @@ actor SpotifyMockAPIServer {
                 message: config.errorMessage ?? "Error"
             )
         }
-        
+
         return try jsonResponse(configuration.profile)
     }
 
     private func handlePlaylistsRequest(_ request: Request) async throws -> Response {
         try validateAuthorizationHeader(on: request)
-        
+
         // Check and increment rate limit
         let endpoint = "/v1/me/playlists"
         if !checkAndIncrementRateLimit(for: endpoint) {
             return try rateLimitResponse()
         }
-        
+
         // Check error injection
         if shouldInjectError(for: endpoint) {
             guard let config = configuration.errorInjection else {
@@ -637,7 +645,7 @@ actor SpotifyMockAPIServer {
                 message: config.errorMessage ?? "Error"
             )
         }
-        
+
         let limit = request.uri.queryParameters["limit"].flatMap { Int($0) } ?? 20
         let offset = request.uri.queryParameters["offset"].flatMap { Int($0) } ?? 0
         let href = try apiURLAppendingPath("me/playlists")
@@ -653,15 +661,15 @@ actor SpotifyMockAPIServer {
 
     private func handlePlaylistItemsRequest(_ request: Request) async throws -> Response {
         try validateAuthorizationHeader(on: request)
-        
+
         let playlistID = try extractPlaylistID(from: request)
         let endpoint = "/v1/playlists/\(playlistID)/tracks"
-        
+
         // Check and increment rate limit
         if !checkAndIncrementRateLimit(for: endpoint) {
             return try rateLimitResponse()
         }
-        
+
         // Check error injection
         if shouldInjectError(for: endpoint) {
             guard let config = configuration.errorInjection else {
@@ -672,11 +680,12 @@ actor SpotifyMockAPIServer {
                 message: config.errorMessage ?? "Error"
             )
         }
-        
+
         return try buildPlaylistItemsResponse(playlistID: playlistID, request: request)
     }
-    
-    private func buildPlaylistItemsResponse(playlistID: String, request: Request) throws -> Response {
+
+    private func buildPlaylistItemsResponse(playlistID: String, request: Request) throws -> Response
+    {
         let limit = request.uri.queryParameters["limit"].flatMap { Int($0) } ?? 20
         let offset = request.uri.queryParameters["offset"].flatMap { Int($0) } ?? 0
         guard let state = playlistStates[playlistID] else {
@@ -703,15 +712,15 @@ actor SpotifyMockAPIServer {
 
     private func handleAddPlaylistItems(_ request: inout Request) async throws -> Response {
         try validateAuthorizationHeader(on: request)
-        
+
         let playlistID = try extractPlaylistID(from: request)
         let endpoint = "/v1/playlists/\(playlistID)/tracks (POST)"
-        
+
         // Check and increment rate limit
         if !checkAndIncrementRateLimit(for: endpoint) {
             return try rateLimitResponse()
         }
-        
+
         // Check error injection
         if shouldInjectError(for: endpoint) {
             guard let config = configuration.errorInjection else {
@@ -722,11 +731,13 @@ actor SpotifyMockAPIServer {
                 message: config.errorMessage ?? "Error"
             )
         }
-        
+
         return try await performAddPlaylistItems(request: &request, playlistID: playlistID)
     }
-    
-    private func performAddPlaylistItems(request: inout Request, playlistID: String) async throws -> Response {
+
+    private func performAddPlaylistItems(request: inout Request, playlistID: String) async throws
+        -> Response
+    {
         let payload: AddPlaylistItemsPayload = try await decodeJSONBody(&request)
         guard !payload.uris.isEmpty else {
             throw HTTPError(.badRequest, message: "Payload missing URIs")
@@ -759,21 +770,21 @@ actor SpotifyMockAPIServer {
         }
         return try jsonResponse(SnapshotResponse(snapshotId: snapshot))
     }
-    
+
     // MARK: - OAuth & Security Helper Methods
-    
+
     private func generateAuthorizationCode() -> String {
         return "auth_code_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
     }
-    
+
     private func generateAccessToken() -> String {
         return "access_token_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
     }
-    
+
     private func generateRefreshToken() -> String {
         return "refresh_token_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
     }
-    
+
     private func verifyPKCEChallenge(verifier: String, challenge: String, method: String) -> Bool {
         switch method {
         case "plain":
@@ -790,57 +801,57 @@ actor SpotifyMockAPIServer {
             return false
         }
     }
-    
+
     // MARK: - Rate Limiting Helper Methods
-    
+
     private func checkAndIncrementRateLimit(for endpoint: String) -> Bool {
         rateLimiter.allow(endpoint: endpoint, logger: logger)
     }
-    
+
     private func rateLimitResponse() throws -> Response {
         guard let config = configuration.rateLimitConfig else {
             return try errorResponse(status: .tooManyRequests, message: "Rate limit exceeded")
         }
-        
+
         var headers: HTTPFields = [.contentType: "application/json"]
         headers[.retryAfter] = String(config.retryAfterSeconds)
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         let errorBody = ["error": "rate_limit_exceeded", "message": "Too many requests"]
         let data = try encoder.encode(errorBody)
         var buffer = ByteBufferAllocator().buffer(capacity: data.count)
         buffer.writeBytes(data)
-        
+
         return Response(
             status: .tooManyRequests,
             headers: headers,
             body: .init(byteBuffer: buffer)
         )
     }
-    
+
     // MARK: - Error Injection Helper Methods
-    
+
     private func shouldInjectError(for endpoint: String) -> Bool {
         errorInjector.shouldInject(endpoint: endpoint, logger: logger)
     }
-    
+
     private func errorResponse(status: HTTPResponse.Status, message: String) throws -> Response {
         let errorBody = ["error": status.reasonPhrase, "message": message]
         let encoder = JSONEncoder()
         let data = try encoder.encode(errorBody)
         var buffer = ByteBufferAllocator().buffer(capacity: data.count)
         buffer.writeBytes(data)
-        
+
         return Response(
             status: status,
             headers: [.contentType: "application/json"],
             body: .init(byteBuffer: buffer)
         )
     }
-    
+
     // MARK: - Request Parsing Helper Methods
-    
+
     private func parseFormURLEncoded(_ body: String) -> [String: String] {
         var result: [String: String] = [:]
         let pairs = body.split(separator: "&")
@@ -854,7 +865,7 @@ actor SpotifyMockAPIServer {
         }
         return result
     }
-    
+
     private func parseQueryParameters(_ url: String) -> [String: String] {
         guard let queryStart = url.firstIndex(of: "?") else { return [:] }
         let queryString = String(url[url.index(after: queryStart)...])
@@ -901,9 +912,9 @@ actor SpotifyMockAPIServer {
     private static func defaultPlaylists(count: Int = 10) -> [SimplifiedPlaylist] {
         (0..<count).map { index in
             SpotifyTestFixtures.simplifiedPlaylist(
-                id: "playlist-\(index)",
+                id: "playlist\(index)",
                 name: "Playlist #\(index + 1)",
-                ownerID: "owner-\(index)"
+                ownerID: "owner\(index)"
             )
         }
     }
@@ -913,7 +924,7 @@ actor SpotifyMockAPIServer {
     {
         playlists.reduce(into: [:]) { result, playlist in
             result[playlist.id] = (0..<3).map { index in
-                "spotify:track:\(playlist.id)-track-\(index)"
+                "spotify:track:\(playlist.id)Track\(index)"
             }
         }
     }
@@ -1053,22 +1064,22 @@ actor SpotifyMockAPIServer {
             return "snapshot-\(snapshotCounter)"
         }
     }
-    
+
     // MARK: - OAuth State Management
-    
+
     private struct OAuthState {
         var authCodes: [String: AuthCodeData] = [:]
         var pkceData: [String: PKCEData] = [:]
         var refreshTokens: [String: RefreshTokenData] = [:]
     }
-    
+
     private struct AuthCodeData {
         let redirectURI: String
         let scope: String
         let state: String?
         let expiresAt: Date
     }
-    
+
     private struct PKCEData {
         let codeChallenge: String
         let codeChallengeMethod: String
@@ -1077,13 +1088,13 @@ actor SpotifyMockAPIServer {
         let state: String?
         let expiresAt: Date
     }
-    
+
     private struct RefreshTokenData {
         let accessToken: String
         let scope: String
         let expiresAt: Date
     }
-    
+
     private struct ErrorInjectionState {
         var injectedOnce: Bool = false
         var requestCounts: [String: Int] = [:]
@@ -1120,12 +1131,14 @@ actor SpotifyMockAPIServer {
             let count = requestCounter[endpoint, default: 0]
             let allowed = count < config.maxRequestsPerWindow
             if traceEnabled {
-                logger.info("Rate limit check", metadata: [
-                    "endpoint": "\(endpoint)",
-                    "count": "\(count)",
-                    "allowed": "\(allowed)",
-                    "max": "\(config.maxRequestsPerWindow)"
-                ])
+                logger.info(
+                    "Rate limit check",
+                    metadata: [
+                        "endpoint": "\(endpoint)",
+                        "count": "\(count)",
+                        "allowed": "\(allowed)",
+                        "max": "\(config.maxRequestsPerWindow)",
+                    ])
             }
 
             if allowed {
@@ -1171,7 +1184,7 @@ actor SpotifyMockAPIServer {
                     logger: logger,
                     metadata: [
                         "count": "\(currentCount)",
-                        "target": "\(n)"
+                        "target": "\(n)",
                     ]
                 )
                 return currentCount == n
@@ -1186,7 +1199,7 @@ actor SpotifyMockAPIServer {
                     metadata: [
                         "count": "\(currentCount)",
                         "interval": "\(n)",
-                        "willInject": "\(willInject)"
+                        "willInject": "\(willInject)",
                     ]
                 )
                 return willInject

@@ -1,0 +1,26 @@
+{
+    "href": "https://api.spotify.com/v1/me/following?type=artist&limit=2",
+    "items": [
+        {
+            "id": "artist1",
+            "name": "Artist One",
+            "href": "https://api.spotify.com/v1/artists/artist1",
+            "uri": "spotify:artist:artist1",
+            "type": "artist",
+            "popularity": 80,
+            "genres": [],
+            "followers": {
+                "href": null,
+                "total": 1000
+            },
+            "images": []
+        }
+    ],
+    "limit": 2,
+    "next": "https://api.spotify.com/v1/me/following?type=artist&limit=2&after=cursor_after_id",
+    "cursors": {
+        "after": "cursor_after_id",
+        "before": "cursor_before_id"
+    },
+    "total": 100
+}

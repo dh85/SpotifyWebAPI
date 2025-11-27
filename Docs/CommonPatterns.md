@@ -1,6 +1,6 @@
 # Common Patterns Guide
 
-This guide demonstrates best practices and common patterns when using SpotifyWebAPI in your applications.
+This guide demonstrates best practices and common patterns when using SpotifyKit in your applications.
 
 ## Table of Contents
 
@@ -337,7 +337,7 @@ extension PlaylistSummary {
 
 ```swift
 import Testing
-import SpotifyWebAPI
+import SpotifyKit
 
 @Test("User service fetches profile")
 func testFetchProfile() async throws {

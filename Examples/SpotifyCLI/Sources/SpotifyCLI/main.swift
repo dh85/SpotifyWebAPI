@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import SpotifyWebAPI
+import SpotifyKit
 
 @main
 struct SpotifyCLI: AsyncParsableCommand {

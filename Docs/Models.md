@@ -4,7 +4,7 @@ You get strongly typed Swift models for every Spotify payload, so you can move s
 
 ## Working with Core Models
 
-- `Album`, `Artist`, `Playlist`, `Track`, `Show`, `Episode`, and `Audiobook` live under `Sources/SpotifyWebAPI/Models/Core`. Endpoint responses already return these types—no extra decoding step required.
+- `Album`, `Artist`, `Playlist`, `Track`, `Show`, `Episode`, and `Audiobook` live under `Sources/SpotifyKit/Models/Core`. Endpoint responses already return these types—no extra decoding step required.
 - `Paging` and `CursorPaging` expose helpers such as `hasNextPage` and `nextOffset`, which plug directly into infinite scrolling or background sync loops.
 - All models conform to `Codable`, `Sendable`, and `Hashable`, making them safe to cache, diff, and share between actors.
 
@@ -21,5 +21,5 @@ You get strongly typed Swift models for every Spotify payload, so you can move s
 
 ## Helper Types & Fixtures
 
-- `SpotifyDate`, `SpotifyURI`, `SpotifyURL`, and friends centralize parsing for Spotify-specific formats. Reach for them whenever you persist identifiers or parse partial dates.
 - `SpotifyTestFixtures` provides ready-made JSON decoders for previews and tests. Example: `SpotifyTestFixtures.playlist("main_playlist")` gives you a populated playlist model without hitting the network.
+- Internal validation helpers ensure that URIs passed to the API are well-formed (e.g. `spotify:track:id`), preventing invalid requests before they hit the network.

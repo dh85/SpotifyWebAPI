@@ -1,0 +1,19 @@
+{
+    "id": "mockuser",
+    "display_name": "Mock User",
+    "email": "mock@spotify.com",
+    "country": "US",
+    "product": "premium",
+    "href": "https_mock_href",
+    "external_urls": {},
+    "images": [],
+    "followers": {
+        "total": 100
+    },
+    "explicit_content": {
+        "filter_enabled": false,
+        "filter_locked": false
+    },
+    "type": "user",
+    "uri": "spotify:user:mockuser"
+}

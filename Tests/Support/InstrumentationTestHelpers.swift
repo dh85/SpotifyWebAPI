@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import SpotifyWebAPI
+@testable import SpotifyKit
 
 /// Collects instrumentation events emitted through ``SpotifyClientObserver``.
 actor InstrumentationEventCollector {

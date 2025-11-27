@@ -1,6 +1,6 @@
 # Endpoint Reference
 
-This library mirrors Spotify's REST surface area through typed service namespaces. Each service lives under `Sources/SpotifyWebAPI/Features/<Name>` and becomes available via the corresponding property on `SpotifyClient`.
+This library mirrors Spotify's REST surface area through typed service namespaces. Each service lives under `Sources/SpotifyKit/Features/<Name>` and becomes available via the corresponding property on `SpotifyClient`.
 
 ## Service Map
 
@@ -25,9 +25,9 @@ This library mirrors Spotify's REST surface area through typed service namespace
 
 ## Extending Coverage
 
-If you need a Spotify endpoint that is not in the table, implement a new service under `Sources/SpotifyWebAPI/Features` and wire it into `SpotifyClient` by following the existing pattern:
+If you need a Spotify endpoint that is not in the table, implement a new service under `Sources/SpotifyKit/Features` and wire it into `SpotifyClient` by following the existing pattern:
 
 1. Define a protocol (`FooServiceProtocol`) listing async and Combine methods.
 2. Implement `FooService` with the necessary `SpotifyRequest` builders.
 3. Add a property on `SpotifyClient` that instantiates `FooService` with dependencies (HTTP client, decoder, configuration).
-4. Write tests in `Tests/SpotifyWebAPITests/Features/Foo` plus fixtures in `Tests/Mocks/Foo`.
+4. Write tests in `Tests/SpotifyKitTests/Features/Foo` plus fixtures in `Tests/Mocks/Foo`.
