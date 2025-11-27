@@ -13,13 +13,17 @@ jobs:
 
       - name: Build DocC archive
         run: |
+            # 1. Clear existing docs to prevent stale files
             rm -rf docs
             
+            # 2. Generate documentation
+            # --disable-sandbox: Required to allow writing to the ./docs folder on CI runners
+            # --hosting-base-path: Must match your repository name (SpotifyKit) for CSS/JS to load correctly
             swift package --disable-sandbox generate-documentation \
               --target SpotifyKit \
               --disable-indexing \
               --transform-for-static-hosting \
-              --hosting-base-path SpotifyWebAPI \
+              --hosting-base-path SpotifyKit \
               --output-path ./docs
 
       - name: Setup Pages
