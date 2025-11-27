@@ -102,6 +102,57 @@ final class SimpleMockHTTPClient: HTTPClient, @unchecked Sendable {
     }
 }
 
+/// Counts HTTP invocations while introducing an artificial delay so concurrent
+/// requests overlap long enough to validate coalescing behavior.
+private actor HTTPCallCounter {
+    private var count = 0
+
+    func increment() {
+        count += 1
+    }
+
+    func value() -> Int {
+        count
+    }
+}
+
+/// HTTP client that simulates a delayed network response and records its call count.
+final class SlowMockHTTPClient: HTTPClient, @unchecked Sendable {
+    private let responseData: Data
+    private let statusCode: Int
+    private let delayNanoseconds: UInt64
+    private let callCounter = HTTPCallCounter()
+    private let defaultURL = URL(string: "https://accounts.spotify.com")!
+
+    init(
+        responseData: Data,
+        statusCode: Int = 200,
+        delayNanoseconds: UInt64 = 50_000_000
+    ) {
+        self.responseData = responseData
+        self.statusCode = statusCode
+        self.delayNanoseconds = delayNanoseconds
+    }
+
+    func data(for request: URLRequest) async throws -> HTTPResponse {
+        await callCounter.increment()
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+
+        let url = request.url ?? defaultURL
+        let http = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return HTTPResponse(data: responseData, response: http)
+    }
+
+    func recordedCallCount() async -> Int {
+        await callCounter.value()
+    }
+}
+
 /// HTTP client that returns a non-HTTPURLResponse, to hit the `unexpectedResponse` branch.
 final class NonHTTPResponseMockHTTPClient: HTTPClient, @unchecked Sendable {
     func data(for request: URLRequest) async throws -> HTTPResponse {

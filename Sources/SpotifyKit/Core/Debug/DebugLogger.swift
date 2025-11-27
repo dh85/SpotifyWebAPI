@@ -837,10 +837,15 @@ public struct PerformanceMeasurement {
     private var retryCount: Int = 0
     private let logger: DebugLogger
 
-    public init(_ operationName: String, logger: DebugLogger = DebugLogger.shared) {
+    public init(_ operationName: String, logger: DebugLogger) {
         self.operationName = operationName
         self.startTime = Date()
         self.logger = logger
+    }
+
+    @available(*, deprecated, message: "Pass a DebugLogger instance explicitly.")
+    public init(_ operationName: String) {
+        self.init(operationName, logger: DebugLogger())
     }
 
     public mutating func incrementRetryCount() {

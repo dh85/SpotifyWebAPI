@@ -29,6 +29,7 @@ public actor SpotifyClientCredentialsAuthenticator {
     private let httpClient: HTTPClient
     private let tokenStore: TokenStore?
     private var cachedTokens: SpotifyTokens?
+    private var refreshTask: Task<SpotifyTokens, Error>?
 
     public init(
         config: SpotifyAuthConfig,
@@ -74,6 +75,11 @@ public actor SpotifyClientCredentialsAuthenticator {
             return cachedTokens
         }
 
+        // Check for ongoing refresh
+        if let refreshTask {
+            return try await refreshTask.value
+        }
+
         // 2. Return from store if valid and not being invalidated
         if let tokenStore,
             let stored = try await tokenStore.load(),
@@ -84,12 +90,17 @@ public actor SpotifyClientCredentialsAuthenticator {
         }
 
         // 3. Otherwise, fetch a fresh token
-        let fresh = try await requestNewAccessToken()
-        if let tokenStore {
-            try await tokenStore.save(fresh)
+        let task = Task { () -> SpotifyTokens in
+            let fresh = try await self.requestNewAccessToken()
+            if let tokenStore = self.tokenStore {
+                try await tokenStore.save(fresh)
+            }
+            self.cachedTokens = fresh
+            return fresh
         }
-        cachedTokens = fresh
-        return fresh
+        refreshTask = task
+        defer { refreshTask = nil }
+        return try await task.value
     }
 
     // MARK: - Internal request/decoding

@@ -100,7 +100,7 @@ struct UsersServiceTests {
             hasNext: false
         )
 
-        let stream = await client.users.streamTopArtistPages(
+        let stream = client.users.streamTopArtistPages(
             timeRange: .shortTerm,
             pageSize: 30,
             maxPages: 1
@@ -126,7 +126,7 @@ struct UsersServiceTests {
         )
         await http.addMockResponse(data: response, statusCode: 200)
 
-        let stream = await client.users.streamTopArtists(
+        let stream = client.users.streamTopArtists(
             timeRange: .longTerm,
             pageSize: 40,
             maxItems: 80
@@ -181,7 +181,7 @@ struct UsersServiceTests {
         )
         await http.addMockResponse(data: response, statusCode: 200)
 
-        let stream = await client.users.streamTopTrackPages(
+        let stream = client.users.streamTopTrackPages(
             timeRange: .longTerm,
             pageSize: 35,
             maxPages: 1
@@ -207,7 +207,7 @@ struct UsersServiceTests {
         )
         await http.addMockResponse(data: response, statusCode: 200)
 
-        let stream = await client.users.streamTopTracks(
+        let stream = client.users.streamTopTracks(
             timeRange: .longTerm,
             pageSize: 45,
             maxItems: 90
