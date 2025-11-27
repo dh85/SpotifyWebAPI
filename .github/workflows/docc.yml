@@ -13,14 +13,17 @@ jobs:
 
       - name: Build DocC archive
         run: |
-            # 1. Output directly to ./docs (Bypasses .build permission error)
-            # 2. Set base-path to Repo Name (Fixes broken CSS on deploy)
+            rm -rf docs
+            rm -rf temp_docc_build
+            
             swift package generate-documentation \
               --target SpotifyKit \
               --disable-indexing \
               --transform-for-static-hosting \
               --hosting-base-path SpotifyWebAPI \
-              --output-path ./docs
+              --output-path ./temp_docc_build
+
+            mv temp_docc_build docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
