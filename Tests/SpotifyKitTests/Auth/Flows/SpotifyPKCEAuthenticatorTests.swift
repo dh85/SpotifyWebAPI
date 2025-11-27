@@ -224,11 +224,6 @@ struct SpotifyPKCEAuthenticatorTests {
 
     @Test
     func formURLEncodedBody_nilPercentEncodedQueryWhenItemsEmpty() async throws {
-        let auth = SpotifyPKCEAuthenticator(
-            config: makeConfig(),
-            tokenStore: InMemoryTokenStore()
-        )
-
         let data = __test_formURLEncodedBody(items: [])
         let string = String(data: data, encoding: .utf8)
 
@@ -368,6 +363,50 @@ struct SpotifyPKCEAuthenticatorTests {
 
         #expect(refreshed.accessToken == "NEW_FROM_REFRESH")
         #expect(refreshed.refreshToken == "REFRESH_NEW")
+    }
+
+    @Test
+    func refreshAccessTokenIfNeeded_coalescesConcurrentRefreshes() async throws {
+        let expired = SpotifyTokens(
+            accessToken: "OLD_STORE",
+            refreshToken: "REFRESH_STORE",
+            expiresAt: Date().addingTimeInterval(-3600),
+            scope: nil,
+            tokenType: "Bearer"
+        )
+
+        let newJSON = AuthTestFixtures.tokenResponse(
+            accessToken: "COALESCED_ACCESS",
+            refreshToken: "COALESCED_REFRESH"
+        )
+
+        let http = SlowMockHTTPClient(
+            responseData: newJSON,
+            delayNanoseconds: 100_000_000
+        )
+
+        let store = InMemoryTokenStore(tokens: expired)
+        let auth = SpotifyPKCEAuthenticator(
+            config: makeConfig(),
+            httpClient: http,
+            tokenStore: store
+        )
+
+        _ = try await auth.loadPersistedTokens()
+
+        async let first = auth.refreshAccessTokenIfNeeded(invalidatingPrevious: true)
+        async let second = auth.refreshAccessTokenIfNeeded(invalidatingPrevious: true)
+        async let third = auth.refreshAccessTokenIfNeeded()
+
+        let results = try await (first, second, third)
+
+        #expect(results.0.accessToken == "COALESCED_ACCESS")
+        #expect(results.1.accessToken == "COALESCED_ACCESS")
+        #expect(results.2.accessToken == "COALESCED_ACCESS")
+        #expect(results.0.refreshToken == "COALESCED_REFRESH")
+        #expect(results.1.refreshToken == "COALESCED_REFRESH")
+        #expect(results.2.refreshToken == "COALESCED_REFRESH")
+        #expect(await http.recordedCallCount() == 1)
     }
 
     @Test

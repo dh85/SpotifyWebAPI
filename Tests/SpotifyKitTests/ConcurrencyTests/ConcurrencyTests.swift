@@ -153,7 +153,7 @@ struct ConcurrencyTests {
 
         let task = Task { () -> Int in
             var count = 0
-            let stream = await client.users.streamTopTrackPages(pageSize: 20)
+            let stream = client.users.streamTopTrackPages(pageSize: 20)
             for try await page in stream {
                 count += page.items.count
             }

@@ -122,6 +122,32 @@ struct SpotifyClientCredentialsAuthenticatorTests {
         #expect(persisted?.accessToken == "NEW_ACCESS")
     }
 
+    @Test
+    func appAccessToken_coalescesConcurrentRequests() async throws {
+        let json = makeTokenJSON(accessToken: "COALESCED_APP", expiresIn: 3600)
+        let http = SlowMockHTTPClient(
+            responseData: json,
+            delayNanoseconds: 100_000_000
+        )
+
+        let auth = SpotifyClientCredentialsAuthenticator(
+            config: makeConfig(),
+            httpClient: http,
+            tokenStore: nil
+        )
+
+        async let first = auth.appAccessToken(invalidatingPrevious: true)
+        async let second = auth.appAccessToken(invalidatingPrevious: true)
+        async let third = auth.appAccessToken()
+
+        let results = try await (first, second, third)
+
+        #expect(results.0.accessToken == "COALESCED_APP")
+        #expect(results.1.accessToken == "COALESCED_APP")
+        #expect(results.2.accessToken == "COALESCED_APP")
+        #expect(await http.recordedCallCount() == 1)
+    }
+
     // MARK: - Scopes & body format
 
     @Test
@@ -183,14 +209,6 @@ struct SpotifyClientCredentialsAuthenticatorTests {
 
     @Test
     func formURLEncodedBody_emptyItemsProducesEmptyString() async throws {
-        let auth = SpotifyClientCredentialsAuthenticator(
-            config: makeConfig(),
-            httpClient: SimpleMockHTTPClient(
-                response: .success(data: Data(), statusCode: 200)
-            ),
-            tokenStore: nil
-        )
-
         let data = __test_formURLEncodedBody(items: [])
         let string = String(data: data, encoding: .utf8)
         #expect(string == "")

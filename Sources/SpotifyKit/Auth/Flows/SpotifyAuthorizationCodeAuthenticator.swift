@@ -39,6 +39,7 @@ public actor SpotifyAuthorizationCodeAuthenticator: TokenRefreshing {
 
     let tokenStore: TokenStore
     var cachedTokens: SpotifyTokens?
+    var refreshTask: Task<SpotifyTokens, Error>?
 
     public init(
         config: SpotifyAuthConfig,
