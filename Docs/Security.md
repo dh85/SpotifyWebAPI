@@ -28,7 +28,7 @@ SpotifyKit automatically selects the most secure storage available on each platf
 
 ```mermaid
 graph LR
-    A[defaultStore()] -->|Apple| B[KeychainTokenStore]
+    A[defaultStore] -->|Apple| B[KeychainTokenStore]
     A -->|Linux| C[RestrictedFileTokenStore]
 ```
 
