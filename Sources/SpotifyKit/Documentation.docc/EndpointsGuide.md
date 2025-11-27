@@ -24,7 +24,7 @@ Service files now include "Combine Counterparts" callouts that point directly to
 `Service+Combine.swift` extensions. Likewise, each Combine file documents which async method it wraps
 so you can jump between paradigms without guessing. Use async/await (`client.albums.get`) when you
 want structured concurrency, or opt into the `getPublisher` variants for reactive pipelines—the
-behavior, validation, and instrumentation are identical either way.
+behaviour, validation, and instrumentation are identical either way.
 
 ## Pagination Patterns
 

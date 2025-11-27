@@ -36,7 +36,7 @@ The server:
 - **Grant Types**:
   - `authorization_code`: Exchange auth code for access token
   - `refresh_token`: Refresh an expired access token
-  - `client_credentials`: Simple token issuance (existing behavior)
+  - `client_credentials`: Simple token issuance (existing behaviour)
 
 **Authorization Code Grant**:
 ```
@@ -69,7 +69,7 @@ let config = SpotifyMockAPIServer.Configuration(
 
 The server can simulate 429 Too Many Requests responses with `Retry-After` headers.
 
-- **Behavior**: When `forcedError` is set to `.rateLimitExceeded`, the server returns 429.
+- **Behaviour**: When `forcedError` is set to `.rateLimitExceeded`, the server returns 429.
 - **Headers**: Includes `Retry-After: <seconds>` (default 1s).
 
 ## Usage in Tests

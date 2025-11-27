@@ -6,7 +6,7 @@
 ![CI](https://github.com/dh85/SpotifyKit/actions/workflows/swift.yml/badge.svg)
 ![Documentation](https://img.shields.io/badge/documentation-DocC-blue.svg)
 
-**SpotifyKit** is a modern, thread-safe, and comprehensive Swift SDK for the Spotify Web API. Built with Swift 6 structured concurrency (Async/Await & Actors) from the ground up, it provides a fluent, type-safe interface for accessing the entire Spotify catalog, managing user libraries, and controlling playback.
+**SpotifyKit** is a modern, thread-safe, and comprehensive Swift SDK for the Spotify Web API. Built with Swift 6 structured concurrency (Async/Await & Actors) from the ground up, it provides a fluent, type-safe interface for accessing the entire Spotify catalogue, managing user libraries, and controlling playback.
 
 Designed for reliability, it handles the hard parts of API integration—token refreshing, rate limiting, and pagination—so you can focus on building your app.
 
@@ -25,7 +25,7 @@ Full API documentation is available here:
 - 🐧 **Cross-Platform**: Fully compatible with iOS, macOS, and Linux.
 - 📄 **Pagination Helpers**: AsyncSequences for streaming large collections of data effortlessly.
 - 🔌 **Offline Mode**: Toggle network access for testing or low-data environments.
-- ⚡ **Performance Optimized**: Uses modern Swift features like `consuming` parameters and Regex literals for maximum efficiency.
+- ⚡ **Performance Optimised**: Uses modern Swift features like `consuming` parameters and Regex literals for maximum efficiency.
 
 ## Requirements
 
@@ -71,7 +71,7 @@ let client = SpotifyClient.clientCredentials(
 
 ### 2. Make Requests
 
-The API is organized into services (e.g., `.albums`, `.search`, `.player`).
+The API is organised into services (e.g., `.albums`, `.search`, `.player`).
 
 ```swift
 // Search for tracks
@@ -100,7 +100,7 @@ The library uses an Actor-based architecture to manage state safely across threa
 
 ```mermaid
 graph TD
-    User[Your Code] --> Client[SpotifyClient (Actor)]
+    User[Your Code] --> Client["SpotifyClient (Actor)"]
     
     subgraph "SpotifyKit Library"
         Client --> Auth[Authenticator]

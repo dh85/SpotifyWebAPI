@@ -94,7 +94,7 @@ Most services continue using the domain-specific helpers which provide semantic 
 - `libraryMutationPublisher` - For save/remove operations
 - `pagedPublisher` - For generic pagination
 
-These specialized helpers encode domain knowledge and should be preferred over generic `makePublisher` for catalog and library operations.
+These specialised helpers encode domain knowledge and should be preferred over generic `makePublisher` for catalogue and library operations.
 
 ## Benefits
 

@@ -242,7 +242,7 @@ URI:        spotify:track:3z8h0TU7ReDPLIbEnYhWZb
 | Command | Description |
 |---------|-------------|
 | `profile` | View your Spotify profile |
-| `search <query>` | Search Spotify catalog |
+| `search <query>` | Search Spotify catalogue |
 | `playlists` | List your playlists |
 | `top-items` | View your top artists or tracks |
 | `player status` | View current playback state |
@@ -298,7 +298,7 @@ The CLI demonstrates:
 swift build -c release
 ```
 
-The optimized binary will be in `.build/release/SpotifyCLI`.
+The optimised binary will be in `.build/release/SpotifyCLI`.
 
 ## Installing Globally
 
@@ -319,7 +319,7 @@ spotify-cli profile
 
 ```bash
 # Find a track
-spotify-cli search "your favorite song" --type track --limit 5
+spotify-cli search "your favourite song" --type track --limit 5
 
 # Get detailed track info
 spotify-cli track <track_id_from_search>
@@ -333,7 +333,7 @@ spotify-cli track <track_id_from_search>
 # See what you've been listening to
 spotify-cli top-items --type artists --time-range short
 
-# See your all-time favorite tracks
+# See your all-time favourite tracks
 spotify-cli top-items --type tracks --time-range long --limit 50
 
 # Check your recent history

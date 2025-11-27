@@ -10,7 +10,7 @@ Publisher methods live alongside async variants by appending `Publisher`:
 - ``Features/Users/UserProfileServiceProtocol/mePublisher()`` mirrors `me()`.
 - ``Features/Artists/ArtistServiceProtocol/severalPublisher(_:)`` mirrors `several(_:)`.
 
-Under the hood, the publisher simply wraps the async implementation inside ``Publishers.SpotifyRequest`` so you get identical validation, retry behavior, and logging whether you use async/await or Combine.
+Under the hood, the publisher simply wraps the async implementation inside ``Publishers.SpotifyRequest`` so you get identical validation, retry behaviour, and logging whether you use async/await or Combine.
 
 ## Discoverability
 

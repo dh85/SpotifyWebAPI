@@ -6,7 +6,7 @@ Some deployments must enforce certificate pinning, custom trust stores, or stric
 
 - The built-in ``URLSessionHTTPClient`` uses an ephemeral `URLSession` (no shared caches/cookies) with the platform's default trust evaluation.
 - All `SpotifyClient` factory helpers (`pkce`, `authorizationCode`, `clientCredentials`) accept an `httpClient:` argument. If you do not pass one, `URLSessionHTTPClient()` is created for you.
-- Provide your own `HTTPClient` to take complete control over TLS behavior.
+- Provide your own `HTTPClient` to take complete control over TLS behaviour.
 
 ## Pinning With URLSession
 

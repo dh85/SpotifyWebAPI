@@ -34,7 +34,7 @@ let client = UserSpotifyClient
     .build()
 ```
 
-Fluent `with…` modifiers on `SpotifyClientConfiguration` keep configuration tweaks lightweight—adjusting the timeout or debug settings no longer requires repeating every initializer argument.
+Fluent `with…` modifiers on `SpotifyClientConfiguration` keep configuration tweaks lightweight—adjusting the timeout or debug settings no longer requires repeating every initialiser argument.
 
 The builder keeps related switches discoverable and makes it trivial to share HTTP clients (for TLS pinning or interceptors) between PKCE and authorization-code flows. The same fluent API works for app-only clients:
 

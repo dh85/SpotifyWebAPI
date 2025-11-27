@@ -146,7 +146,7 @@ if let mediumImage = album.images?.image(closestTo: 300) {
 
 ### Automatic Handling
 
-The client handles 429 Too Many Requests automatically by default. You can configure the retry behavior:
+The client handles 429 Too Many Requests automatically by default. You can configure the retry behaviour:
 
 ```swift
 let config = SpotifyClientConfiguration(
