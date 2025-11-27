@@ -13,17 +13,19 @@ jobs:
 
       - name: Build DocC archive
         run: |
-            rm -rf docs
-            rm -rf temp_docc_build
+            # Define external build path
+            export DOCC_OUTPUT_PATH="$RUNNER_TEMP/docc_build"
             
+            # Build docs outside the repo to avoid permission errors
             swift package generate-documentation \
               --target SpotifyKit \
               --disable-indexing \
               --transform-for-static-hosting \
               --hosting-base-path SpotifyWebAPI \
-              --output-path ./temp_docc_build
+              --output-path "$DOCC_OUTPUT_PATH"
 
-            mv temp_docc_build docs
+            # Bring artifacts back to repo
+            mv "$DOCC_OUTPUT_PATH" ./docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
