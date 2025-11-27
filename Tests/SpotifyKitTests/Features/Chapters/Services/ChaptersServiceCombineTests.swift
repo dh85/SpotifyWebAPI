@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US"]
             ) { client in
-                let chapters = await client.chapters
+                let chapters = client.chapters
                 return chapters.getPublisher("chapter123", market: "US")
             }
 
@@ -40,7 +40,7 @@
                     #expect(request?.url?.query()?.contains("ids=c1,c2,c3") == true)
                 }
             ) { client in
-                let chaptersService = await client.chapters
+                let chaptersService = client.chapters
                 return chaptersService.severalPublisher(ids: ids, market: "ES")
             }
 
@@ -50,7 +50,7 @@
         @Test("severalPublisher validates limit")
         func severalPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let chapters = await client.chapters
+            let chapters = client.chapters
             let ids = makeIDs(count: 51).map { $0 }
 
             do {

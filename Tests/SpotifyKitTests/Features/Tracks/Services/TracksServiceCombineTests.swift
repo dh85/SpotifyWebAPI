@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US"]
             ) { client in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.getPublisher("track_id", market: "US")
             }
 
@@ -40,7 +40,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.severalPublisher(ids: ids, market: "GB")
             }
 
@@ -55,7 +55,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=5", "market=ES"]
             ) { client in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.savedPublisher(limit: 10, offset: 5, market: "ES")
             }
 
@@ -65,7 +65,7 @@
         @Test("savedPublisher validates limits")
         func savedPublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let tracks = await client.tracks
+            let tracks = client.tracks
 
             await expectPublisherLimitValidation { limit in
                 tracks.savedPublisher(limit: limit)
@@ -78,7 +78,7 @@
                 fixture: "tracks_saved.json",
                 of: SavedTrack.self
             ) { client in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.allSavedTracksPublisher(market: "US")
             }
         }
@@ -91,7 +91,7 @@
                 method: "PUT",
                 ids: ids
             ) { client, ids in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.savePublisher(ids)
             }
         }
@@ -104,7 +104,7 @@
                 method: "DELETE",
                 ids: ids
             ) { client, ids in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.removePublisher(ids)
             }
         }
@@ -120,7 +120,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let tracks = await client.tracks
+                let tracks = client.tracks
                 return tracks.checkSavedPublisher(ids)
             }
 

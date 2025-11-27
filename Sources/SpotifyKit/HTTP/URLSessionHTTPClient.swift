@@ -226,9 +226,7 @@ private final class PinnedCertificateSessionDelegate: NSObject, URLSessionDelega
             }
         }
 
-        let certificateCount = SecTrustGetCertificateCount(serverTrust)
-        for index in 0..<certificateCount {
-            guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, index) else { continue }
+        for certificate in certificates(for: serverTrust) {
             let certificateData = SecCertificateCopyData(certificate) as Data
             if pinnedCertificates.contains(certificateData) {
                 completionHandler(.useCredential, URLCredential(trust: serverTrust))
@@ -237,6 +235,10 @@ private final class PinnedCertificateSessionDelegate: NSObject, URLSessionDelega
         }
 
         completionHandler(.cancelAuthenticationChallenge, nil)
+    }
+
+    private func certificates(for serverTrust: SecTrust) -> [SecCertificate] {
+        (SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate]) ?? []
     }
 }
 #endif

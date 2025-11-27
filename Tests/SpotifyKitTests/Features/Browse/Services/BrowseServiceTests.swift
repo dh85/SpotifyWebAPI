@@ -89,7 +89,7 @@ struct BrowseServiceTests {
             extractor: newReleasesPage
         )
 
-        let stream = await client.browse.streamNewReleasePages(
+        let stream = client.browse.streamNewReleasePages(
             country: "SE",
             pageSize: 20,
             maxPages: 2
@@ -117,7 +117,7 @@ struct BrowseServiceTests {
             extractor: newReleasesPage
         )
 
-        let stream = await client.browse.streamNewReleases(
+        let stream = client.browse.streamNewReleases(
             country: "DK",
             pageSize: 15,
             maxItems: 20
@@ -202,7 +202,7 @@ struct BrowseServiceTests {
             extractor: categoriesPage
         )
 
-        let stream = await client.browse.streamCategoryPages(
+        let stream = client.browse.streamCategoryPages(
             country: "MX",
             locale: "es_MX",
             pageSize: 20,
@@ -232,7 +232,7 @@ struct BrowseServiceTests {
             extractor: categoriesPage
         )
 
-        let stream = await client.browse.streamCategories(
+        let stream = client.browse.streamCategories(
             country: "BR",
             locale: "pt_BR",
             pageSize: 25,

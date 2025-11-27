@@ -185,11 +185,11 @@ public actor SpotifyClient<Capability: Sendable> {
         self.backend = backend
         self.httpClient = httpClient
         self.configuration = configuration
-        self.networkRecovery = NetworkRecoveryHandler(configuration: configuration.networkRecovery)
+        self.networkRecovery = NetworkRecoveryHandler(configuration: self.configuration.networkRecovery)
         self.logger = DebugLogger()
 
         Task {
-            await logger.configure(configuration.debug)
+            await logger.configure(self.configuration.debug)
         }
     }
 

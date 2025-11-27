@@ -102,7 +102,7 @@
                 method: "GET",
                 queryContains: ["limit=10", "offset=2"]
             ) { client in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.savedPublisher(limit: 10, offset: 2)
             }
 
@@ -112,7 +112,7 @@
         @Test("savedPublisher validates limit")
         func savedPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let audiobooks = await client.audiobooks
+            let audiobooks = client.audiobooks
 
             await expectPublisherLimitValidation { limit in
                 audiobooks.savedPublisher(limit: limit)
@@ -125,7 +125,7 @@
                 fixture: "audiobooks_saved.json",
                 of: SavedAudiobook.self
             ) { client in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.allSavedAudiobooksPublisher()
             }
         }
@@ -138,7 +138,7 @@
                 method: "PUT",
                 ids: ids
             ) { client, ids in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.savePublisher(ids)
             }
         }
@@ -146,7 +146,7 @@
         @Test("savePublisher validates ID limits")
         func savePublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let audiobooks = await client.audiobooks
+            let audiobooks = client.audiobooks
 
             await expectPublisherIDBatchLimit(max: 50) { ids in
                 audiobooks.savePublisher(ids)
@@ -161,7 +161,7 @@
                 method: "DELETE",
                 ids: ids
             ) { client, ids in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.removePublisher(ids)
             }
         }
@@ -177,7 +177,7 @@
                     #expect(extractIDs(from: request?.url) == ids)
                 }
             ) { client in
-                let audiobooks = await client.audiobooks
+                let audiobooks = client.audiobooks
                 return audiobooks.checkSavedPublisher(ids)
             }
 

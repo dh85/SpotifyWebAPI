@@ -276,23 +276,23 @@
             }
         }
 
-        /// Remove specific occurrences of items from a playlist.
+        /// Remove specific positions from a playlist.
         /// Corresponds to: `DELETE /v1/playlists/{playlist_id}/tracks`
         ///
         /// - Parameters:
         ///   - id: The Spotify ID for the playlist.
-        ///   - items: An array of `URIWithPositions` to remove.
+        ///   - positions: An array of 0-indexed positions to remove.
         ///   - snapshotID: The snapshot ID of the playlist.
         ///   - priority: The priority of the task.
         /// - Returns: A publisher that emits the snapshot ID of the playlist.
         public func removePublisher(
             from id: String,
-            items: [URIWithPositions],
+            positions: [Int],
             snapshotID: String? = nil,
             priority: TaskPriority? = nil
         ) -> AnyPublisher<String, Error> {
             publisher(priority: priority) { service in
-                try await service.remove(from: id, items: items, snapshotId: snapshotID)
+                try await service.remove(from: id, positions: positions, snapshotId: snapshotID)
             }
         }
 
@@ -333,12 +333,12 @@
         ///   - id: The Spotify ID for the playlist.
         ///   - uris: An array of Spotify URIs to set.
         ///   - priority: The priority of the task.
-        /// - Returns: A publisher that emits the snapshot ID of the playlist.
+        /// - Returns: A publisher that completes when the replacement succeeds.
         public func replacePublisher(
             in id: String,
             with uris: [String],
             priority: TaskPriority? = nil
-        ) -> AnyPublisher<String, Error> {
+        ) -> AnyPublisher<Void, Error> {
             publisher(priority: priority) { service in
                 try await service.replace(itemsIn: id, with: uris)
             }
@@ -354,11 +354,11 @@
         /// - Returns: A publisher that emits `Void` when successful.
         public func uploadCoverImagePublisher(
             for id: String,
-            imageData: Data,
+            jpegData: Data,
             priority: TaskPriority? = nil
         ) -> AnyPublisher<Void, Error> {
             publisher(priority: priority) { service in
-                try await service.uploadCoverImage(for: id, imageData: imageData)
+                try await service.uploadCoverImage(for: id, jpegData: jpegData)
             }
         }
 

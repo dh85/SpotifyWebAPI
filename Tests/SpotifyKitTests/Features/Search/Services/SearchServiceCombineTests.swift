@@ -28,7 +28,7 @@
                     "include_external=audio",
                 ]
             ) { client in
-                let search = await client.search
+                let search = client.search
                 return search.executePublisher(
                     query: "test query",
                     types: [.track, .album],
@@ -53,7 +53,7 @@
                     expectMarketParameter(request, market: market)
                 }
             ) { client in
-                let search = await client.search
+                let search = client.search
                 return search.executePublisher(query: "test", types: [.track], market: market)
             }
         }
@@ -61,7 +61,7 @@
         @Test("executePublisher validates limits")
         func executePublisherValidatesLimits() async {
             let (client, _) = makeUserAuthClient()
-            let search = await client.search
+            let search = client.search
 
             await assertLimitOutOfRange { limit in
                 _ = try await awaitFirstValue(

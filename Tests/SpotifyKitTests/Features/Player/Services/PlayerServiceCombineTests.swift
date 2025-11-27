@@ -21,7 +21,7 @@
                 method: "GET",
                 queryContains: ["market=US", "additional_types=episode"]
             ) { client in
-                let player = await client.player
+                let player = client.player
                 return player.statePublisher(market: "US", additionalTypes: [.episode])
             }
 
@@ -36,7 +36,7 @@
                 method: "GET",
                 queryContains: ["market=GB", "additional_types=episode,track"]
             ) { client in
-                let player = await client.player
+                let player = client.player
                 return player.currentlyPlayingPublisher(
                     market: "GB",
                     additionalTypes: [.track, .episode]
@@ -53,7 +53,7 @@
                 path: "/v1/me/player/devices",
                 method: "GET"
             ) { client in
-                let player = await client.player
+                let player = client.player
                 return player.devicesPublisher()
             }
 
@@ -64,7 +64,7 @@
         func transferPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.transferPublisher(to: "device123", play: true))
 
@@ -75,7 +75,7 @@
         func resumePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.resumePublisher(deviceID: "device123"))
 
@@ -91,7 +91,7 @@
         func playContextPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(
                 player.playPublisher(
@@ -113,7 +113,7 @@
         func playTracksPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(
                 player.playPublisher(
@@ -134,7 +134,7 @@
         func pausePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.pausePublisher(deviceID: "device123"))
 
@@ -150,7 +150,7 @@
         func skipToNextPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.skipToNextPublisher(deviceID: "device123"))
 
@@ -166,7 +166,7 @@
         func skipToPreviousPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.skipToPreviousPublisher(deviceID: "device123"))
 
@@ -182,7 +182,7 @@
         func seekPublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.seekPublisher(to: 30000, deviceID: "device123"))
 
@@ -198,7 +198,7 @@
         @Test("seekPublisher validates position")
         func seekPublisherValidatesPosition() async {
             let (client, _) = makeUserAuthClient()
-            let player = await client.player
+            let player = client.player
 
             do {
                 _ = try await awaitFirstValue(player.seekPublisher(to: -1))
@@ -219,7 +219,7 @@
         func setRepeatModePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(
                 player.setRepeatModePublisher(.track, deviceID: "device123"))
@@ -237,7 +237,7 @@
         func setVolumePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.setVolumePublisher(50, deviceID: "device123"))
 
@@ -253,7 +253,7 @@
         @Test("setVolumePublisher validates range")
         func setVolumePublisherValidatesRange() async {
             let (client, _) = makeUserAuthClient()
-            let player = await client.player
+            let player = client.player
 
             for value in [-1, 101] {
                 do {
@@ -276,7 +276,7 @@
         func setShufflePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(player.setShufflePublisher(true, deviceID: "device123"))
 
@@ -296,7 +296,7 @@
                 path: "/v1/me/player/queue",
                 method: "GET"
             ) { client in
-                let player = await client.player
+                let player = client.player
                 return player.getQueuePublisher()
             }
 
@@ -307,7 +307,7 @@
         func addToQueuePublisherBuildsRequest() async throws {
             let (client, http) = makeUserAuthClient()
             await http.addMockResponse(statusCode: 204)
-            let player = await client.player
+            let player = client.player
 
             _ = try await awaitFirstValue(
                 player.addToQueuePublisher(uri: "spotify:track:track123", deviceID: "device123")
@@ -330,7 +330,7 @@
                 method: "GET",
                 queryContains: ["limit=10"]
             ) { client in
-                let player = await client.player
+                let player = client.player
                 return player.recentlyPlayedPublisher(limit: 10)
             }
 
@@ -340,7 +340,7 @@
         @Test("recentlyPlayedPublisher validates limit")
         func recentlyPlayedPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let player = await client.player
+            let player = client.player
 
             for limit in [0, 51] {
                 do {

@@ -24,7 +24,7 @@
                     expectCountryParameter(request, country: "US")
                 }
             ) { client in
-                let browse = await client.browse
+                let browse = client.browse
                 return browse.newReleasesPublisher(country: "US", limit: 10, offset: 5)
             }
 
@@ -34,7 +34,7 @@
         @Test("newReleasesPublisher validates limit")
         func newReleasesPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let browse = await client.browse
+            let browse = client.browse
 
             await expectPublisherLimitValidation { limit in
                 browse.newReleasesPublisher(limit: limit)
@@ -52,7 +52,7 @@
                     expectLocaleParameter(request, locale: "sv_SE")
                 }
             ) { client in
-                let browse = await client.browse
+                let browse = client.browse
                 return browse.categoryPublisher(id: "party", country: "SE", locale: "sv_SE")
             }
 
@@ -72,7 +72,7 @@
                     "offset=5",
                 ]
             ) { client in
-                let browse = await client.browse
+                let browse = client.browse
                 return browse.categoriesPublisher(
                     country: "BR", locale: "pt_BR", limit: 25, offset: 5)
             }
@@ -83,7 +83,7 @@
         @Test("categoriesPublisher validates limit")
         func categoriesPublisherValidatesLimit() async {
             let (client, _) = makeUserAuthClient()
-            let browse = await client.browse
+            let browse = client.browse
 
             await expectPublisherLimitValidation { limit in
                 browse.categoriesPublisher(limit: limit)
@@ -97,7 +97,7 @@
                 path: "/v1/markets",
                 method: "GET"
             ) { client in
-                let browse = await client.browse
+                let browse = client.browse
                 return browse.availableMarketsPublisher()
             }
 

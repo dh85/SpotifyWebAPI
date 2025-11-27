@@ -242,16 +242,16 @@
         ///
         /// - Parameters:
         ///   - limit: The number of items to return (1-50). Default: 20.
-        ///   - after: A Unix timestamp in milliseconds. Returns items after this time.
-        ///   - before: A Unix timestamp in milliseconds. Returns items before this time.
+        ///   - after: Return items played after this timestamp.
+        ///   - before: Return items played before this timestamp.
         ///   - priority: The priority of the task.
-        /// - Returns: A publisher that emits a paginated list of `PlayHistory` items.
+        /// - Returns: A publisher that emits a paginated list of `PlayHistoryItem` values.
         public func recentlyPlayedPublisher(
             limit: Int = 20,
-            after: Int? = nil,
-            before: Int? = nil,
+            after: Date? = nil,
+            before: Date? = nil,
             priority: TaskPriority? = nil
-        ) -> AnyPublisher<CursorPage<PlayHistory>, Error> {
+        ) -> AnyPublisher<CursorBasedPage<PlayHistoryItem>, Error> {
             publisher(priority: priority) { service in
                 try await service.recentlyPlayed(limit: limit, after: after, before: before)
             }
@@ -280,7 +280,7 @@
         /// - Returns: A publisher that emits the current queue.
         public func getQueuePublisher(
             priority: TaskPriority? = nil
-        ) -> AnyPublisher<Queue, Error> {
+        ) -> AnyPublisher<UserQueue, Error> {
             publisher(priority: priority) { service in
                 try await service.getQueue()
             }

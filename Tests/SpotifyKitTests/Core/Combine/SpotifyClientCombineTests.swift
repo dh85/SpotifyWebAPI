@@ -90,7 +90,7 @@
                 .setFailureType(to: Error.self)
 
             let metrics = PerformanceMetrics(operationName: "observer-test", duration: 0.1)
-            let logger = DebugLogger.telemetryLogger()
+            let logger = await client.logger
 
             // Emit repeatedly to handle race condition where observer registration is async
             let emitterTask = Task {
