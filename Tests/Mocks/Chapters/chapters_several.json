@@ -1,0 +1,165 @@
+{
+  "chapters": [
+    {
+      "available_markets": [
+        "US",
+        "CA",
+        "GB"
+      ],
+      "chapter_number": 1,
+      "description": "Chapter description",
+      "html_description": "<p>Chapter description</p>",
+      "duration_ms": 300000,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/chapterid"
+      },
+      "href": "https://api.spotify.com/v1/chapters/chapterid",
+      "id": "chapterid",
+      "images": [
+        {
+          "url": "https://i.scdn.co/image/image1",
+          "height": 640,
+          "width": 640
+        }
+      ],
+      "is_playable": true,
+      "languages": [
+        "en"
+      ],
+      "name": "Chapter 1",
+      "release_date": "2023-01-01",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 0
+      },
+      "type": "chapter",
+      "uri": "spotify:episode:chapterid",
+      "audiobook": {
+        "authors": [
+          {
+            "name": "Author Name"
+          }
+        ],
+        "available_markets": [
+          "US"
+        ],
+        "copyrights": [],
+        "description": "Audiobook description",
+        "html_description": "Audiobook description",
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com"
+        },
+        "href": "https://api.spotify.com/v1/audiobooks/audiobookid",
+        "id": "audiobookid",
+        "images": [],
+        "languages": [
+          "en"
+        ],
+        "media_type": "audio",
+        "name": "Audiobook Name",
+        "narrators": [],
+        "publisher": "Publisher",
+        "type": "audiobook",
+        "uri": "spotify:audiobook:audiobookid",
+        "total_chapters": 10
+      }
+    },
+    {
+      "available_markets": [
+        "US"
+      ],
+      "chapter_number": 2,
+      "description": "Chapter 2 description",
+      "html_description": "<p>Chapter 2 description</p>",
+      "duration_ms": 250000,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/chapterid2"
+      },
+      "href": "https://api.spotify.com/v1/chapters/chapterid2",
+      "id": "chapterid2",
+      "images": [],
+      "is_playable": true,
+      "languages": [
+        "en"
+      ],
+      "name": "Chapter 2",
+      "release_date": "2023-01-01",
+      "release_date_precision": "day",
+      "type": "chapter",
+      "uri": "spotify:episode:chapterid2",
+      "audiobook": {
+        "authors": [],
+        "available_markets": [],
+        "copyrights": [],
+        "description": "Audiobook description",
+        "html_description": "Audiobook description",
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com"
+        },
+        "href": "https://api.spotify.com/v1/audiobooks/audiobookid",
+        "id": "audiobookid",
+        "images": [],
+        "languages": [],
+        "media_type": "audio",
+        "name": "Audiobook Name",
+        "narrators": [],
+        "publisher": "Publisher",
+        "type": "audiobook",
+        "uri": "spotify:audiobook:audiobookid",
+        "total_chapters": 10
+      }
+    },
+    {
+      "available_markets": [
+        "US"
+      ],
+      "chapter_number": 3,
+      "description": "Chapter 3 description",
+      "html_description": "<p>Chapter 3 description</p>",
+      "duration_ms": 280000,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/chapterid3"
+      },
+      "href": "https://api.spotify.com/v1/chapters/chapterid3",
+      "id": "chapterid3",
+      "images": [],
+      "is_playable": true,
+      "languages": [
+        "en"
+      ],
+      "name": "Chapter 3",
+      "release_date": "2023-01-01",
+      "release_date_precision": "day",
+      "type": "chapter",
+      "uri": "spotify:episode:chapterid3",
+      "audiobook": {
+        "authors": [],
+        "available_markets": [],
+        "copyrights": [],
+        "description": "Audiobook description",
+        "html_description": "Audiobook description",
+        "explicit": false,
+        "external_urls": {
+          "spotify": "https://open.spotify.com"
+        },
+        "href": "https://api.spotify.com/v1/audiobooks/audiobookid",
+        "id": "audiobookid",
+        "images": [],
+        "languages": [],
+        "media_type": "audio",
+        "name": "Audiobook Name",
+        "narrators": [],
+        "publisher": "Publisher",
+        "type": "audiobook",
+        "uri": "spotify:audiobook:audiobookid",
+        "total_chapters": 10
+      }
+    }
+  ]
+}

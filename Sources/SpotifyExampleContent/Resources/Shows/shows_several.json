@@ -1,0 +1,79 @@
+{
+  "shows": [
+    {
+      "available_markets": [
+        "US"
+      ],
+      "copyrights": [],
+      "description": "Show 1 description",
+      "html_description": "Show 1 description",
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/show/id1"
+      },
+      "href": "https://api.spotify.com/v1/shows/id1",
+      "id": "id1",
+      "images": [],
+      "is_externally_hosted": false,
+      "languages": [
+        "en"
+      ],
+      "media_type": "audio",
+      "name": "Show 1",
+      "publisher": "Publisher 1",
+      "type": "show",
+      "uri": "spotify:show:id1",
+      "total_episodes": 5
+    },
+    {
+      "available_markets": [
+        "US"
+      ],
+      "copyrights": [],
+      "description": "Show 2 description",
+      "html_description": "Show 2 description",
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/show/id2"
+      },
+      "href": "https://api.spotify.com/v1/shows/id2",
+      "id": "id2",
+      "images": [],
+      "is_externally_hosted": false,
+      "languages": [
+        "en"
+      ],
+      "media_type": "audio",
+      "name": "Show 2",
+      "publisher": "Publisher 2",
+      "type": "show",
+      "uri": "spotify:show:id2",
+      "total_episodes": 10
+    },
+    {
+      "available_markets": [
+        "US"
+      ],
+      "copyrights": [],
+      "description": "Show 3 description",
+      "html_description": "Show 3 description",
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/show/id3"
+      },
+      "href": "https://api.spotify.com/v1/shows/id3",
+      "id": "id3",
+      "images": [],
+      "is_externally_hosted": false,
+      "languages": [
+        "en"
+      ],
+      "media_type": "audio",
+      "name": "Show 3",
+      "publisher": "Publisher 3",
+      "type": "show",
+      "uri": "spotify:show:id3",
+      "total_episodes": 15
+    }
+  ]
+}

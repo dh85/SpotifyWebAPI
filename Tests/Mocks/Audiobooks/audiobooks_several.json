@@ -1,0 +1,51 @@
+{
+  "audiobooks": [
+    null,
+    null,
+    {
+      "authors": [
+        {
+          "name": "Frank Herbert"
+        }
+      ],
+      "available_markets": [
+        "US",
+        "GB"
+      ],
+      "chapters": {
+        "href": "https://api.spotify.com/v1/audiobooks/7iHfbu1YPACw6oZPAFJtqe/chapters",
+        "items": [],
+        "limit": 50,
+        "next": null,
+        "offset": 0,
+        "previous": null,
+        "total": 51
+      },
+      "copyrights": [],
+      "description": "A stunning blend of adventure and mysticism.",
+      "edition": "Unabridged",
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/show/7iHfbu1YPACw6oZPAFJtqe"
+      },
+      "href": "https://api.spotify.com/v1/audiobooks/7iHfbu1YPACw6oZPAFJtqe",
+      "html_description": "A stunning blend of adventure and mysticism.",
+      "id": "7iHfbu1YPACw6oZPAFJtqe",
+      "images": [],
+      "languages": [
+        "en"
+      ],
+      "media_type": "audio",
+      "name": "Dune: Book One in the Dune Chronicles",
+      "narrators": [
+        {
+          "name": "Scott Brick"
+        }
+      ],
+      "publisher": "Macmillan Audio",
+      "total_chapters": 51,
+      "type": "audiobook",
+      "uri": "spotify:show:7iHfbu1YPACw6oZPAFJtqe"
+    }
+  ]
+}

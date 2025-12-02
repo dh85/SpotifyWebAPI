@@ -1,0 +1,49 @@
+name: DocC
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build DocC archive
+        run: |
+            # 1. Clear existing docs to prevent stale files
+            rm -rf docs
+            
+            # 2. Generate documentation
+            # --disable-sandbox: Required to allow writing to the ./docs folder on CI runners
+            # --hosting-base-path: Must match your repository name (SpotifyKit) for CSS/JS to load correctly
+            swift package --disable-sandbox generate-documentation \
+              --target SpotifyKit \
+              --disable-indexing \
+              --transform-for-static-hosting \
+              --hosting-base-path SpotifyKit \
+              --output-path ./docs
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
