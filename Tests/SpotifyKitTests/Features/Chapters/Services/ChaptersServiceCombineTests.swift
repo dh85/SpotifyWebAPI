@@ -58,7 +58,7 @@
         Issue.record("Expected validation error for >50 IDs")
       } catch let error as SpotifyClientError {
         switch error {
-        case .invalidRequest(let reason):
+        case .invalidRequest(let reason, _, _):
           #expect(reason.contains("Maximum of 50"))
         default:
           Issue.record("Unexpected SpotifyClientError: \(error)")

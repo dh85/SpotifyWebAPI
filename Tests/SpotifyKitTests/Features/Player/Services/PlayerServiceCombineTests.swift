@@ -205,7 +205,7 @@
         Issue.record("Expected validation error for negative position")
       } catch let error as SpotifyClientError {
         switch error {
-        case .invalidRequest(let reason):
+        case .invalidRequest(let reason, _, _):
           #expect(reason.contains(">= 0"))
         default:
           Issue.record("Unexpected SpotifyClientError: \(error)")
@@ -261,7 +261,7 @@
           Issue.record("Expected validation error for value=\(value)")
         } catch let error as SpotifyClientError {
           switch error {
-          case .invalidRequest(let reason):
+          case .invalidRequest(let reason, _, _):
             #expect(reason.contains("Volume must be between"))
           default:
             Issue.record("Unexpected SpotifyClientError: \(error)")
@@ -348,7 +348,7 @@
           Issue.record("Expected limit validation for limit=\(limit)")
         } catch let error as SpotifyClientError {
           switch error {
-          case .invalidRequest(let reason):
+          case .invalidRequest(let reason, _, _):
             #expect(reason.contains("Limit must be between"))
           default:
             Issue.record("Unexpected SpotifyClientError: \(error)")
