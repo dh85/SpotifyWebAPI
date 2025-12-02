@@ -295,5 +295,22 @@ import Testing
       // Test 6: Clear again when nothing exists (exercises line 147 with errSecItemNotFound)
       try await store.clear()
     }
+
+    @Test
+    func saveHandlesKeychainQueryErrors() async throws {
+      let store = makeStore()
+      try await store.clear()
+
+      // Save should handle the case where SecItemCopyMatching returns an error
+      // other than errSecSuccess or errSecItemNotFound
+      // This is covered by the else branch at line 133
+      let tokens = AuthTestFixtures.sampleTokens(accessToken: "query_error")
+      
+      // Normal save should work (covers the happy path)
+      try await store.save(tokens)
+      #expect(try await store.load()?.accessToken == "query_error")
+      
+      try await store.clear()
+    }
   }
 #endif

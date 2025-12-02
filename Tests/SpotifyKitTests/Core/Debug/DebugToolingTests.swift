@@ -895,4 +895,66 @@ struct DebugToolingTests {
         actual.logResponses == false, "Sensitive logging must be disabled in production")
     #endif
   }
+
+  @Test("Debug logger handles binary data")
+  func debugLoggerHandlesBinaryData() async {
+    let logger = DebugLogger()
+    await logger.configure(.verbose)
+
+    let collector = DebugEventCollector()
+    let observer = await logger.addObserver { event in
+      Task { await collector.append(event) }
+    }
+    defer { Task { await logger.removeObserver(observer) } }
+
+    let url = URL(string: "https://api.spotify.com/v1/upload")!
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.httpBody = Data([0xFF, 0xD8, 0xFF, 0xE0])  // Binary data
+
+    let token = await logger.logRequest(request)
+    let context = await collector.waitForEvent { event -> RequestLogContext? in
+      guard case .request(let ctx) = event, ctx.token == token else { return nil }
+      return ctx
+    }
+
+    #expect(context?.bodyPreview == "<binary data>")
+  }
+
+  @Test("Debug logger handles non-JSON text")
+  func debugLoggerHandlesNonJSONText() async {
+    let logger = DebugLogger()
+    await logger.configure(.verbose)
+
+    let collector = DebugEventCollector()
+    let observer = await logger.addObserver { event in
+      Task { await collector.append(event) }
+    }
+    defer { Task { await logger.removeObserver(observer) } }
+
+    let url = URL(string: "https://api.spotify.com/v1/text")!
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
+    request.httpBody = Data("plain text content".utf8)
+
+    let token = await logger.logRequest(request)
+    let context = await collector.waitForEvent { event -> RequestLogContext? in
+      guard case .request(let ctx) = event, ctx.token == token else { return nil }
+      return ctx
+    }
+
+    #expect(context?.bodyPreview == "plain text content")
+  }
+
+  @Test("Debug logger logs error and warning levels")
+  func debugLoggerLogsErrorAndWarningLevels() async {
+    let logger = DebugLogger()
+    await logger.configure(DebugConfiguration(logLevel: .warning))
+
+    // These should not throw
+    await logger.log(.error, "Error message")
+    await logger.log(.warning, "Warning message")
+    await logger.log(.info, "Info message")  // Below threshold, won't log
+  }
 }

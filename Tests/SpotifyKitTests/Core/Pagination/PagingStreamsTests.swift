@@ -114,33 +114,6 @@ import Testing
   }
 
   @Test
-  func allItemsProviderStreamsPages() async throws {
-    let (client, _) = await makeUserAuthClient()
-
-    let provider = client.makeAllItemsProvider(pageSize: 2) { limit, offset in
-      let range = Array(offset..<(offset + limit))
-      let hasNext = offset + limit < 6
-      return Page(
-        href: URL(string: "https://api.spotify.com/v1/test")!,
-        items: range,
-        limit: limit,
-        next: hasNext
-          ? URL(string: "https://api.spotify.com/v1/test?offset=\(offset + limit)") : nil,
-        offset: offset,
-        previous: nil,
-        total: 6
-      )
-    }
-
-    var seen = 0
-    for try await page in provider.streamPages(maxPages: 2) {
-      seen += page.items.count
-    }
-
-    #expect(seen == 4)
-  }
-
-  @Test
   func streamPagesRespectsMaxPages() async throws {
     let (client, _) = await makeUserAuthClient()
 

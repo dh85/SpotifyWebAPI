@@ -289,6 +289,29 @@ struct RestrictedFileTokenStoreTests {
 
     try await store.clear()
   }
+
+  @Test
+  func directoryAlreadyExistsDoesNotThrow() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "preexisting_\(UUID().uuidString)",
+      isDirectory: true
+    )
+    try FileManager.default.createDirectory(
+      at: directory,
+      withIntermediateDirectories: true
+    )
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let store = RestrictedFileTokenStore(
+      filename: "test.json",
+      directory: directory
+    )
+
+    let tokens = AuthTestFixtures.sampleTokens(accessToken: "preexist")
+    try await store.save(tokens)
+    #expect(try await store.load()?.accessToken == "preexist")
+    try await store.clear()
+  }
 }
 
 @Suite
