@@ -3,7 +3,7 @@
 ![Swift](https://img.shields.io/badge/Swift-6.1-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-iOS%2016%20%7C%20macOS%2013%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![CI](https://github.com/dh85/SpotifyKit/actions/workflows/swift.yml/badge.svg)
+[![CI](https://github.com/dh85/SpotifyKit/actions/workflows/ci.yml/badge.svg)](https://github.com/dh85/SpotifyKit/actions/workflows/ci.yml)
 ![Documentation](https://img.shields.io/badge/documentation-DocC-blue.svg)
 
 **SpotifyKit** is a modern, thread-safe, and comprehensive Swift SDK for the Spotify Web API. Built with Swift 6 structured concurrency (Async/Await & Actors) from the ground up, it provides a fluent, type-safe interface for accessing the entire Spotify catalogue, managing user libraries, and controlling playback.
