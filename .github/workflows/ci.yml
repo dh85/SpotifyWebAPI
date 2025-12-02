@@ -36,6 +36,6 @@ jobs:
       - name: Display Swift version
         run: swift --version
       - name: Build package
-        run: swift build --build-tests -Xswiftc -strict-concurrency=minimal
+        run: swift build --build-tests
       - name: Run tests
         run: swift test --parallel
