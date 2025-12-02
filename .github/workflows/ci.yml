@@ -15,8 +15,6 @@ jobs:
         run: |
           swift format --version
           swift format lint --recursive Sources Tests Examples
-      - name: Swift package diagnostics
-        run: swift package diagnose
 
   build-and-test:
     runs-on: ${{ matrix.os }}
