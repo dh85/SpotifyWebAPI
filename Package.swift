@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
@@ -27,10 +27,6 @@ let package = Package(
             url: "https://github.com/apple/swift-crypto.git",
             from: "3.0.0"
         ),
-        .package(
-            url: "https://github.com/hummingbird-project/hummingbird.git",
-            from: "2.0.0"
-        ),
     ],
     targets: [
         .target(
@@ -49,17 +45,17 @@ let package = Package(
         .testTarget(
             name: "SpotifyKitTests",
             dependencies: [
-                "SpotifyKit",
-                .product(name: "Hummingbird", package: "hummingbird"),
+                "SpotifyKit"
             ],
             path: "Tests",
-            // Sources will only look in these folders
+            exclude: [
+                "Support/SpotifyMockAPIServer.swift",
+                "SpotifyKitTests/Integration",
+            ],
             sources: [
                 "SpotifyKitTests",
                 "Support",
             ],
-            // Resources now points to the sibling folder "Mocks"
-            // This path is relative to the target path "Tests"
             resources: [
                 .process("Mocks")
             ]
