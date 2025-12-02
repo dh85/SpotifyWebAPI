@@ -25,7 +25,10 @@
         "--security-opt",
         "seccomp=unconfined"
     ],
-    "postCreateCommand": "sudo chown -R ubuntu:ubuntu ${containerWorkspaceFolder}",
+    "containerEnv": {
+        "TMPDIR": "${containerWorkspaceFolder}/.tmp"
+    },
+    "postCreateCommand": "mkdir -p ${containerWorkspaceFolder}/.tmp && sudo chown -R ubuntu:ubuntu ${containerWorkspaceFolder}",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
@@ -40,8 +43,7 @@
                 }
             },
             "extensions": [
-                "swiftlang.swift-vscode",
-                "openai.chatgpt"
+                "swiftlang.swift-vscode"
             ]
         }
     },
