@@ -170,7 +170,7 @@ public actor SpotifyClient<Capability: Sendable> {
 
   let networkRecovery: NetworkRecoveryHandler
   var ongoingRequests: [String: Task<(any Sendable), Error>] = [:]
-  var _isOffline: Bool = false
+  var isOfflineMode: Bool = false
 
   /// The logger instance for this client.
   internal let logger: DebugLogger
@@ -274,7 +274,7 @@ public actor SpotifyClient<Capability: Sendable> {
   ///
   /// - Parameter offline: `true` to enable offline mode, `false` to allow network requests.
   public func setOffline(_ offline: Bool) {
-    _isOffline = offline
+    isOfflineMode = offline
   }
 
   /// Check if the client is in offline mode.
@@ -291,7 +291,7 @@ public actor SpotifyClient<Capability: Sendable> {
   ///
   /// - Returns: `true` if offline mode is enabled, `false` otherwise.
   public func isOffline() -> Bool {
-    _isOffline
+    isOfflineMode
   }
 
   // MARK: - Internal auth helper

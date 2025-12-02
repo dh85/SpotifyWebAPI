@@ -186,7 +186,7 @@ extension SpotifyClient {
 
   private func performInternal<T: Decodable>(_ prepared: PreparedRequest<T>) async throws -> T {
     // Check if offline mode is enabled
-    if _isOffline {
+    if isOfflineMode {
       throw SpotifyClientError.offline
     }
 
