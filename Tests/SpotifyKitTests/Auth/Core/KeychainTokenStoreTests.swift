@@ -39,7 +39,7 @@ import Testing
             #expect(loaded != nil)
             #expect(loaded?.accessToken == "keychain_access")
             #expect(loaded?.refreshToken == "keychain_refresh")
-            
+
             // Use tolerance for date comparison due to encoding/decoding precision
             if let loadedDate = loaded?.expiresAt {
                 #expect(abs(loadedDate.timeIntervalSince(tokens.expiresAt)) < 1.0)
@@ -130,7 +130,7 @@ import Testing
             #expect(loaded?.accessToken == "complete_access")
             #expect(loaded?.refreshToken == "complete_refresh")
             #expect(loaded?.scope == "user-read-private playlist-modify-public")
-            
+
             // Date comparison with small tolerance for encoding/decoding precision
             if let loadedDate = loaded?.expiresAt {
                 #expect(abs(loadedDate.timeIntervalSince(tokens.expiresAt)) < 1.0)
@@ -144,8 +144,10 @@ import Testing
         @Test
         func accessGroupIsolatesTokens() async throws {
             let service = "com.spotifykit.test.\(UUID().uuidString)"
-            let store1 = KeychainTokenStore(service: service, account: "test", accessGroup: "group1")
-            let store2 = KeychainTokenStore(service: service, account: "test", accessGroup: "group2")
+            let store1 = KeychainTokenStore(
+                service: service, account: "test", accessGroup: "group1")
+            let store2 = KeychainTokenStore(
+                service: service, account: "test", accessGroup: "group2")
 
             try await store1.clear()
             try await store2.clear()
@@ -157,17 +159,17 @@ import Testing
             // but may not actually provide isolation without proper keychain access group setup
             do {
                 try await store1.save(tokens1)
-                
+
                 // Verify we can load from store1
                 let loaded1 = try await store1.load()
                 #expect(loaded1?.accessToken == "group1_token")
 
                 try await store1.clear()
-                
+
                 // Verify clear worked
                 let afterClear = try await store1.load()
                 #expect(afterClear == nil)
-                
+
                 try await store2.clear()
             } catch TokenStoreError.keychain {
                 // Expected if no keychain access group entitlements in test environment
@@ -186,18 +188,18 @@ import Testing
             try await store.save(tokens)
 
             // Manually corrupt the data in keychain by saving invalid JSON
-            var attributes: [String: Any] = [
+            let attributes: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
                 kSecAttrAccount as String: account,
             ]
-            
+
             let corruptData = "not valid json".data(using: .utf8)!
             let status = SecItemUpdate(
                 attributes as CFDictionary,
                 [kSecValueData as String: corruptData] as CFDictionary
             )
-            
+
             if status == errSecSuccess {
                 do {
                     _ = try await store.load()
@@ -222,7 +224,7 @@ import Testing
             // This test verifies the error handling path exists
             // In practice, SpotifyTokens encoding shouldn't fail
             let tokens = AuthTestFixtures.sampleTokens(accessToken: "encodable")
-            
+
             // Normal encoding should work
             do {
                 try await store.save(tokens)
@@ -238,15 +240,15 @@ import Testing
         @Test
         func clearHandlesKeychainErrors() async throws {
             let store = makeStore()
-            
+
             // Clear non-existent item should succeed
             try await store.clear()
-            
+
             // Save and then clear should succeed
             let tokens = AuthTestFixtures.sampleTokens(accessToken: "clear_test")
             try await store.save(tokens)
             try await store.clear()
-            
+
             // Verify it's cleared
             let loaded = try await store.load()
             #expect(loaded == nil)
@@ -268,28 +270,28 @@ import Testing
             let service = "com.spotifykit.test.\(UUID().uuidString)"
             let account = "comprehensive_test"
             let store = KeychainTokenStore(service: service, account: account)
-            
+
             try await store.clear()
-            
+
             // Test 1: Add new item (exercises line 128 guard)
             let tokens1 = AuthTestFixtures.sampleTokens(accessToken: "first_save")
             try await store.save(tokens1)
-            
+
             // Test 2: Update existing item (exercises line 122 guard)
             let tokens2 = AuthTestFixtures.sampleTokens(accessToken: "second_save")
             try await store.save(tokens2)
-            
+
             // Test 3: Load (exercises line 88 guard)
             let loaded = try await store.load()
             #expect(loaded?.accessToken == "second_save")
-            
+
             // Test 4: Clear (exercises line 147 guard)
             try await store.clear()
-            
+
             // Test 5: Verify clear worked
             let afterClear = try await store.load()
             #expect(afterClear == nil)
-            
+
             // Test 6: Clear again when nothing exists (exercises line 147 with errSecItemNotFound)
             try await store.clear()
         }
