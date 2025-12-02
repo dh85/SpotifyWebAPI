@@ -94,21 +94,6 @@
       }
     }
 
-    /// Fetch all albums saved in the current user's library.
-    ///
-    /// - Parameters:
-    ///   - maxItems: Total number of albums to fetch. Default: 5,000. Pass `nil` for unlimited.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array of `SavedAlbum` values aggregated across every page.
-    public func allSavedAlbumsPublisher(
-      maxItems: Int? = 5000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[SavedAlbum], Error> {
-      libraryAllItemsPublisher(maxItems: maxItems, priority: priority) { service, maxItems in
-        try await service.allSavedAlbums(maxItems: maxItems)
-      }
-    }
-
     /// Save one or more albums to the current user's 'Your Music' library.
     /// Corresponds to: `PUT /v1/me/albums`. Requires the `user-library-modify` scope.
     ///

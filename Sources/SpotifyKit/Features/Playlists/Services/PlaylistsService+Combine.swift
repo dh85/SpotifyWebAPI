@@ -73,35 +73,6 @@
       }
     }
 
-    /// Get all tracks or episodes in a playlist.
-    ///
-    /// - Parameters:
-    ///   - id: The Spotify ID for the playlist.
-    ///   - market: An ISO 3166-1 alpha-2 country code.
-    ///   - fields: A comma-separated list of fields to filter the response.
-    ///   - additionalTypes: A set of item types to include (track, episode).
-    ///   - maxItems: Limit on total items to fetch. Default: 5,000. Use `nil` for unlimited.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array of all `PlaylistTrackItem` objects.
-    public func allItemsPublisher(
-      _ id: String,
-      market: String? = nil,
-      fields: String? = nil,
-      additionalTypes: Set<AdditionalItemType>? = nil,
-      maxItems: Int? = 5000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[PlaylistTrackItem], Error> {
-      publisher(priority: priority) { service in
-        try await service.allItems(
-          id,
-          market: market,
-          fields: fields,
-          additionalTypes: additionalTypes,
-          maxItems: maxItems
-        )
-      }
-    }
-
     /// Get a list of the playlists owned or followed by a specific user.
     /// Corresponds to: `GET /v1/users/{user_id}/playlists`
     ///
@@ -157,22 +128,6 @@
       pagedPublisher(limit: limit, offset: offset, priority: priority) {
         service, limit, offset in
         try await service.myPlaylists(limit: limit, offset: offset)
-      }
-    }
-
-    /// Get all playlists owned or followed by the current user.
-    /// This is a convenience method that fetches in chunks and concatenates results.
-    ///
-    /// - Parameters:
-    ///   - maxItems: Maximum number of playlists to return. Default is 1000.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array of `SimplifiedPlaylist` objects.
-    public func allMyPlaylistsPublisher(
-      maxItems: Int? = 1000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[SimplifiedPlaylist], Error> {
-      libraryAllItemsPublisher(maxItems: maxItems, priority: priority) { service, maxItems in
-        try await service.allMyPlaylists(maxItems: maxItems)
       }
     }
 

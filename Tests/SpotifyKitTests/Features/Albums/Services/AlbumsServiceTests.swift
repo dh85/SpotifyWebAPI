@@ -198,31 +198,6 @@ struct AlbumsServiceTests {
   }
 
   @Test
-  func allSavedAlbumsFetchesAllPages() async throws {
-    let (client, http) = makeUserAuthClient()
-    let first = try makePaginatedResponse(
-      fixture: "albums_saved.json",
-      of: SavedAlbum.self,
-      offset: 0,
-      total: 2,
-      hasNext: true
-    )
-    let second = try makePaginatedResponse(
-      fixture: "albums_saved.json",
-      of: SavedAlbum.self,
-      offset: 50,
-      total: 2,
-      hasNext: false
-    )
-    await http.addMockResponse(data: first, statusCode: 200)
-    await http.addMockResponse(data: second, statusCode: 200)
-
-    let albums = try await client.albums.allSavedAlbums()
-
-    #expect(albums.count == 2)
-  }
-
-  @Test
   func streamSavedAlbumsRespectsMaxItems() async throws {
     let (client, http) = makeUserAuthClient()
     try await enqueueTwoPageResponses(

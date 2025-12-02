@@ -57,7 +57,7 @@ import Foundation
 /// )
 ///
 /// // Get queue
-/// let queue = try await client.player.getQueue()
+/// let queue = try await client.player.queue()
 /// print("Currently playing: \(queue.currentlyPlaying?.name ?? "Unknown")")
 /// print("Up next: \(queue.queue.count) tracks")
 /// ```
@@ -408,7 +408,7 @@ extension PlayerService where Capability == UserAuthCapability {
   /// - Throws: `SpotifyClientError` if the request fails.
   ///
   /// Required scope: `user-read-playback-state` or `user-read-currently-playing`
-  public func getQueue() async throws -> UserQueue {
+  public func queue() async throws -> UserQueue {
     return
       try await client
       .get("/me/player/queue")

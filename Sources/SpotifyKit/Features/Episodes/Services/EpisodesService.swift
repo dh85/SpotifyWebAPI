@@ -12,7 +12,6 @@ private typealias SeveralEpisodesWrapper = ArrayWrapper<Episode>
 /// both concurrency models behave the same.
 public struct EpisodesService<Capability: Sendable>: Sendable {
   let client: SpotifyClient<Capability>
-  init(client: SpotifyClient<Capability>) { self.client = client }
 }
 
 // MARK: - Helpers
@@ -90,19 +89,6 @@ extension EpisodesService where Capability == UserAuthCapability {
       .decode(Page<SavedEpisode>.self)
   }
 
-  /// Fetch every episode saved in the user's library.
-  ///
-  /// - Parameters:
-  ///   - market: Optional market code for episode relinking.
-  ///   - maxItems: Total number of episodes to fetch. Default: 5,000. Pass `nil` for unlimited.
-  public func allSavedEpisodes(
-    market: String? = nil,
-    maxItems: Int? = 5000
-  ) async throws -> [SavedEpisode] {
-    try await savedEpisodesProvider(market: market, defaultMaxItems: 5000)
-      .all(maxItems: maxItems)
-  }
-
   /// Streams saved episodes as they are fetched.
   ///
   /// - Parameters:
@@ -112,7 +98,9 @@ extension EpisodesService where Capability == UserAuthCapability {
     market: String? = nil,
     maxItems: Int? = nil
   ) -> AsyncThrowingStream<SavedEpisode, Error> {
-    savedEpisodesProvider(market: market, defaultMaxItems: nil).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.saved(limit: limit, offset: offset, market: market)
+    }
   }
 
   /// Streams full pages of saved episodes, ideal for batching progress updates.
@@ -124,15 +112,7 @@ extension EpisodesService where Capability == UserAuthCapability {
     market: String? = nil,
     maxPages: Int? = nil
   ) -> AsyncThrowingStream<Page<SavedEpisode>, Error> {
-    savedEpisodesProvider(market: market, defaultMaxItems: nil).streamPages(maxPages: maxPages)
-  }
-
-  private func savedEpisodesProvider(
-    market: String?,
-    defaultMaxItems: Int?
-  ) -> AllItemsProvider<Capability, SavedEpisode> {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
       try await self.saved(limit: limit, offset: offset, market: market)
     }
   }

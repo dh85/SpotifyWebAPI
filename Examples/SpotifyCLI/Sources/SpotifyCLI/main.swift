@@ -126,11 +126,11 @@ struct Search: AsyncParsableCommand {
       throw ValidationError("Invalid type. Use: track, artist, album, or playlist")
     }
 
-    let results = try await client.search.execute(
-      query: query,
-      types: [searchType],
-      limit: limit
-    )
+    let results = try await client.search
+      .query(query)
+      .forTypes([searchType])
+      .withLimit(limit)
+      .execute()
 
     print("🔍 Search Results: '\(query)'")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

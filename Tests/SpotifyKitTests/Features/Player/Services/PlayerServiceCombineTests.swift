@@ -289,15 +289,15 @@
       )
     }
 
-    @Test("getQueuePublisher builds correct request")
-    func getQueuePublisherBuildsRequest() async throws {
+    @Test("queuePublisher builds correct request")
+    func queuePublisherBuildsRequest() async throws {
       let queue = try await assertPublisherRequest(
         fixture: "queue.json",
         path: "/v1/me/player/queue",
         method: "GET"
       ) { client in
         let player = client.player
-        return player.getQueuePublisher()
+        return player.queuePublisher()
       }
 
       #expect(queue.queue.isEmpty == false)

@@ -95,21 +95,6 @@
       }
     }
 
-    /// Fetch all shows saved in the current user's library.
-    ///
-    /// - Parameters:
-    ///   - maxItems: Total number of shows to fetch. Default: 5,000. Pass `nil` for unlimited.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array of `SavedShow` values aggregated across every page.
-    public func allSavedShowsPublisher(
-      maxItems: Int? = 5000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[SavedShow], Error> {
-      libraryAllItemsPublisher(maxItems: maxItems, priority: priority) { service, maxItems in
-        try await service.allSavedShows(maxItems: maxItems)
-      }
-    }
-
     /// Save one or more shows to the current Spotify user's library.
     ///
     /// - Parameters:

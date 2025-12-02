@@ -12,7 +12,6 @@ private typealias SeveralShowsWrapper = ArrayWrapper<SimplifiedShow>
 /// same operations without duplicating logic.
 public struct ShowsService<Capability: Sendable>: Sendable {
   let client: SpotifyClient<Capability>
-  init(client: SpotifyClient<Capability>) { self.client = client }
 }
 
 // MARK: - Helpers
@@ -152,18 +151,13 @@ extension ShowsService where Capability == UserAuthCapability {
       .decode(Page<SavedShow>.self)
   }
 
-  /// Fetch all shows saved in the current user's library.
-  ///
-  /// - Parameter maxItems: Total number of shows to fetch. Default: 5,000. Pass `nil` for unlimited.
-  public func allSavedShows(maxItems: Int? = 5000) async throws -> [SavedShow] {
-    try await savedShowsProvider(defaultMaxItems: 5000).all(maxItems: maxItems)
-  }
-
   /// Streams saved shows as they are fetched.
   ///
   /// - Parameter maxItems: Optional limit on emitted shows. Default: `nil`.
   public func streamSavedShows(maxItems: Int? = nil) -> AsyncThrowingStream<SavedShow, Error> {
-    savedShowsProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.saved(limit: limit, offset: offset)
+    }
   }
 
   /// Streams entire pages of saved shows for batched processing.
@@ -172,14 +166,7 @@ extension ShowsService where Capability == UserAuthCapability {
   public func streamSavedShowPages(maxPages: Int? = nil)
     -> AsyncThrowingStream<Page<SavedShow>, Error>
   {
-    savedShowsProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
-  }
-
-  private func savedShowsProvider(
-    defaultMaxItems: Int?
-  ) -> AllItemsProvider<Capability, SavedShow> {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
       try await self.saved(limit: limit, offset: offset)
     }
   }

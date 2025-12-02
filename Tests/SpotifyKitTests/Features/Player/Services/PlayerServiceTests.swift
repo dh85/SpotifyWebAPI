@@ -228,9 +228,9 @@ struct PlayerServiceTests {
   // MARK: - Queue Tests
 
   @Test
-  func getQueueBuildsCorrectRequest() async throws {
+  func queueBuildsCorrectRequest() async throws {
     try await withMockServiceClient(fixture: "queue.json") { client, http in
-      let queue = try await client.player.getQueue()
+      let queue = try await client.player.queue()
 
       #expect(queue.queue.count > 0)
       expectRequest(await http.firstRequest, path: "/v1/me/player/queue", method: "GET")

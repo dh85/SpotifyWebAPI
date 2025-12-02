@@ -57,14 +57,14 @@ Create a client using one of the factory methods. For most apps, you'll use **PK
 import SpotifyKit
 
 // Option A: PKCE (Best for mobile/desktop apps)
-let client = SpotifyClient.pkce(
+let client: UserSpotifyClient = .pkce(
     clientID: "your-client-id",
     redirectURI: URL(string: "your-app://callback")!,
     scopes: [.userReadPrivate, .userLibraryRead]
 )
 
 // Option B: Client Credentials (Best for backend services)
-let client = SpotifyClient.clientCredentials(
+let client: AppSpotifyClient = .clientCredentials(
     clientID: "your-client-id",
     clientSecret: "your-client-secret"
 )

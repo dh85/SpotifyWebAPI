@@ -108,11 +108,11 @@ struct SpotifyController {
       throw HTTPError(.badRequest, message: "Missing 'q' query parameter")
     }
 
-    let results = try await client.search.execute(
-      query: query,
-      types: [.track, .artist, .album],
-      limit: 10
-    )
+    let results = try await client.search
+      .query(query)
+      .forTypes([.track, .artist, .album])
+      .withLimit(10)
+      .execute()
 
     let response = SearchResponse(from: results)
     return try makeJSONResponse(response)

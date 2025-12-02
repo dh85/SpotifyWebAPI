@@ -43,7 +43,3 @@ public struct Album: Codable, Sendable, Equatable, StandardSpotifyResource {
   /// Popularity score (0-100).
   public let popularity: Int?
 }
-
-extension Album {
-
-}

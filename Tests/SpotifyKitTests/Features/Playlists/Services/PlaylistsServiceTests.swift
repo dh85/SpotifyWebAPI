@@ -439,13 +439,12 @@ struct PlaylistsServiceTests {
     }
   }
 
-  // MARK: - Convenience Method Tests
+  // MARK: - Streaming Tests
 
   @Test
-  func allMyPlaylistsFetchesAllPages() async throws {
+  func streamMyPlaylistsFetchesAllPages() async throws {
     let (client, http) = makeUserAuthClient()
 
-    // Page 1: 2 playlists, has next
     let page1 = makePage(
       items: ["playlist1", "playlist2"],
       limit: 2,
@@ -453,7 +452,6 @@ struct PlaylistsServiceTests {
       total: 5,
       hasNext: true
     )
-    // Page 2: 2 playlists, has next
     let page2 = makePage(
       items: ["playlist3", "playlist4"],
       limit: 2,
@@ -461,7 +459,6 @@ struct PlaylistsServiceTests {
       total: 5,
       hasNext: true
     )
-    // Page 3: 1 playlist, no next
     let page3 = makePage(
       items: ["playlist5"],
       limit: 2,
@@ -474,17 +471,18 @@ struct PlaylistsServiceTests {
     await http.addMockResponse(data: page2, statusCode: 200)
     await http.addMockResponse(data: page3, statusCode: 200)
 
-    let allPlaylists = try await client.playlists.allMyPlaylists()
+    let stream = client.playlists.streamMyPlaylists()
+    let playlists = try await collectStreamItems(stream)
 
-    #expect(allPlaylists.count == 5)
+    #expect(playlists.count == 5)
     #expect(
-      allPlaylists.map(\.id) == [
+      playlists.map(\.id) == [
         "playlist1", "playlist2", "playlist3", "playlist4", "playlist5",
       ])
   }
 
   @Test
-  func allMyPlaylistsRespectsMaxItems() async throws {
+  func streamMyPlaylistsRespectsMaxItems() async throws {
     let (client, http) = makeUserAuthClient()
 
     let page1 = makePage(
@@ -505,150 +503,13 @@ struct PlaylistsServiceTests {
     await http.addMockResponse(data: page1, statusCode: 200)
     await http.addMockResponse(data: page2, statusCode: 200)
 
-    let playlists = try await client.playlists.allMyPlaylists(maxItems: 3)
+    let stream = client.playlists.streamMyPlaylists(maxItems: 3)
+    let playlists = try await collectStreamItems(stream)
 
     #expect(playlists.count == 3)
     #expect(playlists.map(\.id) == ["playlist1", "playlist2", "playlist3"])
   }
 
-  @Test
-  func allMyPlaylistsHandlesEmptyResult() async throws {
-    let (client, http) = makeUserAuthClient()
-
-    let emptyPage = makePage(
-      items: [] as [String],
-      limit: 50,
-      offset: 0,
-      total: 0,
-      hasNext: false
-    )
-
-    await http.addMockResponse(data: emptyPage, statusCode: 200)
-
-    let playlists = try await client.playlists.allMyPlaylists()
-
-    #expect(playlists.isEmpty)
-  }
-
-  @Test
-  func allMyPlaylistsUsesDefaultMaxItems() async throws {
-    try await withMockServiceClient(fixture: "playlists_user.json") { client, http, data in
-      guard let playlistsData = data else {
-        Issue.record("Missing playlists fixture data")
-        return
-      }
-      // Mock enough responses to exceed default limit
-      for _ in 1..<25 {  // Already enqueued once.
-        await http.addMockResponse(data: playlistsData, statusCode: 200)
-      }
-
-      let playlists = try await client.playlists.allMyPlaylists()
-
-      // Should stop at default limit of 1000, not fetch all
-      #expect(playlists.count <= 1000)
-    }
-  }
-
-  @Test
-  func allMyPlaylistsAllowsUnlimitedWithNil() async throws {
-    let (client, http) = makeUserAuthClient()
-
-    let page = makePage(
-      items: ["p1", "p2"],
-      limit: 2,
-      offset: 0,
-      total: 2,
-      hasNext: false
-    )
-
-    await http.addMockResponse(data: page, statusCode: 200)
-
-    let playlists = try await client.playlists.allMyPlaylists(maxItems: nil)
-
-    #expect(playlists.count == 2)
-  }
-
-  @Test
-  func allItemsFetchesAllPages() async throws {
-    try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
-      guard let itemsData = data else {
-        Issue.record("Missing playlist tracks fixture")
-        return
-      }
-
-      // Mock 3 pages of results (one already enqueued)
-      await http.addMockResponse(data: itemsData, statusCode: 200)
-      await http.addMockResponse(data: itemsData, statusCode: 200)
-
-      let allItems = try await client.playlists.allItems("playlist123")
-
-      #expect(allItems.count > 0)
-    }
-  }
-
-  @Test
-  func allItemsRespectsMaxItems() async throws {
-    try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
-      guard let itemsData = data else {
-        Issue.record("Missing playlist tracks fixture")
-        return
-      }
-
-      await http.addMockResponse(data: itemsData, statusCode: 200)
-
-      let items = try await client.playlists.allItems("playlist123", maxItems: 1)
-
-      #expect(items.count == 1)
-    }
-  }
-
-  @Test
-  func allItemsPassesParametersCorrectly() async throws {
-    try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, _ in
-      _ = try await client.playlists.allItems(
-        "playlist123",
-        market: "US",
-        fields: "items(track(name))",
-        additionalTypes: [.episode]
-      )
-
-      let request = await http.firstRequest
-      expectQueryParameters(
-        request,
-        contains: ["market=US", "fields=items(track(name))", "additional_types=episode"])
-    }
-  }
-
-  @Test
-  func allItemsUsesDefaultMaxItems() async throws {
-    try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
-      guard let itemsData = data else {
-        Issue.record("Missing playlist tracks fixture")
-        return
-      }
-
-      // Mock enough responses to exceed default limit (one already added)
-      for _ in 1..<150 {
-        await http.addMockResponse(data: itemsData, statusCode: 200)
-      }
-
-      let items = try await client.playlists.allItems("playlist123")
-
-      // Should stop at default limit of 5000, not fetch all
-      #expect(items.count <= 5000)
-    }
-  }
-
-  @Test
-  func allItemsAllowsUnlimitedWithNil() async throws {
-    try await withMockServiceClient(fixture: "playlist_tracks.json") { client, _, _ in
-      let items = try await client.playlists.allItems("playlist123", maxItems: nil)
-
-      #expect(items.count > 0)
-    }
-  }
-
-  @Test
   func streamItemsYieldsAllItems() async throws {
     try await withMockServiceClient(fixture: "playlist_tracks.json") { client, http, data in
       guard let itemsData = data else {

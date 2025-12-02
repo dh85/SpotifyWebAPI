@@ -82,6 +82,8 @@ for try await item in stream {
 ### Comprehensive Error Handling
 
 ```swift
+let client: UserSpotifyClient = .pkce(...)
+
 func fetchUserProfile() async throws -> CurrentUserProfile {
     do {
         return try await client.users.me()
@@ -149,10 +151,15 @@ if let mediumImage = album.images?.image(closestTo: 300) {
 The client handles 429 Too Many Requests automatically by default. You can configure the retry behaviour:
 
 ```swift
-let config = SpotifyClientConfiguration(
-    maxRateLimitRetries: 3
+let config = SpotifyClientConfiguration.default
+    .withMaxRateLimitRetries(3)
+
+let client: UserSpotifyClient = .pkce(
+    clientID: "your-client-id",
+    redirectURI: URL(string: "myapp://callback")!,
+    scopes: [.userReadPrivate],
+    configuration: config
 )
-let client = SpotifyClient(configuration: config)
 ```
 
 ### Manual Monitoring
@@ -206,7 +213,10 @@ Use `SpotifyMockAPIServer` for integration tests:
 let server = SpotifyMockAPIServer()
 try await server.start()
 
-let client = SpotifyClient(
+let client: UserSpotifyClient = .pkce(
+    clientID: "test-id",
+    redirectURI: URL(string: "test://callback")!,
+    scopes: [.userReadPrivate],
     configuration: .init(apiBaseURL: server.baseURL)
 )
 
@@ -231,7 +241,11 @@ protocol MusicService {
 }
 
 class SpotifyMusicService: MusicService {
-    let client: SpotifyClient
+    let client: UserSpotifyClient
+    
+    init(client: UserSpotifyClient) {
+        self.client = client
+    }
     
     func fetchTopTracks() async throws -> [Track] {
         try await client.users.topTracks().items

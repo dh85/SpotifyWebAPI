@@ -106,32 +106,6 @@ struct EpisodesServiceTests {
   }
 
   @Test
-  func allSavedEpisodesFetchesAllPages() async throws {
-    let (client, http) = makeUserAuthClient()
-    let first = try makePaginatedResponse(
-      fixture: "episodes_saved.json",
-      of: SavedEpisode.self,
-      offset: 0,
-      total: 2,
-      hasNext: true
-    )
-    let second = try makePaginatedResponse(
-      fixture: "episodes_saved.json",
-      of: SavedEpisode.self,
-      offset: 50,
-      total: 2,
-      hasNext: false
-    )
-    await http.addMockResponse(data: first, statusCode: 200)
-    await http.addMockResponse(data: second, statusCode: 200)
-
-    let episodes = try await client.episodes.allSavedEpisodes(market: "US")
-
-    #expect(episodes.count == 2)
-    expectMarketParameter(await http.firstRequest, market: "US")
-  }
-
-  @Test
   func streamSavedEpisodesRespectsMaxItems() async throws {
     let (client, http) = makeUserAuthClient()
     try await enqueueTwoPageResponses(

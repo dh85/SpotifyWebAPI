@@ -85,19 +85,6 @@
       }
     }
 
-    @Test("allSavedEpisodesPublisher aggregates pages")
-    func allSavedEpisodesPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "episodes_saved.json",
-        of: SavedEpisode.self,
-        verifyFirstRequest: { request in
-          expectSavedStreamRequest(request, path: "/v1/me/episodes", market: "CA")
-        }
-      ) { client in
-        let episodes = client.episodes
-        return episodes.allSavedEpisodesPublisher(market: "CA", maxItems: 100)
-      }
-    }
 
     @Test("savePublisher builds correct request")
     func savePublisherBuildsRequest() async throws {

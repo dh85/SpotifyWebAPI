@@ -31,17 +31,15 @@ struct ConcurrentRequestsIntegrationTests {
       async let profile2 = client.users.me()
       async let playlists1 = client.playlists.myPlaylists(limit: 5)
       async let playlists2 = client.playlists.myPlaylists(limit: 3, offset: 2)
-      async let allPlaylists = client.playlists.allMyPlaylists()
 
-      let (p1, p2, pl1, pl2, all) = try await (
-        profile1, profile2, playlists1, playlists2, allPlaylists
+      let (p1, p2, pl1, pl2) = try await (
+        profile1, profile2, playlists1, playlists2
       )
 
       #expect(p1.id == "concurrent-user")
       #expect(p2.id == "concurrent-user")
       #expect(pl1.items.count == 5)
       #expect(pl2.items.count == 3)
-      #expect(all.count == 10)
     }
   }
 

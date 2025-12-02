@@ -17,6 +17,13 @@ You interact with ``SpotifyClient`` plus the service namespaces you need (for ex
 ### Quick Examples
 
 ```swift
+// Create a user-authenticated client
+let client: UserSpotifyClient = .pkce(
+    clientID: "your-client-id",
+    redirectURI: URL(string: "myapp://callback")!,
+    scopes: [.userReadPrivate, .userTopRead]
+)
+
 // Get user's top tracks
 let tracks = try await client.users.topTracks(timeRange: .mediumTerm, limit: 20)
 for track in tracks.items {
@@ -45,8 +52,11 @@ For comprehensive patterns and best practices, see <doc:CommonPatterns>.
 ### Getting Started
 
 - <doc:AuthGuide>
+- <doc:TokenStorageGuide>
+- <doc:MigrationGuide>
 - <doc:SecurityGuide>
 - <doc:NetworkSecurity>
+- <doc:ErrorRecoveryGuide>
 
 ### Consuming the API
 

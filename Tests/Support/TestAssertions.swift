@@ -253,7 +253,7 @@ private func expectInvalidRequest(
       sourceLocation: sourceLocation
     )
   } catch let error as SpotifyClientError {
-    guard case .invalidRequest(let reason) = error else {
+    guard case .invalidRequest(let reason, _, _) = error else {
       Issue.record(
         "Expected .invalidRequest, got \(error)",
         sourceLocation: sourceLocation

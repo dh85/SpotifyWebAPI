@@ -6,8 +6,9 @@ func validateLimit(
 ) throws {
   guard range.contains(limit) else {
     throw SpotifyClientError.invalidRequest(
-      reason:
-        "Limit must be between \(range.lowerBound) and \(range.upperBound). You provided \(limit)."
+      reason: "Limit must be between \(range.lowerBound) and \(range.upperBound). You provided \(limit).",
+      parameter: "limit",
+      validRange: "\(range.lowerBound)...\(range.upperBound)"
     )
   }
 }
@@ -18,8 +19,9 @@ func validateMaxIdCount<C: Collection>(
 ) throws where C.Element == String {
   guard ids.count <= maximum else {
     throw SpotifyClientError.invalidRequest(
-      reason:
-        "Maximum of \(maximum) IDs allowed per request. You provided \(ids.count)."
+      reason: "Maximum of \(maximum) IDs allowed per request. You provided \(ids.count).",
+      parameter: "ids",
+      validRange: "1...\(maximum)"
     )
   }
 }
@@ -36,7 +38,8 @@ func validateURI(_ uri: String) throws {
 
   if try regex.wholeMatch(in: uri) == nil {
     throw SpotifyClientError.invalidRequest(
-      reason: "Invalid Spotify URI: '\(uri)'. Expected format like 'spotify:track:id'."
+      reason: "Invalid Spotify URI: '\(uri)'. Expected format like 'spotify:track:id'.",
+      parameter: "uri"
     )
   }
 }

@@ -6,9 +6,28 @@ SpotifyKit is designed to fit cleanly into dependency-injected apps, so you can 
 
 All services conform to ``SpotifyClientProtocol``. Construct your app against the protocol, then provide one of the following at runtime:
 
-- ``SpotifyClient`` for real HTTP traffic.
+- ``UserSpotifyClient`` or ``AppSpotifyClient`` for real HTTP traffic.
 - ``MockSpotifyClient`` for deterministic responses without having to implement each endpoint yourself. Provide closures for the calls your test cares about and leave the rest untouched.
 - ``SpotifyClientProtocol`` also works great with your own lightweight mocks if you prefer to use a testing framework.
+
+```swift
+// Production code uses the protocol
+class MusicViewModel {
+    let client: any SpotifyClientProtocol
+    
+    init(client: any SpotifyClientProtocol) {
+        self.client = client
+    }
+}
+
+// Production: inject real client
+let realClient: UserSpotifyClient = .pkce(...)
+let viewModel = MusicViewModel(client: realClient)
+
+// Testing: inject mock client
+let mockClient = MockSpotifyClient()
+let testViewModel = MusicViewModel(client: mockClient)
+```
 
 ## Sample Data
 
@@ -48,6 +67,8 @@ Combine pipelines are easy to verify by returning `Just` values from your mocks,
 Hook into observability once via ``SpotifyClientObserver`` instead of wiring multiple callbacks. Observers receive ``SpotifyClientEvent`` values that cover requests, responses, retries, token lifecycle, and rate limits:
 
 ```swift
+let client: UserSpotifyClient = .pkce(...)
+
 struct LoggingObserver: SpotifyClientObserver {
 	func receive(_ event: SpotifyClientEvent) {
 		switch event {

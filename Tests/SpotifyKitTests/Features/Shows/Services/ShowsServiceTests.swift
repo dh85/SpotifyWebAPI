@@ -183,31 +183,6 @@ struct ShowsServiceTests {
   }
 
   @Test
-  func allSavedShowsFetchesAllPages() async throws {
-    let (client, http) = makeUserAuthClient()
-    let first = try makePaginatedResponse(
-      fixture: "shows_saved.json",
-      of: SavedShow.self,
-      offset: 0,
-      total: 2,
-      hasNext: true
-    )
-    let second = try makePaginatedResponse(
-      fixture: "shows_saved.json",
-      of: SavedShow.self,
-      offset: 50,
-      total: 2,
-      hasNext: false
-    )
-    await http.addMockResponse(data: first, statusCode: 200)
-    await http.addMockResponse(data: second, statusCode: 200)
-
-    let shows = try await client.shows.allSavedShows()
-
-    #expect(shows.count == 2)
-  }
-
-  @Test
   func streamSavedShowsRespectsMaxItems() async throws {
     let (client, http) = makeUserAuthClient()
     try await enqueueTwoPageResponses(

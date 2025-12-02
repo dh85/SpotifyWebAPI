@@ -74,17 +74,6 @@
       }
     }
 
-    @Test("allItemsPublisher aggregates pages")
-    func allItemsPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "playlist_tracks.json",
-        of: PlaylistTrackItem.self
-      ) { client in
-        let playlists = client.playlists
-        return playlists.allItemsPublisher("playlist123")
-      }
-    }
-
     @Test("userPlaylistsPublisher builds correct request")
     func userPlaylistsPublisherBuildsRequest() async throws {
       let page = try await assertPublisherRequest(
@@ -127,17 +116,6 @@
       }
 
       #expect(page.items.isEmpty == false)
-    }
-
-    @Test("allMyPlaylistsPublisher aggregates pages")
-    func allMyPlaylistsPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "playlists_user.json",
-        of: SimplifiedPlaylist.self
-      ) { client in
-        let playlists = client.playlists
-        return playlists.allMyPlaylistsPublisher()
-      }
     }
 
     @Test("createPublisher builds correct request")

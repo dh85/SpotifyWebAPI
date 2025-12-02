@@ -137,7 +137,7 @@ struct NetworkRecoveryIntegrationTests {
       // Try to fetch all playlists
       // First page succeeds, second page fails
       do {
-        _ = try await playlistsService.allMyPlaylists()
+        for try await _ in playlistsService.streamMyPlaylists() { }
         Issue.record("Expected error during pagination")
       } catch {
         // Expected - error during pagination

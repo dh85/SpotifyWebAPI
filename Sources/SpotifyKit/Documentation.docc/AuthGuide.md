@@ -19,8 +19,8 @@ Authenticate with Spotify using the built-in helpers and capabilities.
 - ``AppOnlyAuthCapability`` performs the Client Credentials flow for server-to-server tools.
 
 ```swift
-let userClient = UserSpotifyClient
-    .builder()
+// User-authenticated client with builder
+let userClient: UserSpotifyClient = .builder()
     .withAuthorizationCode(
         clientID: "<client-id>",
         clientSecret: "<client-secret>",
@@ -38,11 +38,23 @@ let userClient = UserSpotifyClient
     )
     .build()
 
-let appOnlyClient = AppSpotifyClient
-    .builder()
+// App-only client with builder
+let appOnlyClient: AppSpotifyClient = .builder()
     .withClientCredentials(clientID: "bot", clientSecret: "secret")
     .withHTTPClient(URLSessionHTTPClient())
     .build()
+
+// Or use factory methods directly
+let pkceClient: UserSpotifyClient = .pkce(
+    clientID: "your-client-id",
+    redirectURI: URL(string: "myapp://callback")!,
+    scopes: [.userReadPrivate, .playlistModifyPublic]
+)
+
+let credentialsClient: AppSpotifyClient = .clientCredentials(
+    clientID: "your-client-id",
+    clientSecret: "your-client-secret"
+)
 ```
 
 Prefer the fluent ``SpotifyClientConfiguration/withRequestTimeout(_:)`` and related helpers when you need a single tweak—they keep call sites concise and avoid spelling out every initialiser argument.

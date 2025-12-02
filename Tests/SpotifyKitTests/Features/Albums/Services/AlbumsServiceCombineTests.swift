@@ -100,16 +100,6 @@
       }
     }
 
-    @Test("allSavedAlbumsPublisher aggregates pages")
-    func allSavedAlbumsPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "albums_saved.json",
-        of: SavedAlbum.self
-      ) { client in
-        let albumsService = client.albums
-        return albumsService.allSavedAlbumsPublisher()
-      }
-    }
 
     @Test("savePublisher builds correct request")
     func savePublisherBuildsRequest() async throws {

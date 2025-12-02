@@ -11,7 +11,6 @@ private typealias SeveralAudiobooksWrapper = ArrayWrapper<Audiobook?>
 /// Import Combine to expose those helpers; they reuse the async implementations defined here.
 public struct AudiobooksService<Capability: Sendable>: Sendable {
   let client: SpotifyClient<Capability>
-  init(client: SpotifyClient<Capability>) { self.client = client }
 }
 
 // MARK: - Helpers
@@ -151,20 +150,15 @@ extension AudiobooksService where Capability == UserAuthCapability {
       .decode(Page<SavedAudiobook>.self)
   }
 
-  /// Fetch every saved audiobook in the user's library.
-  ///
-  /// - Parameter maxItems: Total number of audiobooks to fetch. Default: 5,000. Pass `nil` for unlimited.
-  public func allSavedAudiobooks(maxItems: Int? = 5000) async throws -> [SavedAudiobook] {
-    try await savedAudiobooksProvider(defaultMaxItems: 5000).all(maxItems: maxItems)
-  }
-
   /// Streams saved audiobooks lazily.
   ///
   /// - Parameter maxItems: Optional limit on emitted audiobooks.
   public func streamSavedAudiobooks(maxItems: Int? = nil)
     -> AsyncThrowingStream<SavedAudiobook, Error>
   {
-    savedAudiobooksProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.saved(limit: limit, offset: offset)
+    }
   }
 
   /// Streams full pages of saved audiobooks for batched processing.
@@ -174,14 +168,7 @@ extension AudiobooksService where Capability == UserAuthCapability {
   public func streamSavedAudiobookPages(maxPages: Int? = nil)
     -> AsyncThrowingStream<Page<SavedAudiobook>, Error>
   {
-    savedAudiobooksProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
-  }
-
-  private func savedAudiobooksProvider(
-    defaultMaxItems: Int?
-  ) -> AllItemsProvider<Capability, SavedAudiobook> {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
       try await self.saved(limit: limit, offset: offset)
     }
   }

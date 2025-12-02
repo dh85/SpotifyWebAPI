@@ -35,29 +35,6 @@ struct SpotifyIntegrationTests {
   }
 
   @Test
-  func allMyPlaylistsFetchesEveryPage() async throws {
-    let playlists = (0..<75).map { index in
-      SpotifyTestFixtures.simplifiedPlaylist(
-        id: "paginated\(index)",
-        name: "Paginated #\(index)",
-        ownerID: "owner\(index)"
-      )
-    }
-    let configuration = SpotifyMockAPIServer.Configuration(playlists: playlists)
-    let server = SpotifyMockAPIServer(configuration: configuration)
-
-    try await server.withRunningServer { info in
-      let client = makeUserClient(for: info)
-      let playlistsService = client.playlists
-      let fetched = try await playlistsService.allMyPlaylists()
-
-      #expect(fetched.count == playlists.count)
-      #expect(fetched.first?.id == playlists.first?.id)
-      #expect(fetched.last?.id == playlists.last?.id)
-    }
-  }
-
-  @Test
   func streamMyPlaylistsRespectsMaxItems() async throws {
     let server = SpotifyMockAPIServer()
     try await server.withRunningServer { info in

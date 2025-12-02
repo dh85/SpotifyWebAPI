@@ -53,11 +53,11 @@ struct MultiServiceWorkflowIntegrationTests {
       // Multiple operations
       let page1 = try await client.playlists.myPlaylists(limit: 10, offset: 0)
       let page2 = try await client.playlists.myPlaylists(limit: 10, offset: 10)
-      let all = try await client.playlists.allMyPlaylists()
+      let all = try await client.playlists.myPlaylists()
 
       #expect(page1.items.count == 10)
       #expect(page2.items.count == 10)
-      #expect(all.count == 20)
+      #expect(all.items.count == 20)
       #expect(page1.items.first?.id == "seq-0")
       #expect(page2.items.first?.id == "seq-10")
     }

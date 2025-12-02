@@ -95,21 +95,6 @@
       }
     }
 
-    /// Fetch every saved audiobook in the user's library.
-    ///
-    /// - Parameters:
-    ///   - maxItems: Total number of audiobooks to fetch. Default: 5,000. Pass `nil` for unlimited.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array of `SavedAudiobook` values aggregated across every page.
-    public func allSavedAudiobooksPublisher(
-      maxItems: Int? = 5000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[SavedAudiobook], Error> {
-      libraryAllItemsPublisher(maxItems: maxItems, priority: priority) { service, maxItems in
-        try await service.allSavedAudiobooks(maxItems: maxItems)
-      }
-    }
-
     /// Save one or more audiobooks to the current Spotify user's library.
     ///
     /// - Parameters:

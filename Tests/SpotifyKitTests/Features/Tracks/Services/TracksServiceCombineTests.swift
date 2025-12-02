@@ -72,16 +72,6 @@
       }
     }
 
-    @Test("allSavedTracksPublisher aggregates pages")
-    func allSavedTracksPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "tracks_saved.json",
-        of: SavedTrack.self
-      ) { client in
-        let tracks = client.tracks
-        return tracks.allSavedTracksPublisher(market: "US")
-      }
-    }
 
     @Test("savePublisher builds correct request")
     func savePublisherBuildsCorrectRequest() async throws {

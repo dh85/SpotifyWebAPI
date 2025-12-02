@@ -28,15 +28,14 @@
           "include_external=audio",
         ]
       ) { client in
-        let search = client.search
-        return search.executePublisher(
-          query: "test query",
-          types: [.track, .album],
-          market: "US",
-          limit: 10,
-          offset: 5,
-          includeExternal: .audio
-        )
+        return client.search
+          .query("test query")
+          .forTypes([.track, .album])
+          .inMarket("US")
+          .withLimit(10)
+          .withOffset(5)
+          .includeExternal(.audio)
+          .executePublisher()
       }
 
       #expect(results.tracks != nil)
@@ -53,19 +52,21 @@
           expectMarketParameter(request, market: market)
         }
       ) { client in
-        let search = client.search
-        return search.executePublisher(query: "test", types: [.track], market: market)
+        var builder = client.search.query("test").forTracks()
+        if let market = market {
+          builder = builder.inMarket(market)
+        }
+        return builder.executePublisher()
       }
     }
 
     @Test("executePublisher validates limits")
     func executePublisherValidatesLimits() async {
       let (client, _) = makeUserAuthClient()
-      let search = client.search
 
       await assertLimitOutOfRange { limit in
         _ = try await awaitFirstValue(
-          search.executePublisher(query: "test", types: [.track], limit: limit)
+          client.search.query("test").forTracks().withLimit(limit).executePublisher()
         )
       }
     }

@@ -61,10 +61,6 @@ private typealias SeveralTracksWrapper = ArrayWrapper<Track>
 /// type.
 public struct TracksService<Capability: Sendable>: Sendable {
   let client: SpotifyClient<Capability>
-
-  init(client: SpotifyClient<Capability>) {
-    self.client = client
-  }
 }
 
 extension TracksService: ServiceIDValidating {
@@ -116,52 +112,6 @@ extension TracksService where Capability: PublicSpotifyCapability {
     return wrapper.items
   }
 
-  // Note: AudioFeatures and AudioAnalysis models are not yet implemented
-  // These methods are placeholders for future implementation
-  /*
-  /// Get audio features for a single track.
-  ///
-  /// - Parameter trackId: The Spotify ID for the track.
-  /// - Returns: `AudioFeatures` object with audio analysis.
-  /// - Throws: `SpotifyClientError` if the request fails.
-  ///
-  /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audio-features)
-  public func audioFeatures(trackId: String) async throws -> AudioFeatures {
-      return try await client
-          .get("/audio-features/\(trackId)")
-          .decode(AudioFeatures.self)
-  }
-  
-  /// Get audio features for several tracks based on their Spotify IDs.
-  ///
-  /// - Parameter trackIds: A list of Spotify IDs (max 100).
-  /// - Returns: A list of `AudioFeatures` objects (nullable).
-  /// - Throws: `SpotifyClientError` if the request fails or ID limit is exceeded.
-  ///
-  /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-several-audio-features)
-  public func audioFeatures(trackIds: Set<String>) async throws -> [AudioFeatures?] {
-      try validateTrackIDs(trackIds)
-  
-      let wrapper = try await client
-          .get("/audio-features")
-          .query("ids", trackIds.joined(separator: ","))
-          .decode(SeveralAudioFeaturesWrapper.self)
-      return wrapper.items
-  }
-  
-  /// Get a low-level audio analysis for a track.
-  ///
-  /// - Parameter trackId: The Spotify ID for the track.
-  /// - Returns: `AudioAnalysis` object with detailed analysis.
-  /// - Throws: `SpotifyClientError` if the request fails.
-  ///
-  /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-audio-analysis)
-  public func audioAnalysis(trackId: String) async throws -> AudioAnalysis {
-      return try await client
-          .get("/audio-analysis/\(trackId)")
-          .decode(AudioAnalysis.self)
-  }
-  */
 }
 
 // MARK: - User Access
@@ -189,20 +139,6 @@ extension TracksService where Capability == UserAuthCapability {
       .decode(Page<SavedTrack>.self)
   }
 
-  /// Fetch all saved tracks from the current user's library.
-  ///
-  /// - Parameters:
-  ///   - market: Optional market filter for track relinking.
-  ///   - maxItems: Total number of tracks to fetch. Default: 5,000. Pass `nil` to fetch everything.
-  /// - Returns: Array containing every `SavedTrack` up to the requested limit.
-  /// - Throws: `SpotifyClientError` if the request fails.
-  public func allSavedTracks(
-    market: String? = nil,
-    maxItems: Int? = 5000
-  ) async throws -> [SavedTrack] {
-    try await savedTracksProvider(market: market, defaultMaxItems: 5000).all(maxItems: maxItems)
-  }
-
   /// Stream saved tracks one-by-one as they are fetched.
   ///
   /// - Parameters:
@@ -213,7 +149,9 @@ extension TracksService where Capability == UserAuthCapability {
     market: String? = nil,
     maxItems: Int? = nil
   ) -> AsyncThrowingStream<SavedTrack, Error> {
-    savedTracksProvider(market: market, defaultMaxItems: nil).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.saved(limit: limit, offset: offset, market: market)
+    }
   }
 
   /// Streams saved tracks page-by-page, allowing callers to batch work per response.
@@ -225,15 +163,7 @@ extension TracksService where Capability == UserAuthCapability {
     market: String? = nil,
     maxPages: Int? = nil
   ) -> AsyncThrowingStream<Page<SavedTrack>, Error> {
-    savedTracksProvider(market: market, defaultMaxItems: nil).streamPages(maxPages: maxPages)
-  }
-
-  private func savedTracksProvider(
-    market: String?,
-    defaultMaxItems: Int?
-  ) -> AllItemsProvider<Capability, SavedTrack> {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
       try await self.saved(limit: limit, offset: offset, market: market)
     }
   }

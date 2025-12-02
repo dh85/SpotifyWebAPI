@@ -278,11 +278,11 @@
     ///
     /// - Parameter priority: The priority of the task.
     /// - Returns: A publisher that emits the current queue.
-    public func getQueuePublisher(
+    public func queuePublisher(
       priority: TaskPriority? = nil
     ) -> AnyPublisher<UserQueue, Error> {
       publisher(priority: priority) { service in
-        try await service.getQueue()
+        try await service.queue()
       }
     }
   }

@@ -60,10 +60,6 @@ private typealias SeveralAlbumsWrapper = ArrayWrapper<Album>
 /// - Note: Batch save/remove helpers for user libraries live in `LibraryServiceExtensions.swift`.
 public struct AlbumsService<Capability: Sendable>: Sendable {
   let client: SpotifyClient<Capability>
-
-  init(client: SpotifyClient<Capability>) {
-    self.client = client
-  }
 }
 
 // MARK: - Public Access
@@ -196,21 +192,14 @@ extension AlbumsService where Capability == UserAuthCapability {
       .decode(Page<SavedAlbum>.self)
   }
 
-  /// Fetch all albums saved in the current user's library.
-  ///
-  /// - Parameter maxItems: Total number of albums to fetch. Default: 5,000. Pass `nil` for unlimited.
-  /// - Returns: Array of `SavedAlbum` values aggregated across every page.
-  /// - Throws: `SpotifyClientError` if the request fails.
-  public func allSavedAlbums(maxItems: Int? = 5000) async throws -> [SavedAlbum] {
-    try await savedAlbumsProvider(defaultMaxItems: 5000).all(maxItems: maxItems)
-  }
-
   /// Streams saved albums one at a time, fetching pages lazily.
   ///
   /// - Parameter maxItems: Optional cap on streamed albums. Default: `nil`.
   /// - Returns: Async sequence yielding `SavedAlbum` entries as they are fetched.
   public func streamSavedAlbums(maxItems: Int? = nil) -> AsyncThrowingStream<SavedAlbum, Error> {
-    savedAlbumsProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.saved(limit: limit, offset: offset)
+    }
   }
 
   /// Streams entire pages of saved albums, useful for batched UI updates or caching.
@@ -220,14 +209,7 @@ extension AlbumsService where Capability == UserAuthCapability {
   public func streamSavedAlbumPages(maxPages: Int? = nil)
     -> AsyncThrowingStream<Page<SavedAlbum>, Error>
   {
-    savedAlbumsProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
-  }
-
-  private func savedAlbumsProvider(
-    defaultMaxItems: Int?
-  ) -> AllItemsProvider<Capability, SavedAlbum> {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
       try await self.saved(limit: limit, offset: offset)
     }
   }

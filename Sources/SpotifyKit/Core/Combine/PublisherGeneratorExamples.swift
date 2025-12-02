@@ -55,10 +55,10 @@
 
     // ✅ GOOD: Method reference when parameter types align
     /*
-    public func getQueuePublisher(
+    public func queuePublisher(
         priority: TaskPriority? = nil
     ) -> AnyPublisher<UserQueue, Error> {
-        makePublisher(priority: priority, operation: getQueue)
+        makePublisher(priority: priority, operation: queue)
     }
     */
 

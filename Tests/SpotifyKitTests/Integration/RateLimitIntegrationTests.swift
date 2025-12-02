@@ -236,7 +236,7 @@ struct RateLimitIntegrationTests {
       // 120 items at 50 per page requires 3 requests, but the
       // rate limit only allows 2 requests per window.
       do {
-        _ = try await playlistsService.allMyPlaylists()
+        for try await _ in playlistsService.streamMyPlaylists() { }
         Issue.record("Expected rate limit during pagination")
       } catch {
         // Expected - should hit rate limit during pagination

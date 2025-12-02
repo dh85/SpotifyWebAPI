@@ -70,23 +70,6 @@
       }
     }
 
-    /// Fetch all saved tracks from the current user's library.
-    ///
-    /// - Parameters:
-    ///   - market: Optional market filter for track relinking.
-    ///   - maxItems: Total number of tracks to fetch. Default: 5,000. Pass `nil` to fetch everything.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array containing every `SavedTrack` up to the requested limit.
-    public func allSavedTracksPublisher(
-      market: String? = nil,
-      maxItems: Int? = 5000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[SavedTrack], Error> {
-      libraryAllItemsPublisher(maxItems: maxItems, priority: priority) { service, maxItems in
-        try await service.allSavedTracks(market: market, maxItems: maxItems)
-      }
-    }
-
     /// Save one or more tracks to the current user's library.
     ///
     /// - Parameters:

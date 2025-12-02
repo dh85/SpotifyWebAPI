@@ -102,16 +102,6 @@
       }
     }
 
-    @Test("allSavedShowsPublisher aggregates pages")
-    func allSavedShowsPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "shows_saved.json",
-        of: SavedShow.self
-      ) { client in
-        let shows = client.shows
-        return shows.allSavedShowsPublisher()
-      }
-    }
 
     @Test("savePublisher builds correct request")
     func savePublisherBuildsCorrectRequest() async throws {

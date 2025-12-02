@@ -51,9 +51,9 @@ struct PaginationEdgeCasesIntegrationTests {
     try await server.withRunningServer { info in
       let client = makeUserClient(for: info)
 
-      let all = try await client.playlists.allMyPlaylists()
+      let all = try await client.playlists.myPlaylists()
 
-      #expect(all.isEmpty, "Should return empty array for empty collection")
+      #expect(all.items.isEmpty, "Should return empty array for empty collection")
     }
   }
 
@@ -147,7 +147,10 @@ struct PaginationEdgeCasesIntegrationTests {
     try await server.withRunningServer { info in
       let client = makeUserClient(for: info)
 
-      let all = try await client.playlists.allMyPlaylists()
+      var all: [SimplifiedPlaylist] = []
+      for try await playlist in client.playlists.streamMyPlaylists() {
+        all.append(playlist)
+      }
 
       #expect(all.count == 100, "Should fetch all items across exact page boundaries")
     }
@@ -168,7 +171,10 @@ struct PaginationEdgeCasesIntegrationTests {
     try await server.withRunningServer { info in
       let client = makeUserClient(for: info)
 
-      let all = try await client.playlists.allMyPlaylists()
+      var all: [SimplifiedPlaylist] = []
+      for try await playlist in client.playlists.streamMyPlaylists() {
+        all.append(playlist)
+      }
 
       #expect(all.count == 73, "Should handle partial last page correctly")
       #expect(all.first?.id == "playlist0")

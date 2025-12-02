@@ -152,48 +152,34 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     return try await builder.decode(Page<PlaylistTrackItem>.self)
   }
 
-  /// Get all tracks or episodes in a playlist.
+  /// Stream tracks or episodes from a playlist, one item at a time.
   ///
-  /// Automatically fetches all pages.
+  /// Yields individual items as pages are fetched in the background. Use ``streamItemPages(_:market:fields:additionalTypes:maxPages:)``
+  /// instead for better performance when processing items in batches.
   ///
-  /// - Warning: Fetches up to 5,000 items by default. Use `maxItems: nil` to fetch all (may be slow for large playlists).
+  /// - Note: Prefer `streamItemPages()` for most use cases (batch UI updates, caching). Use this only for
+  ///   early-exit scenarios (search until found) or when truly processing one-by-one.
   ///
-  /// - Parameters:
-  ///   - id: The Spotify ID for the playlist.
-  ///   - market: An ISO 3166-1 alpha-2 country code.
-  ///   - fields: A comma-separated list of fields to filter the response.
-  ///   - additionalTypes: A set of item types to include (track, episode).
-  ///   - maxItems: Limit on total items to fetch. Default: 5,000. Use `nil` for unlimited.
-  /// - Returns: Array of all `PlaylistTrackItem` objects.
-  /// - Throws: `SpotifyClientError` if the request fails.
-  ///
-  /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-playlists-tracks)
-  public func allItems(
-    _ id: String,
-    market: String? = nil,
-    fields: String? = nil,
-    additionalTypes: Set<AdditionalItemType>? = nil,
-    maxItems: Int? = 5000
-  ) async throws -> [PlaylistTrackItem] {
-    try await playlistItemsProvider(
-      id,
-      market: market,
-      fields: fields,
-      additionalTypes: additionalTypes,
-      defaultMaxItems: 5000
-    ).all(maxItems: maxItems)
-  }
-
-  /// Stream tracks or episodes from a playlist.
-  ///
-  /// Returns an `AsyncStream` that yields items one at a time as pages are fetched.
-  /// More memory efficient than `allItems` for large playlists.
+  /// - Important: If cancelled, the stream stops immediately. You must collect data as it
+  ///   arrives if you need to retain it after cancellation.
   ///
   /// ## Example
   /// ```swift
   /// for try await item in client.playlists.streamItems("playlist_id") {
   ///     print("Track: \(item.track?.name ?? "Unknown")")
   /// }
+  /// ```
+  ///
+  /// ## Example: With Cancellation and Data Retention
+  /// ```swift
+  /// var tracks: [PlaylistTrackItem] = []
+  /// let task = Task {
+  ///     for try await item in client.playlists.streamItems("playlist_id") {
+  ///         tracks.append(item)  // Collect as you go
+  ///         await updateUI(item)
+  ///     }
+  /// }
+  /// // Later: task.cancel() - tracks contains all items fetched before cancellation
   /// ```
   ///
   /// - Parameters:
@@ -212,20 +198,27 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     additionalTypes: Set<AdditionalItemType>? = nil,
     maxItems: Int? = nil
   ) -> AsyncThrowingStream<PlaylistTrackItem, Error> {
-    playlistItemsProvider(
-      id,
-      market: market,
-      fields: fields,
-      additionalTypes: additionalTypes,
-      defaultMaxItems: nil
-    ).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.items(id, market: market, fields: fields, limit: limit, offset: offset, additionalTypes: additionalTypes)
+    }
   }
 
-  /// Streams entire `Page` batches of playlist items for scenarios that prefer chunked updates.
+  /// Stream playlist tracks in batches of ~50 items per page.
+  ///
+  /// More efficient than ``streamItems(_:market:fields:additionalTypes:maxItems:)`` for most use cases.
+  /// Prefer this method for batch UI updates, caching, or progress tracking.
+  ///
+  /// ## Example
+  /// ```swift
+  /// for try await page in client.playlists.streamItemPages("playlist_id") {
+  ///     await tableView.insertRows(page.items)  // Batch update
+  ///     print("Progress: \(page.offset + page.items.count)/\(page.total)")
+  /// }
+  /// ```
   ///
   /// - Parameters mirror ``streamItems(_:market:fields:additionalTypes:maxItems:)`` but replace
   ///   `maxItems` with `maxPages`.
-  /// - Returns: Async sequence yielding raw playlist item pages.
+  /// - Returns: AsyncStream yielding `Page<PlaylistTrackItem>` objects (~50 items each).
   public func streamItemPages(
     _ id: String,
     market: String? = nil,
@@ -233,32 +226,8 @@ extension PlaylistsService where Capability: PublicSpotifyCapability {
     additionalTypes: Set<AdditionalItemType>? = nil,
     maxPages: Int? = nil
   ) -> AsyncThrowingStream<Page<PlaylistTrackItem>, Error> {
-    playlistItemsProvider(
-      id,
-      market: market,
-      fields: fields,
-      additionalTypes: additionalTypes,
-      defaultMaxItems: nil
-    ).streamPages(maxPages: maxPages)
-  }
-
-  private func playlistItemsProvider(
-    _ id: String,
-    market: String?,
-    fields: String?,
-    additionalTypes: Set<AdditionalItemType>?,
-    defaultMaxItems: Int?
-  ) -> AllItemsProvider<Capability, PlaylistTrackItem> {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
-      try await self.items(
-        id,
-        market: market,
-        fields: fields,
-        limit: limit,
-        offset: offset,
-        additionalTypes: additionalTypes
-      )
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
+      try await self.items(id, market: market, fields: fields, limit: limit, offset: offset, additionalTypes: additionalTypes)
     }
   }
 
@@ -325,40 +294,48 @@ extension PlaylistsService where Capability == UserAuthCapability {
       .decode(Page<SimplifiedPlaylist>.self)
   }
 
-  /// Get all playlists owned or followed by the current user.
+  /// Stream the current user's playlists, one at a time.
   ///
-  /// Automatically fetches all pages. Requires the `playlist-read-private` scope.
+  /// Yields individual playlists as pages are fetched in the background. Use ``streamMyPlaylistPages(maxPages:)``
+  /// instead for better performance when processing playlists in batches.
   ///
-  /// - Warning: Fetches up to 1,000 playlists by default. Use `maxItems: nil` to fetch all (may be slow).
+  /// - Note: Prefer `streamMyPlaylistPages()` for most use cases (batch UI updates, caching). Use this only for
+  ///   early-exit scenarios or when truly processing one-by-one.
   ///
-  /// - Parameter maxItems: Limit on total playlists to fetch. Default: 1,000. Use `nil` for unlimited.
-  /// - Returns: Array of all `SimplifiedPlaylist` objects.
-  /// - Throws: `SpotifyClientError` if the request fails.
+  /// - Important: If cancelled, the stream stops immediately. You must collect data as it
+  ///   arrives if you need to retain it after cancellation.
+  ///
+  /// ## Example
+  /// ```swift
+  /// for try await playlist in client.playlists.streamMyPlaylists() {
+  ///     print("\(playlist.name) - \(playlist.tracks?.total ?? 0) tracks")
+  /// }
+  /// ```
+  ///
+  /// - Parameter maxItems: Optional limit on total playlists to stream.
+  /// - Returns: AsyncStream that yields `SimplifiedPlaylist` objects.
   ///
   /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
-  public func allMyPlaylists(maxItems: Int? = 1000) async throws -> [SimplifiedPlaylist] {
-    try await myPlaylistsProvider(defaultMaxItems: 1000).all(maxItems: maxItems)
-  }
-
-  /// Streams the current user's playlists lazily.
   public func streamMyPlaylists(maxItems: Int? = nil)
     -> AsyncThrowingStream<SimplifiedPlaylist, Error>
   {
-    myPlaylistsProvider(defaultMaxItems: nil).stream(maxItems: maxItems)
+    client.streamItems(pageSize: 50, maxItems: maxItems) { limit, offset in
+      try await self.myPlaylists(limit: limit, offset: offset)
+    }
   }
 
   /// Streams full playlist pages, ideal for batched UI rendering or caching.
+  ///
+  /// Requires the `playlist-read-private` scope.
+  ///
+  /// - Parameter maxPages: Optional limit on number of pages to fetch.
+  /// - Returns: AsyncStream that yields `Page<SimplifiedPlaylist>` objects.
+  ///
+  /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
   public func streamMyPlaylistPages(maxPages: Int? = nil)
     -> AsyncThrowingStream<Page<SimplifiedPlaylist>, Error>
   {
-    myPlaylistsProvider(defaultMaxItems: nil).streamPages(maxPages: maxPages)
-  }
-
-  private func myPlaylistsProvider(defaultMaxItems: Int?) -> AllItemsProvider<
-    Capability, SimplifiedPlaylist
-  > {
-    client.makeAllItemsProvider(pageSize: 50, defaultMaxItems: defaultMaxItems) {
-      limit, offset in
+    client.streamPages(pageSize: 50, maxPages: maxPages) { limit, offset in
       try await self.myPlaylists(limit: limit, offset: offset)
     }
   }

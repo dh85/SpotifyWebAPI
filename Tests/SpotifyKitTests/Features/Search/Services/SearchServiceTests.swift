@@ -13,10 +13,10 @@ struct SearchServiceTests {
   @Test
   func executeBuildsCorrectRequest() async throws {
     try await withMockServiceClient(fixture: "search_results.json") { client, http in
-      let results = try await client.search.execute(
-        query: "test query",
-        types: [.track, .album]
-      )
+      let results = try await client.search
+        .query("test query")
+        .forTypes([.track, .album])
+        .execute()
 
       #expect(results.tracks != nil)
       let request = await http.firstRequest
@@ -27,14 +27,18 @@ struct SearchServiceTests {
   @Test
   func executeUsesDefaultPagination() async throws {
     try await expectDefaultPagination(fixture: "search_results.json") { client in
-      _ = try await client.search.execute(query: "test", types: [.track])
+      _ = try await client.search.query("test").forTracks().execute()
     }
   }
 
   @Test(arguments: [nil, "US"])
   func executeIncludesMarketParameter(market: String?) async throws {
     try await withMockServiceClient(fixture: "search_results.json") { client, http in
-      _ = try await client.search.execute(query: "test", types: [.track], market: market)
+      var builder = client.search.query("test").forTracks()
+      if let market = market {
+        builder = builder.inMarket(market)
+      }
+      _ = try await builder.execute()
       expectMarketParameter(await http.firstRequest, market: market)
     }
   }
@@ -42,11 +46,11 @@ struct SearchServiceTests {
   @Test
   func executeIncludesExternalParameter() async throws {
     try await withMockServiceClient(fixture: "search_results.json") { client, http in
-      _ = try await client.search.execute(
-        query: "test",
-        types: [.track],
-        includeExternal: .audio
-      )
+      _ = try await client.search
+        .query("test")
+        .forTracks()
+        .includeExternal(.audio)
+        .execute()
 
       let request = await http.firstRequest
       #expect(request?.url?.query()?.contains("include_external=audio") == true)
@@ -57,7 +61,7 @@ struct SearchServiceTests {
   func executeThrowsErrorWhenLimitOutOfBounds() async throws {
     let (client, _) = makeUserAuthClient()
     await expectLimitErrors { limit in
-      _ = try await client.search.execute(query: "test", types: [.track], limit: limit)
+      _ = try await client.search.query("test").forTracks().withLimit(limit).execute()
     }
   }
 }

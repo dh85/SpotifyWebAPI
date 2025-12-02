@@ -8,6 +8,9 @@ extension SpotifyClient {
   /// - Automatic cancellation support
   /// - Progress tracking (each page is a progress update)
   ///
+  /// - Important: When cancelled, the stream stops immediately. **You are responsible for
+  ///   collecting data as it arrives.** Any pages not yet processed are lost.
+  ///
   /// ## Example: Stream All Saved Tracks
   /// ```swift
   /// for await page in client.streamPages(pageSize: 50) { limit, offset in
@@ -30,16 +33,21 @@ extension SpotifyClient {
   /// }
   /// ```
   ///
-  /// ## Example: Cancel From UI
+  /// ## Example: Cancel From UI (with data retention)
   /// ```swift
+  /// var collectedTracks: [Track] = []
   /// let task = Task {
   ///     for try await page in client.streamPages(pageSize: 50) { limit, offset in
   ///         try await client.tracks.saved(limit: limit, offset: offset)
   ///     } {
+  ///         collectedTracks.append(contentsOf: page.items)  // Retain data
   ///         render(page.items)
   ///     }
   /// }
-  /// cancelButton.onTap { task.cancel() }
+  /// cancelButton.onTap {
+  ///     task.cancel()
+  ///     // collectedTracks contains all data fetched before cancellation
+  /// }
   /// ```
   ///
   /// - Parameters:
@@ -64,6 +72,9 @@ extension SpotifyClient {
   /// Returns an `AsyncStream` that yields items one at a time, fetching pages as needed.
   /// More memory efficient than `streamPages` when you only need to process items individually.
   ///
+  /// - Important: When cancelled, the stream stops immediately. **You are responsible for
+  ///   collecting data as it arrives.** Any items not yet processed are lost.
+  ///
   /// ## Example: Process Each Track
   /// ```swift
   /// for try await track in client.streamItems(pageSize: 50) { limit, offset in
@@ -73,18 +84,21 @@ extension SpotifyClient {
   /// }
   /// ```
   ///
-  /// ## Example: Early Exit With Cancellation
+  /// ## Example: Cancellation with Data Retention
   /// ```swift
+  /// var savedTracks: [Track] = []
   /// let task = Task {
   ///     for try await track in client.streamItems(maxItems: 250) { limit, offset in
   ///         try await client.tracks.saved(limit: limit, offset: offset)
   ///     } {
+  ///         savedTracks.append(track)  // Collect as you go
   ///         try await store(track)
   ///     }
   /// }
   /// Task.detached {
   ///     try await Task.sleep(for: .seconds(1))
   ///     task.cancel()
+  ///     // savedTracks contains all items processed before cancellation
   /// }
   /// ```
   ///

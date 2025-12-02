@@ -119,16 +119,6 @@
       }
     }
 
-    @Test("allSavedAudiobooksPublisher aggregates pages")
-    func allSavedAudiobooksPublisherAggregatesPages() async throws {
-      try await assertAggregatesPages(
-        fixture: "audiobooks_saved.json",
-        of: SavedAudiobook.self
-      ) { client in
-        let audiobooks = client.audiobooks
-        return audiobooks.allSavedAudiobooksPublisher()
-      }
-    }
 
     @Test("savePublisher builds correct request")
     func savePublisherBuildsRequest() async throws {

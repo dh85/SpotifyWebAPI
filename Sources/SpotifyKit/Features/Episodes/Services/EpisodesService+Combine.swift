@@ -70,23 +70,6 @@
       }
     }
 
-    /// Fetch every episode saved in the user's library.
-    ///
-    /// - Parameters:
-    ///   - market: Optional market code for episode relinking.
-    ///   - maxItems: Total number of episodes to fetch. Default: 5,000. Pass `nil` for unlimited.
-    ///   - priority: The priority of the task.
-    /// - Returns: A publisher that emits an array of `SavedEpisode` values aggregated across every page.
-    public func allSavedEpisodesPublisher(
-      market: String? = nil,
-      maxItems: Int? = 5000,
-      priority: TaskPriority? = nil
-    ) -> AnyPublisher<[SavedEpisode], Error> {
-      libraryAllItemsPublisher(maxItems: maxItems, priority: priority) { service, maxItems in
-        try await service.allSavedEpisodes(market: market, maxItems: maxItems)
-      }
-    }
-
     /// Save one or more episodes to the current Spotify user's library.
     ///
     /// - Parameters:
