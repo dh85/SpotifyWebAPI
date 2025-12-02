@@ -4,7 +4,7 @@ import Testing
 @testable import SpotifyKit
 
 #if canImport(Combine)
-    import Combine
+    @preconcurrency import Combine
 
     // MARK: - Combine Test Helpers
 
@@ -50,7 +50,7 @@ import Testing
         column: UInt = #column,
         verifyRequest: ((URLRequest?) -> Void)? = nil,
         makePublisher:
-            @escaping (SpotifyClient<UserAuthCapability>) async throws -> AnyPublisher<
+            @escaping @Sendable (SpotifyClient<UserAuthCapability>) async throws -> AnyPublisher<
                 Output, Error
             >
     ) async throws -> Output {
@@ -97,7 +97,7 @@ import Testing
         configureResponses: ((MockHTTPClient) async throws -> Void)? = nil,
         verifyFirstRequest: ((URLRequest?) -> Void)? = nil,
         makePublisher:
-            @escaping (SpotifyClient<UserAuthCapability>) async throws -> AnyPublisher<
+            @escaping @Sendable (SpotifyClient<UserAuthCapability>) async throws -> AnyPublisher<
                 [Item], Error
             >
     ) async throws -> [Item]
@@ -157,7 +157,7 @@ import Testing
         column: UInt = #column,
         verifyRequest: ((URLRequest?) -> Void)? = nil,
         makePublisher:
-            @escaping (SpotifyClient<UserAuthCapability>, Set<String>) async throws -> AnyPublisher<
+            @escaping @Sendable (SpotifyClient<UserAuthCapability>, Set<String>) async throws -> AnyPublisher<
                 Output, Error
             >
     ) async throws -> Output {

@@ -268,8 +268,8 @@ actor SpotifyMockAPIServer {
 
     /// Run a block while the server is online, ensuring shutdown even on failure.
     @discardableResult
-    func withRunningServer<T>(
-        _ operation: (RunningServer) async throws -> T
+    func withRunningServer<T: Sendable>(
+        _ operation: @Sendable (RunningServer) async throws -> T
     ) async throws -> T {
         let info = try await start()
         do {
