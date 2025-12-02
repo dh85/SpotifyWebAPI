@@ -1,7 +1,7 @@
 import Foundation
 
 #if canImport(FoundationNetworking)
-    import FoundationNetworking
+  import FoundationNetworking
 #endif
 
 /// Authenticator for the OAuth 2.0 Client Credentials flow.
@@ -25,128 +25,128 @@ import Foundation
 ///
 /// - SeeAlso: ``SpotifyAuthConfig/clientCredentials(clientID:clientSecret:scopes:tokenEndpoint:)``
 public actor SpotifyClientCredentialsAuthenticator {
-    private let config: SpotifyAuthConfig
-    private let httpClient: HTTPClient
-    private let tokenStore: TokenStore?
-    private var cachedTokens: SpotifyTokens?
+  private let config: SpotifyAuthConfig
+  private let httpClient: HTTPClient
+  private let tokenStore: TokenStore?
+  private var cachedTokens: SpotifyTokens?
 
-    public init(
-        config: SpotifyAuthConfig,
-        httpClient: HTTPClient = URLSessionHTTPClient(),
-        tokenStore: TokenStore? = nil
-    ) {
-        self.config = config
-        self.httpClient = httpClient
-        self.tokenStore = tokenStore
+  public init(
+    config: SpotifyAuthConfig,
+    httpClient: HTTPClient = URLSessionHTTPClient(),
+    tokenStore: TokenStore? = nil
+  ) {
+    self.config = config
+    self.httpClient = httpClient
+    self.tokenStore = tokenStore
+  }
+
+  // MARK: - Token persistence
+
+  /// Load tokens from persistent storage if available.
+  ///
+  /// - Returns: The stored tokens, or nil if no token store is configured or no tokens exist.
+  /// - Throws: An error if loading fails.
+  public func loadPersistedTokens() async throws -> SpotifyTokens? {
+    if let cachedTokens {
+      return cachedTokens
+    }
+    guard let tokenStore else {
+      return nil
+    }
+    let stored = try await tokenStore.load()
+    cachedTokens = stored
+    return stored
+  }
+
+  // MARK: - Main API
+
+  /// Get an app-only access token.
+  ///
+  /// This method returns cached tokens if valid, loads from storage if available,
+  /// or requests a new token from Spotify.
+  ///
+  /// - Parameter invalidatingPrevious: If true, force a new token request even if cached tokens are valid.
+  /// - Returns: Valid access tokens.
+  /// - Throws: ``SpotifyAuthError`` if token request fails.
+  public func appAccessToken(invalidatingPrevious: Bool = false) async throws -> SpotifyTokens {
+    // 1. Return from cache if valid and not being invalidated
+    if let cachedTokens, !cachedTokens.isExpired, !invalidatingPrevious {
+      return cachedTokens
     }
 
-    // MARK: - Token persistence
-    
-    /// Load tokens from persistent storage if available.
-    ///
-    /// - Returns: The stored tokens, or nil if no token store is configured or no tokens exist.
-    /// - Throws: An error if loading fails.
-    public func loadPersistedTokens() async throws -> SpotifyTokens? {
-        if let cachedTokens {
-            return cachedTokens
-        }
-        guard let tokenStore else {
-            return nil
-        }
-        let stored = try await tokenStore.load()
-        cachedTokens = stored
-        return stored
+    // 2. Return from store if valid and not being invalidated
+    if let tokenStore,
+      let stored = try await tokenStore.load(),
+      !stored.isExpired, !invalidatingPrevious
+    {
+      cachedTokens = stored
+      return stored
     }
 
-    // MARK: - Main API
+    // 3. Otherwise, fetch a fresh token
+    let fresh = try await requestNewAccessToken()
+    if let tokenStore {
+      try await tokenStore.save(fresh)
+    }
+    cachedTokens = fresh
+    return fresh
+  }
 
-    /// Get an app-only access token.
-    ///
-    /// This method returns cached tokens if valid, loads from storage if available,
-    /// or requests a new token from Spotify.
-    ///
-    /// - Parameter invalidatingPrevious: If true, force a new token request even if cached tokens are valid.
-    /// - Returns: Valid access tokens.
-    /// - Throws: ``SpotifyAuthError`` if token request fails.
-    public func appAccessToken(invalidatingPrevious: Bool = false) async throws -> SpotifyTokens {
-        // 1. Return from cache if valid and not being invalidated
-        if let cachedTokens, !cachedTokens.isExpired, !invalidatingPrevious {
-            return cachedTokens
-        }
+  // MARK: - Internal request/decoding
+  private func requestNewAccessToken() async throws -> SpotifyTokens {
+    guard let clientSecret = config.clientSecret else {
+      throw SpotifyAuthError.unexpectedResponse
+    }
+    var request = URLRequest(url: config.tokenEndpoint)
+    request.httpMethod = "POST"
+    request.setValue(
+      "application/x-www-form-urlencoded",
+      forHTTPHeaderField: "Content-Type"
+    )
 
-        // 2. Return from store if valid and not being invalidated
-        if let tokenStore,
-            let stored = try await tokenStore.load(),
-            !stored.isExpired, !invalidatingPrevious
-        {
-            cachedTokens = stored
-            return stored
-        }
-
-        // 3. Otherwise, fetch a fresh token
-        let fresh = try await requestNewAccessToken()
-        if let tokenStore {
-            try await tokenStore.save(fresh)
-        }
-        cachedTokens = fresh
-        return fresh
+    // Use Basic Authentication as per Spotify documentation
+    let credentials = "\(config.clientID):\(clientSecret)"
+    if let credentialsData = credentials.data(using: .utf8) {
+      let base64Credentials = credentialsData.base64EncodedString()
+      request.setValue(
+        "Basic \(base64Credentials)",
+        forHTTPHeaderField: "Authorization"
+      )
     }
 
-    // MARK: - Internal request/decoding
-    private func requestNewAccessToken() async throws -> SpotifyTokens {
-        guard let clientSecret = config.clientSecret else {
-            throw SpotifyAuthError.unexpectedResponse
-        }
-        var request = URLRequest(url: config.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
+    var items: [URLQueryItem] = [
+      URLQueryItem(name: "grant_type", value: "client_credentials")
+    ]
+    if !config.scopes.isEmpty {
+      items.append(
+        URLQueryItem(
+          name: "scope",
+          value: config.scopes.spotifyQueryValue
         )
-        
-        // Use Basic Authentication as per Spotify documentation
-        let credentials = "\(config.clientID):\(clientSecret)"
-        if let credentialsData = credentials.data(using: .utf8) {
-            let base64Credentials = credentialsData.base64EncodedString()
-            request.setValue(
-                "Basic \(base64Credentials)",
-                forHTTPHeaderField: "Authorization"
-            )
-        }
-
-        var items: [URLQueryItem] = [
-            URLQueryItem(name: "grant_type", value: "client_credentials"),
-        ]
-        if !config.scopes.isEmpty {
-            items.append(
-                URLQueryItem(
-                    name: "scope",
-                    value: config.scopes.spotifyQueryValue
-                )
-            )
-        }
-
-        request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
-        let (data, response) = try await httpClient.data(for: request)
-        let tokens = try SpotifyAuthHTTP.decodeTokens(
-            from: data,
-            response: response,
-            existingRefreshToken: nil
-        )
-
-        // Force `refreshToken` to nil for client credentials.
-        return SpotifyTokens(
-            accessToken: tokens.accessToken,
-            refreshToken: nil,
-            expiresAt: tokens.expiresAt,
-            scope: tokens.scope,
-            tokenType: tokens.tokenType
-        )
+      )
     }
 
-    #if DEBUG
-        nonisolated func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
-            SpotifyAuthHTTP.formURLEncodedBody(from: items)
-        }
-    #endif
+    request.httpBody = SpotifyAuthHTTP.formURLEncodedBody(from: items)
+    let (data, response) = try await httpClient.data(for: request)
+    let tokens = try SpotifyAuthHTTP.decodeTokens(
+      from: data,
+      response: response,
+      existingRefreshToken: nil
+    )
+
+    // Force `refreshToken` to nil for client credentials.
+    return SpotifyTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: nil,
+      expiresAt: tokens.expiresAt,
+      scope: tokens.scope,
+      tokenType: tokens.tokenType
+    )
+  }
+
+  #if DEBUG
+    nonisolated func __test_formURLEncodedBody(items: [URLQueryItem]) -> Data {
+      SpotifyAuthHTTP.formURLEncodedBody(from: items)
+    }
+  #endif
 }

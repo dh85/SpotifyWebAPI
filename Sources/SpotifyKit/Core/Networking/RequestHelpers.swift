@@ -1,320 +1,320 @@
 import Foundation
 
 #if canImport(FoundationNetworking)
-    import FoundationNetworking
+  import FoundationNetworking
 #endif
 
 private struct PreparedRequest<Response: Decodable>: @unchecked Sendable {
-    let request: SpotifyRequest<Response>
-    let urlRequest: URLRequest
-    let bodyData: Data?
+  let request: SpotifyRequest<Response>
+  let urlRequest: URLRequest
+  let bodyData: Data?
 }
 
 extension SpotifyClient {
 
-    // MARK: - URL building
+  // MARK: - URL building
 
-    func apiURL(path: String, queryItems: [URLQueryItem]? = nil) -> URL {
-        var url = configuration.apiBaseURL
-        let trimmed = path.split(separator: "/", omittingEmptySubsequences: true)
-        for segment in trimmed {
-            url.appendPathComponent(String(segment))
-        }
-
-        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            fatalError("Invalid apiBaseURL: \(configuration.apiBaseURL)")
-        }
-
-        components.queryItems = queryItems
-        guard let finalURL = components.url else {
-            fatalError("Unable to construct API URL for path \(path)")
-        }
-        return finalURL
+  func apiURL(path: String, queryItems: [URLQueryItem]? = nil) -> URL {
+    var url = configuration.apiBaseURL
+    let trimmed = path.split(separator: "/", omittingEmptySubsequences: true)
+    for segment in trimmed {
+      url.appendPathComponent(String(segment))
     }
 
-    private func prepare<RequestType: Decodable>(
-        _ request: SpotifyRequest<RequestType>
-    ) throws -> PreparedRequest<RequestType> {
-        let bodyData: Data?
-        if let body = request.body {
-            bodyData = try JSONCoding.encoder.encode(body)
-        } else {
-            bodyData = nil
-        }
-
-        let url = apiURL(path: request.path, queryItems: request.query)
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = request.method.rawValue
-        urlRequest.httpBody = bodyData
-        if bodyData != nil {
-            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-
-        return PreparedRequest(request: request, urlRequest: urlRequest, bodyData: bodyData)
+    guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+      fatalError("Invalid apiBaseURL: \(configuration.apiBaseURL)")
     }
 
-    private func executeRequest(
-        _ request: URLRequest,
-        retryCount: Int? = nil
-    ) async throws -> HTTPResponse {
-        return try await networkRecovery.executeWithRecovery {
-            try await self.performSingleRequest(request, retryCount: retryCount)
-        }
+    components.queryItems = queryItems
+    guard let finalURL = components.url else {
+      fatalError("Unable to construct API URL for path \(path)")
+    }
+    return finalURL
+  }
+
+  private func prepare<RequestType: Decodable>(
+    _ request: SpotifyRequest<RequestType>
+  ) throws -> PreparedRequest<RequestType> {
+    let bodyData: Data?
+    if let body = request.body {
+      bodyData = try JSONCoding.encoder.encode(body)
+    } else {
+      bodyData = nil
     }
 
-    private func performSingleRequest(
-        _ request: URLRequest,
-        retryCount: Int? = nil
-    ) async throws -> HTTPResponse {
-        var mutableRequest = request
+    let url = apiURL(path: request.path, queryItems: request.query)
+    var urlRequest = URLRequest(url: url)
+    urlRequest.httpMethod = request.method.rawValue
+    urlRequest.httpBody = bodyData
+    if bodyData != nil {
+      urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    }
 
-        // Apply timeout
-        mutableRequest.timeoutInterval = configuration.requestTimeout
+    return PreparedRequest(request: request, urlRequest: urlRequest, bodyData: bodyData)
+  }
 
-        // Apply custom headers
-        for (key, value) in configuration.customHeaders {
-            mutableRequest.setValue(value, forHTTPHeaderField: key)
-        }
+  private func executeRequest(
+    _ request: URLRequest,
+    retryCount: Int? = nil
+  ) async throws -> HTTPResponse {
+    return try await networkRecovery.executeWithRecovery {
+      try await self.performSingleRequest(request, retryCount: retryCount)
+    }
+  }
 
-        // Apply interceptors
-        for interceptor in interceptors {
-            mutableRequest = try await interceptor(mutableRequest)
-        }
+  private func performSingleRequest(
+    _ request: URLRequest,
+    retryCount: Int? = nil
+  ) async throws -> HTTPResponse {
+    var mutableRequest = request
 
-        let response = try await httpClient.data(for: mutableRequest)
-        let data = response.data
+    // Apply timeout
+    mutableRequest.timeoutInterval = configuration.requestTimeout
 
-        // Check for retryable HTTP errors
-        if let http = response.httpURLResponse,
-            configuration.networkRecovery.retryableStatusCodes.contains(http.statusCode)
-        {
-            let bodyString = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
-            throw SpotifyClientError.httpError(statusCode: http.statusCode, body: bodyString)
-        }
+    // Apply custom headers
+    for (key, value) in configuration.customHeaders {
+      mutableRequest.setValue(value, forHTTPHeaderField: key)
+    }
 
-        // Check for 429 (rate limiting) - handle separately from network recovery
-        if let http = response.httpURLResponse, http.statusCode == 429 {
-            let remainingRetries = retryCount ?? configuration.maxRateLimitRetries
-            guard remainingRetries > 0 else {
-                return response
-            }
+    // Apply interceptors
+    for interceptor in interceptors {
+      mutableRequest = try await interceptor(mutableRequest)
+    }
 
-            // Get the 'Retry-After' header (in seconds)
-            let retryAfter: UInt64 =
-                http.value(forHTTPHeaderField: "Retry-After")
-                .flatMap(UInt64.init) ?? 5  // Default to 5s if missing
+    let response = try await httpClient.data(for: mutableRequest)
+    let data = response.data
 
-            // Sleep for the required duration
-            try await Task.sleep(for: .seconds(retryAfter))
+    // Check for retryable HTTP errors
+    if let http = response.httpURLResponse,
+      configuration.networkRecovery.retryableStatusCodes.contains(http.statusCode)
+    {
+      let bodyString = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+      throw SpotifyClientError.httpError(statusCode: http.statusCode, body: bodyString)
+    }
 
-            // Retry the request
-            return try await executeRequest(request, retryCount: remainingRetries - 1)
-        }
-
+    // Check for 429 (rate limiting) - handle separately from network recovery
+    if let http = response.httpURLResponse, http.statusCode == 429 {
+      let remainingRetries = retryCount ?? configuration.maxRateLimitRetries
+      guard remainingRetries > 0 else {
         return response
+      }
+
+      // Get the 'Retry-After' header (in seconds)
+      let retryAfter: UInt64 =
+        http.value(forHTTPHeaderField: "Retry-After")
+        .flatMap(UInt64.init) ?? 5  // Default to 5s if missing
+
+      // Sleep for the required duration
+      try await Task.sleep(for: .seconds(retryAfter))
+
+      // Retry the request
+      return try await executeRequest(request, retryCount: remainingRetries - 1)
     }
 
-    // MARK: - Low-level authorized request
+    return response
+  }
 
-    func authorizedRequest(_ baseRequest: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        var request = baseRequest
-        var token = try await accessToken()
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+  // MARK: - Low-level authorized request
 
-        let response = try await executeRequest(request)
-        guard let http = response.httpURLResponse else {
-            throw SpotifyAuthError.unexpectedResponse
-        }
+  func authorizedRequest(_ baseRequest: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    var request = baseRequest
+    var token = try await accessToken()
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        guard http.statusCode == 401 else {
-            return (response.data, http)
-        }
-
-        token = try await accessToken(invalidatingPrevious: true)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let retryResponse = try await executeRequest(request)
-        guard let retryHTTP = retryResponse.httpURLResponse else {
-            throw SpotifyAuthError.unexpectedResponse
-        }
-
-        return (retryResponse.data, retryHTTP)
+    let response = try await executeRequest(request)
+    guard let http = response.httpURLResponse else {
+      throw SpotifyAuthError.unexpectedResponse
     }
 
-    // MARK: - JSON decoding
-
-    func decodeJSON<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
-        return try JSONCoding.decoder.decode(T.self, from: data)
+    guard http.statusCode == 401 else {
+      return (response.data, http)
     }
 
-    /// Executes a request and decodes the response into the specified type.
-    /// This method replaces requestJSON, requestVoid, and requestOptionalJSON.
-    @discardableResult
-    func perform<T: Decodable & Sendable>(_ request: SpotifyRequest<T>) async throws -> T {
-        let prepared = try prepare(request)
-        let requestKey = generateRequestKey(prepared)
+    token = try await accessToken(invalidatingPrevious: true)
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        let dedupEnabled = configuration.requestDeduplicationEnabled
-
-        // Check for ongoing request
-        if dedupEnabled, let ongoingTask = ongoingRequests[requestKey] {
-            return try await ongoingTask.value as! T
-        }
-
-        // Create new task
-        let task = Task<(any Sendable), Error> {
-            try await self.performInternal(prepared)
-        }
-
-        if dedupEnabled {
-            ongoingRequests[requestKey] = task
-        }
-
-        do {
-            let result = try await task.value as! T
-            if dedupEnabled {
-                ongoingRequests.removeValue(forKey: requestKey)
-            }
-            return result
-        } catch {
-            if dedupEnabled {
-                ongoingRequests.removeValue(forKey: requestKey)
-            }
-            throw error
-        }
+    let retryResponse = try await executeRequest(request)
+    guard let retryHTTP = retryResponse.httpURLResponse else {
+      throw SpotifyAuthError.unexpectedResponse
     }
 
-    private func performInternal<T: Decodable>(_ prepared: PreparedRequest<T>) async throws -> T {
-        // Check if offline mode is enabled
-        if _isOffline {
-            throw SpotifyClientError.offline
-        }
+    return (retryResponse.data, retryHTTP)
+  }
 
-        let logger = self.logger
+  // MARK: - JSON decoding
 
-        let measurement = PerformanceMeasurement(
-            "\(prepared.request.method) \(prepared.request.path)", logger: logger)
+  func decodeJSON<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+    return try JSONCoding.decoder.decode(T.self, from: data)
+  }
 
-        let requestToken = await logger.logRequest(prepared.urlRequest)
+  /// Executes a request and decodes the response into the specified type.
+  /// This method replaces requestJSON, requestVoid, and requestOptionalJSON.
+  @discardableResult
+  func perform<T: Decodable & Sendable>(_ request: SpotifyRequest<T>) async throws -> T {
+    let prepared = try prepare(request)
+    let requestKey = generateRequestKey(prepared)
 
-        let data: Data
-        let response: HTTPURLResponse
-        do {
-            (data, response) = try await self.authorizedRequest(prepared.urlRequest)
-        } catch {
-            await logger.logResponse(nil, data: nil, error: error, token: requestToken)
-            throw error
-        }
+    let dedupEnabled = configuration.requestDeduplicationEnabled
 
-        await logger.logResponse(response, data: data, error: nil, token: requestToken)
+    // Check for ongoing request
+    if dedupEnabled, let ongoingTask = ongoingRequests[requestKey] {
+      return try await ongoingTask.value as! T
+    }
 
-        // Extract and notify rate limit info if available
-        if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
-            await events.invokeRateLimitInfo(rateLimitInfo)
-            await logger.emit(.rateLimit(rateLimitInfo))
-        }
+    // Create new task
+    let task = Task<(any Sendable), Error> {
+      try await self.performInternal(prepared)
+    }
 
-        // Handle 204 No Content
-        if response.statusCode == 204 {
-            if T.self == EmptyResponse.self {
-                await measurement.finish()
-                return EmptyResponse() as! T  // Success for Void (EmptyResponse)
-            }
-            // If T is optional (e.g., PlaybackState?), requestOptionalJSON should be used.
-            // If T is non-optional, we must throw, as 204 is unexpected.
-            throw SpotifyAuthError.unexpectedResponse
-        }
+    if dedupEnabled {
+      ongoingRequests[requestKey] = task
+    }
 
-        // Check for general 2xx success status
-        guard (200..<300).contains(response.statusCode) else {
-            let bodyString =
-                String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
-            throw SpotifyAuthError.httpError(
-                statusCode: response.statusCode,
-                body: bodyString
-            )
-        }
+    do {
+      let result = try await task.value as! T
+      if dedupEnabled {
+        ongoingRequests.removeValue(forKey: requestKey)
+      }
+      return result
+    } catch {
+      if dedupEnabled {
+        ongoingRequests.removeValue(forKey: requestKey)
+      }
+      throw error
+    }
+  }
 
-        // If we expect an EmptyResponse and data is empty (e.g., 200 OK w/ no body),
-        // return a new instance immediately without decoding.
-        if T.self == EmptyResponse.self && data.isEmpty {
-            await measurement.finish()
-            return EmptyResponse() as! T
-        }
-        // --- END FIX ---
+  private func performInternal<T: Decodable>(_ prepared: PreparedRequest<T>) async throws -> T {
+    // Check if offline mode is enabled
+    if _isOffline {
+      throw SpotifyClientError.offline
+    }
 
-        // Decode the data into the expected type T
-        let result = try self.decodeJSON(T.self, from: data)
+    let logger = self.logger
+
+    let measurement = PerformanceMeasurement(
+      "\(prepared.request.method) \(prepared.request.path)", logger: logger)
+
+    let requestToken = await logger.logRequest(prepared.urlRequest)
+
+    let data: Data
+    let response: HTTPURLResponse
+    do {
+      (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+    } catch {
+      await logger.logResponse(nil, data: nil, error: error, token: requestToken)
+      throw error
+    }
+
+    await logger.logResponse(response, data: data, error: nil, token: requestToken)
+
+    // Extract and notify rate limit info if available
+    if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
+      await events.invokeRateLimitInfo(rateLimitInfo)
+      await logger.emit(.rateLimit(rateLimitInfo))
+    }
+
+    // Handle 204 No Content
+    if response.statusCode == 204 {
+      if T.self == EmptyResponse.self {
         await measurement.finish()
-        return result
+        return EmptyResponse() as! T  // Success for Void (EmptyResponse)
+      }
+      // If T is optional (e.g., PlaybackState?), requestOptionalJSON should be used.
+      // If T is non-optional, we must throw, as 204 is unexpected.
+      throw SpotifyAuthError.unexpectedResponse
     }
 
-    private func generateRequestKey<T: Decodable>(_ prepared: PreparedRequest<T>) -> String {
-        var components = [prepared.request.method.rawValue, prepared.request.path]
-
-        if !prepared.request.query.isEmpty {
-            let queryString = prepared.request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(
-                separator: "&")
-            components.append(queryString)
-        }
-
-        if let bodyData = prepared.bodyData,
-            let bodyString = String(data: bodyData, encoding: .utf8)
-        {
-            components.append(bodyString)
-        }
-
-        return components.joined(separator: "|")
+    // Check for general 2xx success status
+    guard (200..<300).contains(response.statusCode) else {
+      let bodyString =
+        String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+      throw SpotifyAuthError.httpError(
+        statusCode: response.statusCode,
+        body: bodyString
+      )
     }
 
-    /// Helper for requests that might return 204 No Content (returning nil)
-    /// or a JSON object (returning T).
-    func requestOptionalJSON<T: Decodable>(
-        _ type: T.Type,
-        request: SpotifyRequest<T>
-    ) async throws -> T? {
-        let prepared = try prepare(request)
-
-        let logger = self.logger
-
-        let measurement = PerformanceMeasurement(
-            "\(prepared.request.method) \(prepared.request.path)", logger: logger)
-
-        let requestToken = await logger.logRequest(prepared.urlRequest)
-
-        let data: Data
-        let response: HTTPURLResponse
-        do {
-            (data, response) = try await self.authorizedRequest(prepared.urlRequest)
-        } catch {
-            await logger.logResponse(nil, data: nil, error: error, token: requestToken)
-            throw error
-        }
-
-        await logger.logResponse(response, data: data, error: nil, token: requestToken)
-
-        // Extract and notify rate limit info if available
-        if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
-            await events.invokeRateLimitInfo(rateLimitInfo)
-            await logger.emit(.rateLimit(rateLimitInfo))
-        }
-
-        if response.statusCode == 204 || data.isEmpty {
-            await measurement.finish()
-            return nil
-        }
-
-        guard (200..<300).contains(response.statusCode) else {
-            let bodyString =
-                String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
-            throw SpotifyAuthError.httpError(
-                statusCode: response.statusCode,
-                body: bodyString
-            )
-        }
-
-        let decoded = try self.decodeJSON(T.self, from: data)
-        await measurement.finish()
-        return decoded
+    // If we expect an EmptyResponse and data is empty (e.g., 200 OK w/ no body),
+    // return a new instance immediately without decoding.
+    if T.self == EmptyResponse.self && data.isEmpty {
+      await measurement.finish()
+      return EmptyResponse() as! T
     }
+    // --- END FIX ---
+
+    // Decode the data into the expected type T
+    let result = try self.decodeJSON(T.self, from: data)
+    await measurement.finish()
+    return result
+  }
+
+  private func generateRequestKey<T: Decodable>(_ prepared: PreparedRequest<T>) -> String {
+    var components = [prepared.request.method.rawValue, prepared.request.path]
+
+    if !prepared.request.query.isEmpty {
+      let queryString = prepared.request.query.map { "\($0.name)=\($0.value ?? "")" }.joined(
+        separator: "&")
+      components.append(queryString)
+    }
+
+    if let bodyData = prepared.bodyData,
+      let bodyString = String(data: bodyData, encoding: .utf8)
+    {
+      components.append(bodyString)
+    }
+
+    return components.joined(separator: "|")
+  }
+
+  /// Helper for requests that might return 204 No Content (returning nil)
+  /// or a JSON object (returning T).
+  func requestOptionalJSON<T: Decodable>(
+    _ type: T.Type,
+    request: SpotifyRequest<T>
+  ) async throws -> T? {
+    let prepared = try prepare(request)
+
+    let logger = self.logger
+
+    let measurement = PerformanceMeasurement(
+      "\(prepared.request.method) \(prepared.request.path)", logger: logger)
+
+    let requestToken = await logger.logRequest(prepared.urlRequest)
+
+    let data: Data
+    let response: HTTPURLResponse
+    do {
+      (data, response) = try await self.authorizedRequest(prepared.urlRequest)
+    } catch {
+      await logger.logResponse(nil, data: nil, error: error, token: requestToken)
+      throw error
+    }
+
+    await logger.logResponse(response, data: data, error: nil, token: requestToken)
+
+    // Extract and notify rate limit info if available
+    if let rateLimitInfo = RateLimitInfo.parse(from: response, path: prepared.request.path) {
+      await events.invokeRateLimitInfo(rateLimitInfo)
+      await logger.emit(.rateLimit(rateLimitInfo))
+    }
+
+    if response.statusCode == 204 || data.isEmpty {
+      await measurement.finish()
+      return nil
+    }
+
+    guard (200..<300).contains(response.statusCode) else {
+      let bodyString =
+        String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+      throw SpotifyAuthError.httpError(
+        statusCode: response.statusCode,
+        body: bodyString
+      )
+    }
+
+    let decoded = try self.decodeJSON(T.self, from: data)
+    await measurement.finish()
+    return decoded
+  }
 }

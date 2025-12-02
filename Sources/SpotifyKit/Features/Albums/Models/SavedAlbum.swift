@@ -4,11 +4,11 @@ import Foundation
 ///
 /// Source: `GET /v1/me/albums`
 public struct SavedAlbum: SavedItem {
-    /// The date and time the album was saved.
-    public let addedAt: Date
+  /// The date and time the album was saved.
+  public let addedAt: Date
 
-    /// Information about the album.
-    public let album: Album
+  /// Information about the album.
+  public let album: Album
 
-    public var content: Album { album }
+  public var content: Album { album }
 }

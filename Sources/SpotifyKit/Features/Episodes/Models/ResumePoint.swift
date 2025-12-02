@@ -4,9 +4,9 @@ import Foundation
 ///
 /// Requires the `user-read-playback-position` scope.
 public struct ResumePoint: Codable, Sendable, Equatable {
-    /// Whether or not the episode has been fully played by the user.
-    public let fullyPlayed: Bool
+  /// Whether or not the episode has been fully played by the user.
+  public let fullyPlayed: Bool
 
-    /// The user's last known position in the episode (in milliseconds).
-    public let resumePositionMs: Int
+  /// The user's last known position in the episode (in milliseconds).
+  public let resumePositionMs: Int
 }

@@ -4,10 +4,10 @@ import Foundation
 ///
 /// Source: `GET /v1/me/shows`
 public struct SavedShow: Codable, Sendable, Equatable {
-    /// The date and time the show was saved.
-    public let addedAt: Date
+  /// The date and time the show was saved.
+  public let addedAt: Date
 
-    /// Information about the show.
-    /// Note: This is a 'SimplifiedShow' (excludes episodes list).
-    public let show: SimplifiedShow
+  /// Information about the show.
+  /// Note: This is a 'SimplifiedShow' (excludes episodes list).
+  public let show: SimplifiedShow
 }

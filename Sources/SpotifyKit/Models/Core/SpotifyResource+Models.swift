@@ -13,17 +13,17 @@ import Foundation
 // so they don't conform to StandardSpotifyResource and need manual extensions.
 
 extension Playlist {
-    public var hrefURL: URL? { href }
-    public var spotifyID: String? { id }
-    public var displayName: String { name }
-    public var objectType: SpotifyObjectType { type }
-    public var spotifyURI: String? { uri }
+  public var hrefURL: URL? { href }
+  public var spotifyID: String? { id }
+  public var displayName: String { name }
+  public var objectType: SpotifyObjectType { type }
+  public var spotifyURI: String? { uri }
 }
 
 extension SimplifiedPlaylist {
-    public var hrefURL: URL? { href }
-    public var spotifyID: String? { id }
-    public var displayName: String { name }
-    public var objectType: SpotifyObjectType { type }
-    public var spotifyURI: String? { uri }
+  public var hrefURL: URL? { href }
+  public var spotifyID: String? { id }
+  public var displayName: String { name }
+  public var objectType: SpotifyObjectType { type }
+  public var spotifyURI: String? { uri }
 }

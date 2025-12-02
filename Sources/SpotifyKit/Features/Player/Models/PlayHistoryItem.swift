@@ -7,12 +7,12 @@ import Foundation
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-recently-played)
 public struct PlayHistoryItem: Codable, Sendable, Equatable {
-    /// The track that was played.
-    public let track: Track
+  /// The track that was played.
+  public let track: Track
 
-    /// The date and time the track was played (ISO 8601 format).
-    public let playedAt: Date
+  /// The date and time the track was played (ISO 8601 format).
+  public let playedAt: Date
 
-    /// The context from which the track was played (e.g., playlist, album).
-    public let context: PlaybackContext?
+  /// The context from which the track was played (e.g., playlist, album).
+  public let context: PlaybackContext?
 }

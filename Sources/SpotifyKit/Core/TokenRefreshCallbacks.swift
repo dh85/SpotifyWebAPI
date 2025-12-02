@@ -5,26 +5,26 @@ import Foundation
 /// Contains metadata about the refresh operation including the reason
 /// for refresh and token expiration details.
 public struct TokenRefreshInfo: Sendable, Equatable {
-    /// The reason the token refresh was triggered.
-    public let reason: RefreshReason
+  /// The reason the token refresh was triggered.
+  public let reason: RefreshReason
 
-    /// The time remaining (in seconds) before the old token expires.
-    /// Negative values indicate the token has already expired.
-    public let secondsUntilExpiration: TimeInterval
+  /// The time remaining (in seconds) before the old token expires.
+  /// Negative values indicate the token has already expired.
+  public let secondsUntilExpiration: TimeInterval
 
-    /// Whether this is an automatic refresh (due to expiration) or manual (forced).
-    public enum RefreshReason: Sendable, Equatable {
-        /// Token is expired or about to expire - automatic refresh.
-        case automatic
+  /// Whether this is an automatic refresh (due to expiration) or manual (forced).
+  public enum RefreshReason: Sendable, Equatable {
+    /// Token is expired or about to expire - automatic refresh.
+    case automatic
 
-        /// Refresh was explicitly requested via `invalidatingPrevious: true`.
-        case manual
-    }
+    /// Refresh was explicitly requested via `invalidatingPrevious: true`.
+    case manual
+  }
 
-    public init(reason: RefreshReason, secondsUntilExpiration: TimeInterval) {
-        self.reason = reason
-        self.secondsUntilExpiration = secondsUntilExpiration
-    }
+  public init(reason: RefreshReason, secondsUntilExpiration: TimeInterval) {
+    self.reason = reason
+    self.secondsUntilExpiration = secondsUntilExpiration
+  }
 }
 
 /// A closure called before attempting to refresh access tokens.

@@ -4,11 +4,11 @@ import Foundation
 ///
 /// Source: `GET /v1/me/tracks`
 public struct SavedTrack: SavedItem {
-    /// The date and time the track was saved.
-    public let addedAt: Date
+  /// The date and time the track was saved.
+  public let addedAt: Date
 
-    /// Information about the track.
-    public let track: Track
+  /// Information about the track.
+  public let track: Track
 
-    public var content: Track { track }
+  public var content: Track { track }
 }

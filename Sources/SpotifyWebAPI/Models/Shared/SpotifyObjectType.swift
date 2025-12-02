@@ -4,13 +4,13 @@
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/concepts/api-calls)
 public enum SpotifyObjectType: String, Codable, Equatable, Sendable {
-    case album
-    case artist
-    case audiobook
-    case chapter
-    case episode
-    case playlist
-    case show
-    case track
-    case user
+  case album
+  case artist
+  case audiobook
+  case chapter
+  case episode
+  case playlist
+  case show
+  case track
+  case user
 }

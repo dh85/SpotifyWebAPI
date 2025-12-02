@@ -13,26 +13,26 @@ import Foundation
 /// }
 /// ```
 public struct BatchProgress: Sendable, Equatable {
-    /// The number of batches completed so far.
-    public let completed: Int
+  /// The number of batches completed so far.
+  public let completed: Int
 
-    /// The total number of batches to process.
-    public let total: Int
+  /// The total number of batches to process.
+  public let total: Int
 
-    /// The number of items in the current batch being processed.
-    public let currentBatchSize: Int
+  /// The number of items in the current batch being processed.
+  public let currentBatchSize: Int
 
-    /// Creates a new batch progress report.
-    ///
-    /// - Parameters:
-    ///   - completed: The number of batches completed (0-indexed, incremented after each batch).
-    ///   - total: The total number of batches.
-    ///   - currentBatchSize: The number of items in the current batch.
-    public init(completed: Int, total: Int, currentBatchSize: Int) {
-        self.completed = completed
-        self.total = total
-        self.currentBatchSize = currentBatchSize
-    }
+  /// Creates a new batch progress report.
+  ///
+  /// - Parameters:
+  ///   - completed: The number of batches completed (0-indexed, incremented after each batch).
+  ///   - total: The total number of batches.
+  ///   - currentBatchSize: The number of items in the current batch.
+  public init(completed: Int, total: Int, currentBatchSize: Int) {
+    self.completed = completed
+    self.total = total
+    self.currentBatchSize = currentBatchSize
+  }
 }
 
 /// A callback type for reporting batch operation progress.

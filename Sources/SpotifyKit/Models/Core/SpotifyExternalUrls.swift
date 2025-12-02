@@ -6,6 +6,6 @@ import Foundation
 ///
 /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-track)
 public struct SpotifyExternalUrls: Codable, Sendable, Equatable {
-    /// The Spotify URL for the object (e.g., "https://open.spotify.com/track/...").
-    public let spotify: URL?
+  /// The Spotify URL for the object (e.g., "https://open.spotify.com/track/...").
+  public let spotify: URL?
 }

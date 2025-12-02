@@ -1,7 +1,7 @@
 import Foundation
 
 #if canImport(FoundationNetworking)
-    import FoundationNetworking
+  import FoundationNetworking
 #endif
 
 /// A closure that can inspect, modify, or cancel a request before it's sent.

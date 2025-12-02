@@ -2,56 +2,56 @@ import Foundation
 
 /// A description of an API request and its expected response type.
 public struct SpotifyRequest<Response: Decodable>: Sendable {
-    public let method: String
-    public let path: String
-    public let query: [URLQueryItem]
-    public let body: (any Encodable & Sendable)?
-    public let requiresAuth: Bool  // Implied: all Spotify API calls require auth
+  public let method: String
+  public let path: String
+  public let query: [URLQueryItem]
+  public let body: (any Encodable & Sendable)?
+  public let requiresAuth: Bool  // Implied: all Spotify API calls require auth
 
-    public init(
-        method: String,
-        path: String,
-        query: [URLQueryItem],
-        body: (any Encodable & Sendable)?
-    ) {
-        self.method = method
-        self.path = path
-        self.query = query
-        self.body = body
-        self.requiresAuth = true
-    }
+  public init(
+    method: String,
+    path: String,
+    query: [URLQueryItem],
+    body: (any Encodable & Sendable)?
+  ) {
+    self.method = method
+    self.path = path
+    self.query = query
+    self.body = body
+    self.requiresAuth = true
+  }
 
-    // MARK: - Factory Methods
+  // MARK: - Factory Methods
 
-    /// Creates a GET request.
-    public static func get(_ path: String, query: [URLQueryItem] = []) -> Self {
-        Self(method: "GET", path: path, query: query, body: nil)
-    }
+  /// Creates a GET request.
+  public static func get(_ path: String, query: [URLQueryItem] = []) -> Self {
+    Self(method: "GET", path: path, query: query, body: nil)
+  }
 
-    /// Creates a PUT request.
-    public static func put(
-        _ path: String,
-        query: [URLQueryItem] = [],
-        body: (any Encodable & Sendable)? = nil
-    ) -> Self {
-        Self(method: "PUT", path: path, query: query, body: body)
-    }
+  /// Creates a PUT request.
+  public static func put(
+    _ path: String,
+    query: [URLQueryItem] = [],
+    body: (any Encodable & Sendable)? = nil
+  ) -> Self {
+    Self(method: "PUT", path: path, query: query, body: body)
+  }
 
-    /// Creates a POST request.
-    public static func post(
-        _ path: String,
-        query: [URLQueryItem] = [],
-        body: (any Encodable & Sendable)? = nil
-    ) -> Self {
-        Self(method: "POST", path: path, query: query, body: body)
-    }
+  /// Creates a POST request.
+  public static func post(
+    _ path: String,
+    query: [URLQueryItem] = [],
+    body: (any Encodable & Sendable)? = nil
+  ) -> Self {
+    Self(method: "POST", path: path, query: query, body: body)
+  }
 
-    /// Creates a DELETE request.
-    public static func delete(
-        _ path: String,
-        query: [URLQueryItem] = [],
-        body: (any Encodable & Sendable)? = nil
-    ) -> Self {
-        Self(method: "DELETE", path: path, query: query, body: body)
-    }
+  /// Creates a DELETE request.
+  public static func delete(
+    _ path: String,
+    query: [URLQueryItem] = [],
+    body: (any Encodable & Sendable)? = nil
+  ) -> Self {
+    Self(method: "DELETE", path: path, query: query, body: body)
+  }
 }

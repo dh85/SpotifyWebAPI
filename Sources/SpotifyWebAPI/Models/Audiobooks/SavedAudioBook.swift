@@ -4,9 +4,9 @@ import Foundation
 ///
 /// Source: `GET /v1/me/audiobooks`
 public struct SavedAudiobook: Codable, Sendable, Equatable {
-    /// The date and time the audiobook was saved.
-    public let addedAt: Date
+  /// The date and time the audiobook was saved.
+  public let addedAt: Date
 
-    /// Information about the audiobook.
-    public let audiobook: Audiobook
+  /// Information about the audiobook.
+  public let audiobook: Audiobook
 }

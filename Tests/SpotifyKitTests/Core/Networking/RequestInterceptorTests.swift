@@ -6,152 +6,152 @@ import Testing
 @Suite("Request Interceptor Tests")
 struct RequestInterceptorTests {
 
-    @Test("Interceptor can modify request")
-    @MainActor
-    func interceptorModifiesRequest() async throws {
-        let (client, http) = makeUserAuthClient()
+  @Test("Interceptor can modify request")
+  @MainActor
+  func interceptorModifiesRequest() async throws {
+    let (client, http) = makeUserAuthClient()
 
-        await client.addInterceptor { request in
-            var modified = request
-            modified.setValue("CustomValue", forHTTPHeaderField: "X-Custom")
-            return modified
-        }
-
-        await http.addMockResponse(
-            data: try TestDataLoader.load("current_user_profile"),
-            statusCode: 200
-        )
-
-        _ = try await client.users.me()
-
-        let requests = await http.requests
-        #expect(requests[0].value(forHTTPHeaderField: "X-Custom") == "CustomValue")
+    await client.addInterceptor { request in
+      var modified = request
+      modified.setValue("CustomValue", forHTTPHeaderField: "X-Custom")
+      return modified
     }
 
-    @Test("Multiple interceptors are called in order")
-    @MainActor
-    func multipleInterceptorsInOrder() async throws {
-        let (client, http) = makeUserAuthClient()
+    await http.addMockResponse(
+      data: try TestDataLoader.load("current_user_profile"),
+      statusCode: 200
+    )
 
-        await client.addInterceptor { request in
-            var modified = request
-            modified.setValue("First", forHTTPHeaderField: "X-Order")
-            return modified
-        }
+    _ = try await client.users.me()
 
-        await client.addInterceptor { request in
-            var modified = request
-            let existing = modified.value(forHTTPHeaderField: "X-Order") ?? ""
-            modified.setValue(existing + ",Second", forHTTPHeaderField: "X-Order")
-            return modified
-        }
+    let requests = await http.requests
+    #expect(requests[0].value(forHTTPHeaderField: "X-Custom") == "CustomValue")
+  }
 
-        await http.addMockResponse(
-            data: try TestDataLoader.load("current_user_profile"),
-            statusCode: 200
-        )
+  @Test("Multiple interceptors are called in order")
+  @MainActor
+  func multipleInterceptorsInOrder() async throws {
+    let (client, http) = makeUserAuthClient()
 
-        _ = try await client.users.me()
-
-        let requests = await http.requests
-        #expect(requests[0].value(forHTTPHeaderField: "X-Order") == "First,Second")
+    await client.addInterceptor { request in
+      var modified = request
+      modified.setValue("First", forHTTPHeaderField: "X-Order")
+      return modified
     }
 
-    @Test("Interceptor can throw error")
-    @MainActor
-    func interceptorThrowsError() async throws {
-        let (client, _) = makeUserAuthClient()
-
-        await client.addInterceptor { _ in
-            throw TestError.general("Interceptor error")
-        }
-
-        await #expect(throws: TestError.general("Interceptor error")) {
-            _ = try await client.users.me()
-        }
+    await client.addInterceptor { request in
+      var modified = request
+      let existing = modified.value(forHTTPHeaderField: "X-Order") ?? ""
+      modified.setValue(existing + ",Second", forHTTPHeaderField: "X-Order")
+      return modified
     }
 
-    @Test("Interceptor failures do not poison subsequent requests")
-    @MainActor
-    func interceptorFailureDoesNotAffectFutureRequests() async throws {
-        let (client, http) = makeUserAuthClient()
-        let controller = InterceptorThrowState()
+    await http.addMockResponse(
+      data: try TestDataLoader.load("current_user_profile"),
+      statusCode: 200
+    )
 
-        await client.addInterceptor { request in
-            if await controller.consume() {
-                throw TestError.general("boom")
-            }
-            return request
-        }
+    _ = try await client.users.me()
 
-        await http.addMockResponse(
-            data: try TestDataLoader.load("current_user_profile"),
-            statusCode: 200
-        )
+    let requests = await http.requests
+    #expect(requests[0].value(forHTTPHeaderField: "X-Order") == "First,Second")
+  }
 
-        await #expect(throws: TestError.general("boom")) {
-            _ = try await client.users.me()
-        }
+  @Test("Interceptor can throw error")
+  @MainActor
+  func interceptorThrowsError() async throws {
+    let (client, _) = makeUserAuthClient()
 
-        let profile = try await client.users.me()
-        #expect(profile.id == "mockuser")
-
-        let requests = await http.requests
-        #expect(requests.count == 1)
+    await client.addInterceptor { _ in
+      throw TestError.general("Interceptor error")
     }
 
-    @Test("Remove all interceptors works")
-    @MainActor
-    func removeAllInterceptors() async throws {
-        let (client, http) = makeUserAuthClient()
+    await #expect(throws: TestError.general("Interceptor error")) {
+      _ = try await client.users.me()
+    }
+  }
 
-        await client.addInterceptor { request in
-            var modified = request
-            modified.setValue("ShouldNotAppear", forHTTPHeaderField: "X-Test")
-            return modified
-        }
+  @Test("Interceptor failures do not poison subsequent requests")
+  @MainActor
+  func interceptorFailureDoesNotAffectFutureRequests() async throws {
+    let (client, http) = makeUserAuthClient()
+    let controller = InterceptorThrowState()
 
-        await client.removeAllInterceptors()
-
-        await http.addMockResponse(
-            data: try TestDataLoader.load("current_user_profile"),
-            statusCode: 200
-        )
-
-        _ = try await client.users.me()
-
-        let requests = await http.requests
-        #expect(requests[0].value(forHTTPHeaderField: "X-Test") == nil)
+    await client.addInterceptor { request in
+      if await controller.consume() {
+        throw TestError.general("boom")
+      }
+      return request
     }
 
-    @Test("Interceptor receives configuration headers")
-    @MainActor
-    func interceptorReceivesConfigHeaders() async throws {
-        let config = SpotifyClientConfiguration(
-            customHeaders: ["X-Config": "ConfigValue"]
-        )
-        let (client, http) = makeUserAuthClient(configuration: config)
+    await http.addMockResponse(
+      data: try TestDataLoader.load("current_user_profile"),
+      statusCode: 200
+    )
 
-        await http.addMockResponse(
-            data: try TestDataLoader.load("current_user_profile"),
-            statusCode: 200
-        )
-
-        _ = try await client.users.me()
-
-        let requests = await http.requests
-        #expect(requests[0].value(forHTTPHeaderField: "X-Config") == "ConfigValue")
+    await #expect(throws: TestError.general("boom")) {
+      _ = try await client.users.me()
     }
+
+    let profile = try await client.users.me()
+    #expect(profile.id == "mockuser")
+
+    let requests = await http.requests
+    #expect(requests.count == 1)
+  }
+
+  @Test("Remove all interceptors works")
+  @MainActor
+  func removeAllInterceptors() async throws {
+    let (client, http) = makeUserAuthClient()
+
+    await client.addInterceptor { request in
+      var modified = request
+      modified.setValue("ShouldNotAppear", forHTTPHeaderField: "X-Test")
+      return modified
+    }
+
+    await client.removeAllInterceptors()
+
+    await http.addMockResponse(
+      data: try TestDataLoader.load("current_user_profile"),
+      statusCode: 200
+    )
+
+    _ = try await client.users.me()
+
+    let requests = await http.requests
+    #expect(requests[0].value(forHTTPHeaderField: "X-Test") == nil)
+  }
+
+  @Test("Interceptor receives configuration headers")
+  @MainActor
+  func interceptorReceivesConfigHeaders() async throws {
+    let config = SpotifyClientConfiguration(
+      customHeaders: ["X-Config": "ConfigValue"]
+    )
+    let (client, http) = makeUserAuthClient(configuration: config)
+
+    await http.addMockResponse(
+      data: try TestDataLoader.load("current_user_profile"),
+      statusCode: 200
+    )
+
+    _ = try await client.users.me()
+
+    let requests = await http.requests
+    #expect(requests[0].value(forHTTPHeaderField: "X-Config") == "ConfigValue")
+  }
 }
 
 actor InterceptorThrowState {
-    private var shouldThrow = true
+  private var shouldThrow = true
 
-    func consume() -> Bool {
-        if shouldThrow {
-            shouldThrow = false
-            return true
-        }
-        return false
+  func consume() -> Bool {
+    if shouldThrow {
+      shouldThrow = false
+      return true
     }
+    return false
+  }
 }

@@ -5,9 +5,9 @@ import Testing
 
 @Suite struct AuthorTests {
 
-    @Test
-    func supportsCodableRoundTrip() throws {
-        let author = Author(name: "Test Author")
-        try expectCodableRoundTrip(author)
-    }
+  @Test
+  func supportsCodableRoundTrip() throws {
+    let author = Author(name: "Test Author")
+    try expectCodableRoundTrip(author)
+  }
 }
