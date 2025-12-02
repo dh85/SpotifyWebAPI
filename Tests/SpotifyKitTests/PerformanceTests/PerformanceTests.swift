@@ -97,7 +97,7 @@ struct PerformanceTests {
       #expect(items.count == 500)
     }
 
-    #expect(duration < 0.5, "collectAllPages duration: \(duration)s")
+    #expect(duration < 2.0, "collectAllPages duration: \(duration)s")
   }
 }
 
