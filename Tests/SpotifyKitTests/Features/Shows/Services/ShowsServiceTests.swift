@@ -134,7 +134,7 @@ struct ShowsServiceTests {
 
     @Test
     func streamEpisodesEmitsItems() async throws {
-        let (client, http) = try await makeClientWithPaginatedResponse(
+        let (client, _) = try await makeClientWithPaginatedResponse(
             fixture: "show_episodes.json",
             of: SimplifiedEpisode.self,
             offset: 0,

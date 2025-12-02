@@ -19,7 +19,7 @@ import Testing
         filePath: StaticString = #filePath,
         line: UInt = #line,
         column: UInt = #column
-    ) async throws -> P.Output where P.Failure == Error {
+    ) async throws -> P.Output where P.Failure == Error, P.Output: Sendable {
         for try await value in publisher.values {
             return value
         }
@@ -38,7 +38,7 @@ import Testing
 
     @MainActor
     @discardableResult
-    func assertPublisherRequest<Output>(
+    func assertPublisherRequest<Output: Sendable>(
         fixture: String,
         path: String,
         method: String,
@@ -144,7 +144,7 @@ import Testing
     /// while allowing callers to customize the HTTP method, path, and response.
     @MainActor
     @discardableResult
-    func assertIDsMutationPublisher<Output>(
+    func assertIDsMutationPublisher<Output: Sendable>(
         path: String,
         method: String,
         ids: Set<String>,
@@ -196,7 +196,7 @@ import Testing
     ///
     /// Standardizes limit validation for all *Publisher methods.
     @MainActor
-    func expectPublisherLimitValidation<T>(
+    func expectPublisherLimitValidation<T: Sendable>(
         makePublisher: @escaping (Int) -> AnyPublisher<T, Error>
     ) async {
         await assertLimitOutOfRange { limit in
@@ -208,7 +208,7 @@ import Testing
     ///
     /// Standardizes ID limit validation for publisher methods.
     @MainActor
-    func expectPublisherIDBatchLimit<T>(
+    func expectPublisherIDBatchLimit<T: Sendable>(
         max: Int,
         makePublisher: @escaping (Set<String>) -> AnyPublisher<T, Error>
     ) async {

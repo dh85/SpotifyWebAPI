@@ -156,33 +156,34 @@ struct URLSessionHTTPClientTests {
             }) == true)
     }
 
-        @Test
-        func pinnedCertificateLoadsFromFileURL() throws {
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-            let certificateData = Data([0x01, 0x02, 0x03])
-            try certificateData.write(to: tempURL)
-            defer { try? FileManager.default.removeItem(at: tempURL) }
+    @Test
+    func pinnedCertificateLoadsFromFileURL() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let certificateData = Data([0x01, 0x02, 0x03])
+        try certificateData.write(to: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
 
-            let certificate = try URLSessionHTTPClient.PinnedCertificate(fileURL: tempURL)
-            #expect(certificate.data == certificateData)
+        let certificate = try URLSessionHTTPClient.PinnedCertificate(fileURL: tempURL)
+        #expect(certificate.data == certificateData)
+    }
+
+    @Test
+    func pinnedCertificateResourceInitializerThrowsWhenMissing() {
+        #expect(throws: URLSessionHTTPClientPinningError.self) {
+            _ = try URLSessionHTTPClient.PinnedCertificate(
+                resource: "missing_cert", fileExtension: "der")
         }
+    }
 
+    #if canImport(Security)
         @Test
-        func pinnedCertificateResourceInitializerThrowsWhenMissing() {
+        func makePinnedSessionThrowsWithoutCertificates() {
             #expect(throws: URLSessionHTTPClientPinningError.self) {
-                _ = try URLSessionHTTPClient.PinnedCertificate(resource: "missing_cert", fileExtension: "der")
+                _ = try URLSessionHTTPClient.makePinnedSession(pinnedCertificates: [])
             }
         }
-
-        #if canImport(Security)
-            @Test
-            func makePinnedSessionThrowsWithoutCertificates() async {
-                await #expect(throws: URLSessionHTTPClientPinningError.self) {
-                    _ = try URLSessionHTTPClient.makePinnedSession(pinnedCertificates: [])
-                }
-            }
-        #endif
+    #endif
 }
 
 // MARK: - Helpers

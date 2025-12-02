@@ -186,7 +186,7 @@ struct ArtistsServiceTests {
 
     @Test
     func streamAlbumsEmitsItems() async throws {
-        let (client, http) = try await makeClientWithPaginatedResponse(
+        let (client, _) = try await makeClientWithPaginatedResponse(
             fixture: "artist_albums.json",
             of: SimplifiedAlbum.self,
             offset: 0,
