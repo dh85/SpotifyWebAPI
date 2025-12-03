@@ -44,11 +44,13 @@ extension SimplifiedAlbum {
 /// Convenience properties for tracks.
 extension Track {
   /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
+  /// Returns nil if there are no artists.
   public var artistNames: String? {
     joinedArtistNames(artists)
   }
 
   /// Duration formatted as minutes:seconds (e.g., "3:45").
+  /// Returns nil if duration is not available.
   public var durationFormatted: String? {
     formattedDuration(durationMs)
   }
@@ -57,11 +59,13 @@ extension Track {
 /// Convenience properties for simplified tracks.
 extension SimplifiedTrack {
   /// All artist names joined by commas (e.g., "Artist 1, Artist 2").
+  /// Returns nil if there are no artists.
   public var artistNames: String? {
     joinedArtistNames(artists)
   }
 
   /// Duration formatted as minutes:seconds (e.g., "3:45").
+  /// Returns nil if duration is not available.
   public var durationFormatted: String? {
     formattedDuration(durationMs)
   }
@@ -72,6 +76,7 @@ extension SimplifiedTrack {
 /// Convenience properties for episodes.
 extension Episode {
   /// Duration formatted as minutes:seconds (e.g., "45:30").
+  /// Returns nil if duration is not available.
   public var durationFormatted: String? {
     formattedDuration(durationMs)
   }
@@ -80,6 +85,7 @@ extension Episode {
 /// Convenience properties for simplified episodes.
 extension SimplifiedEpisode {
   /// Duration formatted as minutes:seconds (e.g., "45:30").
+  /// Returns nil if duration is not available.
   public var durationFormatted: String? {
     formattedDuration(durationMs)
   }

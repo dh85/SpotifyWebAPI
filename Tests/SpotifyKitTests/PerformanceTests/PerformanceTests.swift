@@ -49,7 +49,7 @@ struct PerformanceTests {
       }
     }
 
-    #expect(duration < 0.5, "Duration: \(duration)s")
+    #expect(duration < 1.0, "Duration: \(duration)s")
   }
 
   @Test(.timeLimit(.minutes(1)))

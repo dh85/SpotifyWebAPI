@@ -10,4 +10,5 @@ DerivedData/
 *.xcodeproj
 .vscode/
 .devcontainer/zscaler
-.tmp
+.tmp/*
+!.tmp/.keep
