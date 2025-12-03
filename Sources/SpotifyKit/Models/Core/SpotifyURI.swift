@@ -33,12 +33,68 @@ public struct SpotifyURI: Sendable, Equatable, Hashable {
     case track, album, artist, playlist, show, episode, user
   }
   
-  /// Initialize from a Spotify URI or URL string.
+  /// Initialize from a Spotify URI or URL string with error details.
   ///
   /// Accepts:
   /// - URIs: `spotify:track:abc123`
   /// - URLs: `https://open.spotify.com/track/abc123`
-  /// - Short URLs: `https://spotify.link/abc123`
+  ///
+  /// - Parameters:
+  ///   - validating: The URI or URL string to parse
+  ///   - expectedType: Optional expected resource type. Throws if type doesn't match.
+  /// - Throws: `SpotifyURIError` if the string is invalid or type doesn't match
+  public init(validating string: String, expectedType: ResourceType? = nil) throws {
+    let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+    
+    // Try URI format: spotify:type:id
+    if trimmed.hasPrefix("spotify:") {
+      let parts = trimmed.split(separator: ":")
+      guard parts.count >= 3 else {
+        throw SpotifyURIError.invalidFormat(string)
+      }
+      guard let type = ResourceType(rawValue: String(parts[1])) else {
+        throw SpotifyURIError.invalidFormat(string)
+      }
+      
+      // Validate expected type if provided
+      if let expectedType, type != expectedType {
+        throw SpotifyURIError.wrongType(expected: expectedType, actual: type)
+      }
+      
+      self.type = type
+      self.id = String(parts[2])
+      return
+    }
+    
+    // Try URL format: https://open.spotify.com/type/id or https://open.spotify.com/type/id?...
+    guard let url = URL(string: trimmed),
+          let host = url.host,
+          (host == "open.spotify.com" || host == "spotify.com") else {
+      throw SpotifyURIError.invalidFormat(string)
+    }
+    
+    let pathComponents = url.pathComponents.filter { $0 != "/" }
+    guard pathComponents.count >= 2 else {
+      throw SpotifyURIError.invalidFormat(string)
+    }
+    guard let type = ResourceType(rawValue: pathComponents[0]) else {
+      throw SpotifyURIError.invalidFormat(string)
+    }
+    
+    // Validate expected type if provided
+    if let expectedType, type != expectedType {
+      throw SpotifyURIError.wrongType(expected: expectedType, actual: type)
+    }
+    
+    self.type = type
+    self.id = pathComponents[1]
+  }
+  
+  /// Initialize from a Spotify URI or URL string (optional version).
+  ///
+  /// Accepts:
+  /// - URIs: `spotify:track:abc123`
+  /// - URLs: `https://open.spotify.com/track/abc123`
   ///
   /// - Parameters:
   ///   - string: The URI or URL string to parse
@@ -97,6 +153,21 @@ public struct SpotifyURI: Sendable, Equatable, Hashable {
   }
 }
 
+/// Errors that can occur when parsing a Spotify URI
+public enum SpotifyURIError: Error, LocalizedError, Sendable {
+  case invalidFormat(String)
+  case wrongType(expected: SpotifyURI.ResourceType, actual: SpotifyURI.ResourceType)
+  
+  public var errorDescription: String? {
+    switch self {
+    case .invalidFormat(let string):
+      return "Invalid Spotify URI or URL format: \(string)"
+    case .wrongType(let expected, let actual):
+      return "Expected \(expected.rawValue) but got \(actual.rawValue)"
+    }
+  }
+}
+
 extension SpotifyURI: CustomStringConvertible {
   public var description: String { uri }
 }
@@ -105,13 +176,14 @@ extension SpotifyURI: Codable {
   public init(from decoder: Decoder) throws {
     let container = try decoder.singleValueContainer()
     let string = try container.decode(String.self)
-    guard let parsed = SpotifyURI(string: string) else {
+    do {
+      self = try SpotifyURI(validating: string)
+    } catch {
       throw DecodingError.dataCorruptedError(
         in: container,
         debugDescription: "Invalid Spotify URI: \(string)"
       )
     }
-    self = parsed
   }
   
   public func encode(to encoder: Encoder) throws {

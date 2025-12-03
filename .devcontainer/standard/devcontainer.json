@@ -25,10 +25,7 @@
     "--security-opt",
     "seccomp=unconfined"
   ],
-  "containerEnv": {
-    "TMPDIR": "${containerWorkspaceFolder}/.tmp"
-  },
-  "postCreateCommand": "mkdir -p ${containerWorkspaceFolder}/.tmp && sudo chown -R ubuntu:ubuntu ${containerWorkspaceFolder}",
+  "postCreateCommand": "sudo chown -R ubuntu:ubuntu ${containerWorkspaceFolder} && if [ -f ${containerWorkspaceFolder}/.env ]; then cat ${containerWorkspaceFolder}/.env >> ~/.bashrc; fi",
   // Configure tool-specific properties.
   "customizations": {
     "vscode": {

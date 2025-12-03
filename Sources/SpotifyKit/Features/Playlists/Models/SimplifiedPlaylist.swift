@@ -14,8 +14,8 @@ public struct SimplifiedPlaylist: Codable, Sendable, Equatable, SpotifyResource 
   public let href: URL
   /// The Spotify ID for the playlist.
   public let id: String
-  /// Images for the playlist. The array may be empty or contain up to three images.
-  public let images: [SpotifyImage]
+  /// Images for the playlist. Can be null or contain up to three images.
+  public let images: [SpotifyImage]?
   /// The name of the playlist.
   public let name: String
   /// The user who owns the playlist.

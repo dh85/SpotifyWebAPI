@@ -17,10 +17,6 @@ let package = Package(
       name: "SpotifyExampleContent",
       targets: ["SpotifyExampleContent"]
     ),
-    .executable(
-      name: "SpotifyPlaylistFormatter",
-      targets: ["SpotifyPlaylistFormatter"]
-    ),
   ],
   dependencies: [
     .package(
@@ -50,10 +46,6 @@ let package = Package(
         .process("Resources")
       ]
     ),
-    .executableTarget(
-      name: "SpotifyPlaylistFormatter",
-      dependencies: ["SpotifyKit"]
-    ),
     .testTarget(
       name: "SpotifyKitTests",
       dependencies: [
@@ -68,10 +60,6 @@ let package = Package(
       resources: [
         .process("Mocks")
       ]
-    ),
-    .testTarget(
-      name: "SpotifyPlaylistFormatterTests",
-      dependencies: ["SpotifyPlaylistFormatter", "SpotifyKit"]
     ),
   ]
 )

@@ -340,6 +340,32 @@ extension PlaylistsService where Capability == UserAuthCapability {
     }
   }
 
+  /// Get all playlists owned or followed by the current user.
+  ///
+  /// This is a convenience method that collects all playlists into a single array.
+  /// Use with caution for users with many playlists as it loads everything into memory.
+  /// For large collections, prefer ``streamMyPlaylists(maxItems:)`` or ``streamMyPlaylistPages(maxPages:)``.
+  ///
+  /// Requires the `playlist-read-private` scope.
+  ///
+  /// ## Example
+  /// ```swift
+  /// let playlists = try await client.playlists.getAllMyPlaylists()
+  /// print("You have \(playlists.count) playlists")
+  /// ```
+  ///
+  /// - Returns: An array of all `SimplifiedPlaylist` objects.
+  /// - Throws: `SpotifyClientError` if the request fails.
+  ///
+  /// [Spotify API Reference](https://developer.spotify.com/documentation/web-api/reference/get-a-list-of-current-users-playlists)
+  public func getAllMyPlaylists() async throws -> [SimplifiedPlaylist] {
+    var playlists: [SimplifiedPlaylist] = []
+    for try await playlist in streamMyPlaylists() {
+      playlists.append(playlist)
+    }
+    return playlists
+  }
+
   /// Create a new playlist for a Spotify user.
   /// Corresponds to: `POST /v1/users/{user_id}/playlists`.
   /// Requires `playlist-modify-public` or `playlist-modify-private` scope.

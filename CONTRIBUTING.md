@@ -14,8 +14,6 @@ Thank you for your interest in contributing to SpotifyKit! We welcome contributi
    ```bash
    swift build
    ```
-   
-   > **Note**: The dev container sets `TMPDIR` to `.tmp/` in the workspace. This directory is tracked in git with a `.keep` file but its contents are ignored. If you encounter `couldNotFindTmpDir` errors, ensure the directory exists: `mkdir -p .tmp`
 
 ## Development Workflow
 
